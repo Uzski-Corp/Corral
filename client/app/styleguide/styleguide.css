@@ -78,3 +78,66 @@
 .sg-pane .c-pane__body { max-width: none; }
 .sg-part--wide .sg-part__stage { padding-bottom: 48px; }
 @media (max-width: 720px) { .sg-pane .c-pane__head { height: auto; padding: 14px 16px; flex-wrap: wrap; } .sg-pane .c-pane__body { padding: 16px; } }
+
+/* ---------- M1 sections */
+.sg-routes { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin-top: 24px; font-size: 13.5px; }
+.sg-routes a { color: var(--color-action); text-decoration: none; font-family: var(--font-mono); font-size: 12.5px; letter-spacing: 0; }
+.sg-routes a:hover { text-decoration: underline; }
+.sg-hint { margin: 12px 0 0; font-size: 12.5px; color: var(--color-text-tertiary); }
+.sg-shells { display: flex; flex-direction: column; gap: 36px; }
+.sg-shell { border-radius: var(--radius-window); overflow: hidden; box-shadow: var(--shadow-pop); background: var(--color-surface-muted); }
+.sg-shell--full { width: 1320px; height: 760px; }
+.sg-shells__row { display: flex; gap: 28px; align-items: flex-start; }
+.sg-shell--collapsed { width: 1100px; max-width: 100%; height: 560px; }
+.sg-shell--phone { width: 390px; height: 600px; border-radius: 28px; box-shadow: var(--shadow-pop), 0 0 0 6px #1C1C1C; margin: 6px; }
+.sg-cmdk { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 24px; }
+.sg-cmdk .c-cmd { height: 420px; box-shadow: var(--shadow-pop); }
+.sg-overlays { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
+.sg-overlays__col { display: flex; flex-direction: column; gap: 16px; }
+.sg-dialogstage { position: relative; height: 700px; border-radius: var(--radius-window); overflow: hidden; background: var(--color-canvas); box-shadow: 0 0 0 1px var(--color-border); }
+.sg-dialogstage__bg { position: absolute; inset: 0; overflow: hidden; }
+.sg-dialogstage__bg .c-tr { --cols: 28px minmax(200px,1.3fr) minmax(210px,1.3fr) 130px 96px 124px 90px; }
+.sg-dialogstage .c-scrim--inline { padding-top: 36px; }
+.sg-reopen { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgb(255 255 255 / .6); }
+.sg-menucard { height: 400px; }
+.sg-miniside { width: 100%; height: auto; padding: 0; overflow: visible; }
+.sg-rowmenu { display: flex; align-items: center; gap: 8px; height: 40px; border-top: 1px solid var(--color-border-subtle); border-bottom: 1px solid var(--color-border-subtle); }
+.sg-tips { display: flex; gap: 12px; padding: 4px 0 30px; }
+.sg-forms { display: grid; grid-template-columns: minmax(0, 560px) minmax(0, 1fr); gap: 28px; align-items: start; }
+.sg-settings { flex-direction: column; }
+.sg-checks { display: flex; flex-direction: column; gap: 10px; }
+.sg-checks__kids { display: flex; flex-direction: column; gap: 10px; padding-left: 22px; }
+.sg-forms__open { display: flex; flex-direction: column; gap: 24px; }
+.sg-openbox { width: 280px; height: 200px; }
+.sg-calcard { position: static; width: max-content; padding: 8px; }
+.sg-inputstates { display: flex; flex-direction: column; gap: 14px; max-width: 360px; }
+.sg-tabsdemo { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 28px; align-items: start; }
+.sg-company { flex-direction: column; }
+.sg-company__head { height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 20px; }
+.sg-company__body { padding: 16px 20px 20px; min-height: 180px; }
+.sg-toasts { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.sg-toasts .sg-label { margin: 8px 0 2px; }
+.sg-statesgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
+.sg-statecard { flex-direction: column; min-height: 300px; }
+.sg-statecard--wide { grid-column: span 2; }
+.sg-statecard__bar { height: 40px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 16px; border-bottom: 1px solid var(--color-border-subtle); color: var(--color-text-tertiary); }
+.sg-statecard .c-empty { flex: 1; justify-content: center; }
+.sg-statecard .c-table { overflow: hidden; }
+.sg-statecard .c-tr { --cols: 28px minmax(170px,1.3fr) minmax(180px,1.3fr) 90px 80px 100px 70px; }
+.sg-banners { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.sg-banners .sg-label { grid-column: 1 / -1; margin: 8px 0 2px; }
+@media (max-width: 1080px) {
+  .sg-cmdk, .sg-overlays, .sg-forms, .sg-tabsdemo, .sg-statesgrid, .sg-banners { grid-template-columns: minmax(0, 1fr); }
+  .sg-statecard--wide { grid-column: auto; }
+  .sg-shells__row { flex-direction: column; }
+  .sg-shell--full { width: 1100px; height: 680px; }
+}
+@media (max-width: 720px) {
+  .sg-shell--collapsed { width: 100%; }
+  .sg-shell--phone { width: calc(100% - 12px); }
+  .sg-dialogstage { height: 760px; }
+  .sg-dialogstage .c-scrim--inline { padding: 16px 8px; }
+  .sg-cmdk .c-cmd { height: 380px; }
+  .sg-cmdk .c-cmd__foot > span:nth-child(n+3) { display: none; }
+  .sg-statecard .c-table { overflow-x: auto; } .sg-statecard .c-table > * { min-width: 700px; }
+}

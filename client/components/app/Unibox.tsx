@@ -4,10 +4,10 @@ import { LEADS, THREADS, type Thread } from "./data";
 import { Avatar, FitBar, Kbd, Logo, Receipt, Receipts, Tag, cx } from "./primitives";
 import { ReplyCard } from "./ReplyCard";
 
-export function ThreadList({ threads, active, onPick }: { threads: Thread[]; active: string; onPick?: (id: string) => void }) {
+export function ThreadList({ threads, active, onPick, title = "Needs you", count = 12 }: { threads: Thread[]; active: string; onPick?: (id: string) => void; title?: string; count?: number }) {
   return (
-    <div className="c-threads" role="listbox" aria-label="Needs you">
-      <div className="c-threads__head"><span><span className="c-strong" style={{ fontSize: 14 }}>Needs you</span> <span className="c-faint">12</span></span><span style={{ display: "flex", gap: 4 }}><Kbd>J</Kbd><Kbd>K</Kbd></span></div>
+    <div className="c-threads" role="listbox" aria-label={title}>
+      <div className="c-threads__head"><span><span className="c-strong" style={{ fontSize: 14 }}>{title}</span> <span className="c-faint">{count}</span></span><span style={{ display: "flex", gap: 4 }}><Kbd>J</Kbd><Kbd>K</Kbd></span></div>
       {threads.map((t) => (
         <button key={t.id} role="option" aria-selected={t.id === active} className={cx("c-thread", t.id === active && "is-active", t.unread && t.id !== active && "is-unread")} onClick={() => onPick?.(t.id)}>
           <Avatar id={t.avatar} size={28} />

@@ -64,8 +64,13 @@ export function Check({ on, onChange, label }: { on: boolean; onChange?: (v: boo
 }
 export const Toggle = ({ on }: { on?: boolean }) => <span className={cx("c-toggle", on && "is-on")} role="switch" aria-checked={!!on} />;
 
-export function Segmented({ options, value }: { options: string[]; value: string }) {
-  return <span className="c-seg">{options.map((o) => <span key={o} className={o === value ? "is-on" : undefined}>{o}</span>)}</span>;
+export function Segmented({ options, value, onChange, label }: { options: string[]; value: string; onChange?: (v: string) => void; label?: string }) {
+  if (!onChange) return <span className="c-seg">{options.map((o) => <span key={o} className={o === value ? "is-on" : undefined}>{o}</span>)}</span>;
+  return (
+    <span className="c-seg" role="radiogroup" aria-label={label}>
+      {options.map((o) => <button key={o} type="button" role="radio" aria-checked={o === value} className={o === value ? "is-on" : undefined} onClick={() => onChange(o)}>{o}</button>)}
+    </span>
+  );
 }
 
 export function Input({ icon, children, state, placeholder }: { icon?: IconName; children?: ReactNode; state?: "focus" | "error"; placeholder?: string }) {
@@ -79,6 +84,18 @@ export function Field({ label, hint, children }: { label: string; hint?: ReactNo
   return <div className="c-field"><label>{label}</label>{children}{hint && <span className="c-field__hint">{hint}</span>}</div>;
 }
 
-export function Toast({ icon = "cal", children, meta }: { icon?: IconName; children: ReactNode; meta?: ReactNode }) {
-  return <div className="c-toast"><Icon name={icon} /><span>{children}</span>{meta && <span className="c-muted">{meta}</span>}</div>;
+export type ToastProps = {
+  icon?: IconName; children: ReactNode; meta?: ReactNode; tone?: "default" | "success" | "error";
+  action?: { label: string; onClick: () => void }; onClose?: () => void;
+};
+/** Ink toast: one line, optional meta, at most one action. Success/error only tint the icon. */
+export function Toast({ icon, children, meta, tone = "default", action, onClose }: ToastProps) {
+  const ic: IconName = icon ?? (tone === "error" ? "alert" : tone === "success" ? "check" : "cal");
+  return (
+    <div className={cx("c-toast", tone !== "default" && `c-toast--${tone}`)} role={tone === "error" ? "alert" : "status"}>
+      <Icon name={ic} /><span>{children}</span>{meta && <span className="c-muted">{meta}</span>}
+      {action && <button type="button" className="c-toast__action" onClick={() => { action.onClick(); onClose?.(); }}>{action.label}</button>}
+      {onClose && <button type="button" className="c-toast__x" aria-label="Dismiss" onClick={onClose}><Icon name="x" size={12} /></button>}
+    </div>
+  );
 }

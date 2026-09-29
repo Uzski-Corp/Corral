@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @import "../components/app/app.css";
+@import "../components/app/system.css";
+@import "../components/app/screens/screens.css";
 
 /* ============================================================
    Corral — base layer: Open Range app tokens (Tailwind v4).
@@ -29,6 +31,9 @@
   --color-text-tertiary: #7F7F7F;   /* labels, columns, receipts */
   --color-text-quaternary: #A1A1A1; /* timings, placeholders, disabled */
   --color-text-inverse: #FFFFFF;
+
+  /* Scrim behind dialogs, ⌘K and the mobile drawer */
+  --color-scrim: rgb(28 28 28 / 0.22);
 
   /* The one action colour (pulled from the Open Range sky) */
   --color-action: #1F5FD6;
@@ -78,6 +83,9 @@
   --spacing-toolbar: 52px;
   --spacing-sidebar: 220px;
   --spacing-rail: 300px;
+  --spacing-sidebar-collapsed: 56px;
+  --spacing-dialog: 440px;
+  --spacing-cmdk: 640px;
 
   /* Radius */
   --radius-check: 4px;
@@ -90,7 +98,13 @@
   /* Elevation (only for things that float) */
   --shadow-window: 0 40px 100px rgb(24 36 60 / 0.24), 0 0 0 1px rgb(0 0 0 / 0.05);
   --shadow-pop: 0 14px 36px rgb(24 36 60 / 0.16), 0 0 0 1px rgb(0 0 0 / 0.05);
+  --shadow-dialog: 0 24px 64px rgb(24 36 60 / 0.22), 0 0 0 1px rgb(0 0 0 / 0.06);
   --shadow-button: inset 0 0 0 1px rgb(0 0 0 / 0.10), 0 1px 1px rgb(0 0 0 / 0.06);
+
+  /* Motion (Emil Kowalski rules from corral.md): press 140ms scale(.97); pop 180ms from scale(.96) */
+  --ease-snap: cubic-bezier(0.23, 1, 0.32, 1);
+  --duration-press: 140ms;
+  --duration-pop: 180ms;
 }
 
 

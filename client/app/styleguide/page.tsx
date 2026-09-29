@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./styleguide.css";
+import Link from "next/link";
+import { CmdkDemo, FormDemo, OverlayDemo, ShellDemo, StatesDemo, TabsToastDemo } from "./M1Sections";
 import {
   Avatar, Button, ContextRail, Field, FilterBar, FitBar, Input, LEADS, Logo, MeetingCard, PersonCard, Receipt, Receipts,
-  ReadingPane, ReplyCard, SegmentTable, SegmentWindow, Segmented, Sidebar, Tag, THREADS, ThreadList, Toast, Toggle, Mark,
+  ReadingPane, ReplyCard, SegmentTable, SegmentWindow, Segmented, Tag, THREADS, ThreadList, Toast, Toggle, Mark,
 } from "@/components/app";
 
 export const metadata: Metadata = { title: "Corral — App language (Open Range)" };
@@ -31,6 +33,9 @@ export default function Styleguide() {
         <div className="sg-head__brand"><Mark size={20} /><span>Corral</span><span className="sg-faint">App language · Open Range</span></div>
         <h1>The product, in use.</h1>
         <p>Every component below is the live React component from <code>components/app</code>, shown where it actually lives. Tokens come from the Tailwind v4 <code>@theme</code> in <code>app/globals.css</code>. Both marketing sites embed these same components; only the page around them changes.</p>
+        <nav className="sg-routes" aria-label="M1 screens"><span className="sg-faint">M1 screens</span>
+          <Link href="/app">/app</Link><Link href="/app?cmdk=1">/app?cmdk=1</Link><Link href="/sign-in">/sign-in</Link><Link href="/onboarding">/onboarding</Link>
+          <span className="sg-faint">Handoff: <code>round3/tokens/HANDOFF-ENG.md</code></span></nav>
         <ul className="sg-rules">
           <li><b>One action colour.</b> Blue <code>--color-action</code> for the one thing to do next; near-black <code>--color-action-2</code> for the second.</li>
           <li><b>Two weights, one tracking.</b> Inter 400/500 at 12–24px, −0.15px everywhere.</li>
@@ -110,12 +115,37 @@ export default function Styleguide() {
         </div>
       </Part>
 
-      <Part n="09" title="Navigation" tokens={["--spacing-nav 28", "--color-surface-muted", "⌘K search"]}
-        notes={<p>Workspace, six places, then saved segments with live counts. Active is a filled pill; nothing else is coloured.</p>}>
-        <div className="sg-navs"><div className="c-win c-win--flat"><Sidebar /></div><div className="c-win c-win--flat"><Sidebar active="Unibox" /></div></div>
+      <Part wide n="09" title="App shell" tokens={["--spacing-sidebar 220 / --spacing-sidebar-collapsed 56", "--spacing-toolbar 52 (top bar)", "--color-surface-muted (frame)", "--radius-card 12 (main panel)", "@container shell ≤ 767px → drawer"]}
+        notes={<><p>The whole app lives in one frame: a grey rail and a white main panel inset by 8px. Workspace switcher, search, seven places, saved segments, the mailbox pool and you. Settings sits at the bottom.</p><p style={{ marginTop: 8 }}>Everything here works: switch views, open ⌘K from Search, tick rows and enroll, press the panel icon to collapse. On small widths the rail becomes a drawer behind the menu button.</p></>}>
+        <ShellDemo />
       </Part>
 
-      <Part n="10" title="Things that float" tokens={["--shadow-pop", "--radius-window 14", "--color-surface-inverse"]}
+      <Part n="10" title="Command menu (⌘K)" tokens={["--spacing-cmdk 640", "36px rows · 30px group labels", "--color-surface-sunken (highlight)", "--shadow-dialog", "search latency → skeleton"]}
+        notes={<p>Recent first, then places, then actions. Typing filters commands instantly while companies and people search in the background. No results always offers one next step. Try it: these four are live, type into any of them.</p>}>
+        <CmdkDemo />
+      </Part>
+
+      <Part n="11" title="Dialog, dropdown, tooltip" tokens={["--color-scrim", "--shadow-dialog / --shadow-pop", "--radius-window 14 · menu 10", "--ease-snap 180ms from scale(.96)"]}
+        notes={<p>A dialog asks for one decision and has one blue button. Menus are keyboard-first and open from their trigger. Tooltips only name icon-only controls and their key; they never carry sentences.</p>}>
+        <OverlayDemo />
+      </Part>
+
+      <Part n="12" title="Form controls, in Settings" tokens={["--radius-input 7 · --spacing-btn 32", "--color-action-ring (focus)", "negative-600 (error replaces help)", "checkbox 12 · radio 14 · switch 26×16"]}
+        notes={<p>Label 13 Medium, control, then one line of help. An error replaces the help and says what to do. Select, date picker, radio, checkbox (with a mixed parent), switch, segmented, text and textarea, all wired.</p>}>
+        <FormDemo />
+      </Part>
+
+      <Part n="13" title="Tabs and toasts" tokens={["tabs: 40px, 2px ink underline", "pill tabs = Segmented", "--color-surface-inverse (toast)", "4s · max 3 stacked"]}
+        notes={<p>Line tabs sit under a toolbar and carry counts. Pill tabs switch a range inside a panel. Toasts confirm something that already happened, with at most one action (usually Undo).</p>}>
+        <TabsToastDemo />
+      </Part>
+
+      <Part n="14" title="Empty, error, loading" tokens={["--color-surface-sunken (skeleton)", "art: /corral/or/range-sky.jpg", "negative-50 / 600 (error icon)", "banner = status triple"]}
+        notes={<p>Empty says what a place is for and gives one way to fill it; the brand image may appear here, small. Errors say what failed, whether anything was lost, and offer a retry. Skeletons match real row heights.</p>}>
+        <StatesDemo />
+      </Part>
+
+      <Part n="15" title="Things that float" tokens={["--shadow-pop", "--radius-window 14", "--color-surface-inverse"]}
         notes={<p>Only moments float: a booked meeting, a reply worth seeing, a toast. Faces are film-graded photos in circles, one treatment for everyone.</p>}>
         <div className="sg-float">
           <MeetingCard />
