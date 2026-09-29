@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./styleguide.css";
 import Link from "next/link";
+import { BuilderDemo, ImportDemo, LeadDetailDemo, LeadStatesDemo, LeadTableDemo, StatusTagsDemo } from "./M3Sections";
 import { EditorDemo, KbShellDemo, SourceDetailDemo, SourceListDemo, UploadDemo } from "./M2Sections";
 import { AccountStatesDemo, CodeStatesDemo, CmdkDemo, ContrastDemo, FormDemo, OverlayDemo, SessionErrorDemo, ShellDemo, StatesDemo, TabsToastDemo } from "./M1Sections";
 import {
@@ -99,7 +100,7 @@ export default function Styleguide() {
             <Field label="Who feels the pain?" hint="Corral drafted this from your deck. Edit freely."><div className="c-input c-input--area">Operations and supply-chain leads at food &amp; beverage companies with two or more cold rooms and no live alerting.</div></Field>
             <Field label="Sending domain" hint={<span style={{ color: "var(--color-negative-600)" }}>coldtrace.io has no DMARC record yet. Add one, then check again.</span>}><Input state="error">coldtrace.io</Input></Field>
             <div className="sg-form__row"><span>Mailboxes per day</span><Segmented options={["20", "30", "35"]} value="30" /></div>
-            <div className="sg-form__row"><span>Pause sequences on any reply</span><Toggle on /></div>
+            <div className="sg-form__row"><span>Pause sequences on any reply</span><Toggle on label="Pause sequences on any reply" /></div>
             <Receipts><Receipt meta="6s">Found 4 pains, 3 objections, 2 proof points</Receipt></Receipts>
           </div>
           <div className="sg-form__foot"><Button>Back</Button><span style={{ flex: 1 }} /><Button variant="primary" size="lg">Find companies</Button></div>
@@ -191,7 +192,33 @@ export default function Styleguide() {
         <KbShellDemo />
       </Part>
 
-      <Part n="25" title="Things that float" tokens={["--shadow-pop", "--radius-window 14", "--color-surface-inverse"]}
+      <Part wide n="25" title="Leads · the table and bulk actions" tokens={["c-tr 40px rows, same grid as M1", "aria-sort headers · first click: fit high→low, names A→Z", "bulk bar: canvas, --shadow-pop, 48px, bottom centre", "confirm at 100+ selected"]}
+        notes={<p>The M1 Companies table, extended rather than forked: sortable headers, a header checkbox with a mixed state, rows that open the detail. Selecting anything brings up one bar at the bottom with the actions for the selection; <b>Esc</b> clears it. Selecting a whole page offers the whole view (Gmail&rsquo;s pattern), and anything over 100 is checked first and runs in the background.</p>}>
+        <LeadTableDemo />
+        <LeadStatesDemo />
+      </Part>
+
+      <Part wide n="26" title="Leads · status tags" tokens={["c-tag 50 fill / 200 border / 600 text", "new: Unverified (neutral), Unsubscribed (negative)", "menu 320 with the meaning of each"]}
+        notes={<p>Two tags per company: where the conversation is, and whether the email works. The tag is the control; its menu says what each status means. Corral sets them from replies; a status you set sticks until they reply again. Unsubscribed and Bounced are permanent blocks on enrolling.</p>}>
+        <StatusTagsDemo />
+      </Part>
+
+      <Part wide n="27" title="Leads · lead detail" tokens={["rail 400 · full screen at 390", "facts grid 96px labels", "activity: mono time column 64px", "caution banner for duplicates"]}
+        notes={<p>One company: the person Corral writes to, why it fits, where it is in a sequence, and what happened, newest first. A likely duplicate says why Corral thinks so and offers Merge or Keep both; merging keeps the original&rsquo;s history. Companies that can&rsquo;t be emailed say why instead of offering Enroll.</p>}>
+        <LeadDetailDemo />
+      </Part>
+
+      <Part wide n="28" title="Leads · segment builder" tokens={["rules: field 210 · condition 128 · value", "count 32/38 tabular", "same Rule model as the filter chips"]}
+        notes={<p>Filters and segments are one thing: the chips over the table are rules, and saving them makes a segment that stays live. The count updates as you type. An unfinished rule is marked and ignored, never guessed; a rule set that matches nothing names the tightest rule and what loosening it would give.</p>}>
+        <BuilderDemo />
+      </Part>
+
+      <Part wide n="29" title="Leads · CSV import" tokens={["dialog 560 (file, running, done) · 760 (columns, review)", "steps: File → Columns → Review", "20 MB · 50,000 rows · CSV/TSV", "duplicates: email, then website"]}
+        notes={<p>Nothing is written until the last step. Columns are guessed from their names, then from their values, and each says how it was matched. Problems with the mapping block Continue and name the columns. Duplicates get one policy (skip, fill in blanks, overwrite); bad rows are listed by their spreadsheet row and can be downloaded to fix.</p>}>
+        <ImportDemo />
+      </Part>
+
+      <Part n="30" title="Things that float" tokens={["--shadow-pop", "--radius-window 14", "--color-surface-inverse"]}
         notes={<p>Only moments float: a booked meeting, a reply worth seeing, a toast. Faces are film-graded photos in circles, one treatment for everyone.</p>}>
         <div className="sg-float">
           <MeetingCard />

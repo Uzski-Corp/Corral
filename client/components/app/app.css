@@ -46,7 +46,7 @@
 .c-btn--quiet { box-shadow: none; background: transparent; color: var(--color-text-tertiary); }
 .c-btn--quiet:hover { background: var(--color-surface-sunken); color: var(--color-text); }
 .c-btn[disabled], .c-btn.is-disabled { opacity: .45; cursor: default; }
-.c-btn .c-kbd { background: transparent; border-color: rgb(255 255 255 / .28); color: rgb(255 255 255 / .8); }
+.c-btn .c-kbd { background: transparent; border-color: rgb(255 255 255 / .28); color: rgb(255 255 255 / .9); }
 .c-btn:not(.c-btn--primary):not(.c-btn--ink) .c-kbd { border-color: var(--color-border); color: var(--color-text-quaternary); }
 
 /* Filters */

@@ -3,6 +3,7 @@
 @import "../components/app/system.css";
 @import "../components/app/screens/screens.css";
 @import "../components/app/kb/kb.css";
+@import "../components/app/leads/leads.css";
 
 /* ============================================================
    Corral — base layer: Open Range app tokens (Tailwind v4).

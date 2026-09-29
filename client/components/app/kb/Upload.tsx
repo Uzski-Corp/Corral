@@ -72,7 +72,10 @@ export function useUploadQueue({ initial = [], live = true, onDone }: { initial?
 export type UploadQueue = ReturnType<typeof useUploadQueue>;
 
 /* ------------------------------------------------------------ drop zone */
-export function DropZone({ onFiles, compact, children }: { onFiles: (f: File[]) => void; compact?: boolean; children?: ReactNode }) {
+/** Also used by CSV import (M3): pass `hint`, `accept` and `multiple={false}`. */
+export function DropZone({ onFiles, compact, children, hint, accept = ACCEPT_ATTR, multiple = true, lead = "Drop files here, or" }: {
+  onFiles: (f: File[]) => void; compact?: boolean; children?: ReactNode; hint?: ReactNode; accept?: string; multiple?: boolean; lead?: string;
+}) {
   const input = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
   const id = useId();
@@ -82,11 +85,11 @@ export function DropZone({ onFiles, compact, children }: { onFiles: (f: File[]) 
       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setOver(true); }} onDragLeave={() => setOver(false)} onDrop={drop}>
       <span className="k-drop__ic" aria-hidden="true"><Icon name="upload" size={compact ? 14 : 16} /></span>
       <span className="k-drop__txt">
-        <span className="k-drop__lead">Drop files here, or <button type="button" className="c-link k-linkbtn" onClick={() => input.current?.click()} aria-describedby={`${id}-h`}>choose from your computer</button></span>
-        <span id={`${id}-h`} className="k-drop__hint">PDF, DOCX or Markdown · up to 25 MB each · {MAX_FILES_PER_DROP} at a time</span>
+        <span className="k-drop__lead">{lead} <button type="button" className="c-link k-linkbtn" onClick={() => input.current?.click()} aria-describedby={`${id}-h`}>choose from your computer</button></span>
+        <span id={`${id}-h`} className="k-drop__hint">{hint ?? <>PDF, DOCX or Markdown · up to 25 MB each · {MAX_FILES_PER_DROP} at a time</>}</span>
       </span>
       {children}
-      <input ref={input} type="file" multiple accept={ACCEPT_ATTR} hidden onChange={(e) => { onFiles(Array.from(e.target.files ?? [])); e.target.value = ""; }} />
+      <input ref={input} type="file" multiple={multiple} accept={accept} hidden onChange={(e) => { onFiles(Array.from(e.target.files ?? [])); e.target.value = ""; }} />
     </div>
   );
 }

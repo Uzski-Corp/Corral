@@ -17,7 +17,7 @@ export const APP_NAV: { id: ViewId; label: string; icon: IconName; count?: strin
   { id: "knowledge", label: "Knowledge base", icon: "book", keys: "G K" },
   { id: "settings", label: "Settings", icon: "gear", keys: "G ," },
 ];
-export const SAVED_SEGMENTS: [string, number][] = [["F&B · East Africa", 48], ["Logistics · Fit > 70", 31], ["Replied, no meeting", 7]];
+export const SAVED_SEGMENTS: [string, number][] = [["F&B · East Africa", 13], ["Logistics · Fit > 70", 12], ["Replied, no meeting", 5]];
 
 /**
  * The signed-in person and workspace. `undefined` renders Bau's sample person (styleguide and

@@ -23,6 +23,8 @@ export const STATUS = {
   Interested: "t-pos", Replied: "t-pos", Verified: "t-pos", "Meeting booked": "t-info",
   Objection: "t-warn", "Catch-all": "t-warn", "Not interested": "t-neg", Disqualified: "t-neg", Bounced: "t-neg",
   "Not contacted": "t-neu", Contacted: "t-neu", OOO: "t-neu", Referral: "t-ref",
+  /* M3: email not checked yet, and people who asked not to be written to */
+  Unverified: "t-neu", Unsubscribed: "t-neg",
 } as const;
 export type Status = keyof typeof STATUS;
 export const Tag = ({ status }: { status: Status }) => <span className={cx("c-tag", STATUS[status])}>{status}</span>;
@@ -65,8 +67,9 @@ export function Monogram({ name, email, size = 20, label }: { name: string; emai
   );
 }
 
-export function Logo({ company }: { company: CompanyName }) {
-  const [bg, fg, l] = LOGOS[company];
+/** Sample tile for known companies; any other name gets a neutral tile with its initial (imports, M3). */
+export function Logo({ company }: { company: CompanyName | (string & {}) }) {
+  const [bg, fg, l] = (LOGOS as Record<string, readonly [string, string, string]>)[company] ?? ["#F2F2F0", "#525252", (company.trim()[0] ?? "?").toUpperCase()];
   return <span className="c-logo" style={{ background: bg, color: fg }} aria-hidden="true">{l}</span>;
 }
 
@@ -80,10 +83,12 @@ export function Chip({ children, add, open, onClick }: { children: ReactNode; ad
   return <button type="button" className={cx("c-chip", add && "c-chip--add", open && "is-open")} onClick={onClick} aria-expanded={open}>{add && <Icon name="plus" size={12} />}{children}</button>;
 }
 
-export function Check({ on, onChange, label }: { on: boolean; onChange?: (v: boolean) => void; label: string }) {
-  return <button type="button" role="checkbox" aria-checked={on} aria-label={label} className={cx("c-check", on && "is-on")} onClick={() => onChange?.(!on)} />;
+/** Table checkbox. `mixed` is the header state when some but not all rows are selected. */
+export function Check({ on, onChange, label, mixed }: { on: boolean; onChange?: (v: boolean) => void; label: string; mixed?: boolean }) {
+  return <button type="button" role="checkbox" aria-checked={mixed ? "mixed" : on} aria-label={label} className={cx("c-check", on && "is-on", mixed && "is-mixed")} onClick={(e) => { e.stopPropagation(); onChange?.(!on); }} />;
 }
-export const Toggle = ({ on }: { on?: boolean }) => <span className={cx("c-toggle", on && "is-on")} role="switch" aria-checked={!!on} />;
+/** Static switch for pictures of the product; pass `label` so it has a name. Interactive: use <Switch> from Form. */
+export const Toggle = ({ on, label }: { on?: boolean; label?: string }) => <span className={cx("c-toggle", on && "is-on")} role="switch" aria-checked={!!on} aria-label={label} aria-hidden={label ? undefined : true} />;
 
 export function Segmented({ options, value, onChange, label }: { options: string[]; value: string; onChange?: (v: string) => void; label?: string }) {
   if (!onChange) return <span className="c-seg">{options.map((o) => <span key={o} className={o === value ? "is-on" : undefined}>{o}</span>)}</span>;

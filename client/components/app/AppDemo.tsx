@@ -9,7 +9,6 @@ import { Icon } from "./icons";
 import { AppShell, APP_NAV, SAVED_SEGMENTS, type ShellAccountProp, type ViewId } from "./Shell";
 import { ContextRail, ReadingPane, ThreadList } from "./Unibox";
 import { SegmentTable } from "./SegmentTable";
-import { FilterBar } from "./Filters";
 import { CommandPalette, type Command } from "./CommandPalette";
 import { Dialog, DropdownMenu, Tooltip } from "./Overlays";
 import { Checkbox, DatePicker, FormField, RadioGroup, Select } from "./Form";
@@ -19,6 +18,8 @@ import { ToastProvider, useToast } from "./Toaster";
 import { SessionUnavailable, type SessionUnavailableProps } from "./SessionUnavailable";
 import { KnowledgeBase, PRODUCT } from "./kb";
 import type { KbReviewState } from "@/lib/kb/state";
+import { LeadsView } from "./leads";
+import type { LeadsReviewState } from "@/lib/leads/state";
 
 /** Fixed "today" for the demo so static renders are deterministic. Replace with new Date(). */
 export const DEMO_TODAY = new Date(2026, 8, 29);
@@ -71,17 +72,6 @@ function UniboxView({ threads, active, setActive, tab, setTab, pane, setPane }: 
           <div className="c-ux__rail"><ContextRail t={t} /></div>
         </div>
       )}
-    </div>
-  );
-}
-
-function CompaniesView({ selected, toggle, segment }: { selected: Set<string>; toggle: (id: string) => void; segment?: string }) {
-  const [tab, setTab] = useState("fit");
-  return (
-    <div className="c-view">
-      {!segment && <div className="c-subbar"><Tabs label="Companies" value={tab} onChange={setTab} tabs={[{ id: "all", label: "All", count: "1,284" }, { id: "fit", label: "Fit 80+", count: 212 }, { id: "seq", label: "In a sequence", count: 38 }, { id: "rep", label: "Replied", count: 9 }]} /></div>}
-      <FilterBar />
-      <div className="c-view__scroll"><SegmentTable selected={selected} onToggle={toggle} /></div>
     </div>
   );
 }
@@ -148,10 +138,12 @@ export type AppDemoProps = {
   sessionError?: SessionUnavailableProps;
   /** Knowledge-base review state (M2): /app?view=knowledge&state=… */
   kb?: KbReviewState;
+  /** Lead table / segment review state (M3): /app?view=companies&state=… or view=segments&state=… */
+  leads?: LeadsReviewState;
 };
 export function AppDemo(p: AppDemoProps) { return <ToastProvider><Demo {...p} /></ToastProvider>; }
 
-function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, drawer = false, dialog = false, frame = "viewport", hotkeys = true, className, account, onSignOut, sessionError, kb }: AppDemoProps) {
+function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, drawer = false, dialog = false, frame = "viewport", hotkeys = true, className, account, onSignOut, sessionError, kb, leads }: AppDemoProps) {
   const router = useRouter();
   const toast = useToast();
   const signOut = useCallback(() => {
@@ -168,12 +160,14 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
   const [active, setActive] = useState("brian");
   const [tab, setTab] = useState("needs");
   const [pane, setPane] = useState<"list" | "read">("list");
-  const [selected, setSelected] = useState(() => new Set(["kilima", "pwani", "savanna"]));
+  const [enrollFor, setEnrollFor] = useState({ n: 3, replied: true });
   const [enroll, setEnroll] = useState(dialog);
+  const [importOpen, setImportOpen] = useState(false);
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [enrollAll, setEnrollAll] = useState(0);
   const [kbAdd, setKbAdd] = useState(kb === "upload" || kb === "upload-errors");
 
-  const toggle = (id: string) => setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
-  const go = useCallback((v: ViewId) => { setView(v); setSegment(v === "segments" ? SAVED_SEGMENTS[0][0] : undefined); }, []);
+  const go = useCallback((v: ViewId) => { setView(v); setSegment(v === "segments" ? SAVED_SEGMENTS[0][0] : undefined); setBuilderOpen(false); }, []);
 
   const archive = useCallback((id: string) => {
     const i = threads.findIndex((t) => t.id === id); if (i < 0) return;
@@ -186,7 +180,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
     go,
     openThread: (id) => { setView("unibox"); setTab("needs"); setActive(id); setPane("read"); },
     openCompany: (id) => { const t = THREADS.find((x) => x.company === LEADS.find((l) => l.id === id)?.company);
-      if (t) { setView("unibox"); setTab("needs"); setActive(t.id); setPane("read"); } else { setView("companies"); setSelected(new Set([id])); } },
+      if (t) { setView("unibox"); setTab("needs"); setActive(t.id); setPane("read"); } else setView("companies"); },
     act: (id, label) => {
       if (id === "sidebar") setCollapsed((c) => !c);
       else if (id === "signout") signOut();
@@ -205,7 +199,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
     const k = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPalette((o) => !o); return; }
       const t = e.target as HTMLElement;
-      if (palette || enroll || kbAdd || t.closest("input, textarea, [contenteditable], [role=dialog], [role=menu], [role=listbox]:not(.c-threads)")) return;
+      if (palette || enroll || kbAdd || importOpen || t.closest("input, textarea, [contenteditable], [role=dialog], [role=menu], [role=listbox]:not(.c-threads)")) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const key = e.key.toLowerCase();
       if (Date.now() - gAt.current < 900) {
@@ -222,7 +216,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
     };
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);
-  }, [hotkeys, palette, enroll, kbAdd, view, tab, threads, active, go, archive]);
+  }, [hotkeys, palette, enroll, kbAdd, importOpen, view, tab, threads, active, go, archive]);
 
   const label = APP_NAV.find((n) => n.id === view)!.label;
   const ws = typeof account === "object" ? account.workspace : account === undefined ? "ColdTrace" : "Corral";
@@ -230,7 +224,6 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
     : view === "knowledge" ? [ws, "Knowledge base", PRODUCT.name]
     : segment ? [ws, "Segments", segment] : [ws, label];
   const table = view === "companies" || view === "segments";
-  const n = selected.size;
   const actions = view === "unibox" ? <>
       <DropdownMenu align="end" width={240} label="Product" items={[{ heading: "Replies about" }, { label: "All products", checked: true }, { label: "ColdTrace Sensors", meta: "11" }, { label: "ColdTrace Gateway", meta: "1" }]}
         trigger={(tp) => <button type="button" className="c-btn c-btn--quiet" {...tp}><Icon name="filter" />All products<Icon name="down" size={12} /></button>} />
@@ -242,23 +235,25 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
         trigger={(tp) => <button type="button" className="c-btn c-btn--quiet k-prodbtn" {...tp}><Icon name="box" />ColdTrace Sensors<Icon name="down" size={12} /></button>} />
       <Button variant="primary" onClick={() => setKbAdd(true)}><Icon name="plus" />Add sources</Button>
     </>
-    : table ? <><Button>Export</Button><Button variant="primary" disabled={n === 0} onClick={() => setEnroll(true)}>{n ? `Enroll ${n} in sequence` : "Select to enroll"}</Button></>
+    : view === "companies" ? <><Button onClick={() => setImportOpen(true)}><Icon name="upload" />Import CSV</Button><Button variant="primary" kbd="⌘K" onClick={() => setPalette(true)}>Find companies</Button></>
+    : view === "segments" ? <><Button onClick={() => toast({ icon: "upload", children: `Exporting ${segment}`, meta: "CSV lands in your downloads" })}>Export</Button><Button variant="primary" onClick={() => setEnrollAll((x) => x + 1)}><Icon name="seq" />Enroll segment</Button></>
     : null;
 
   return (
     <>
       <AppShell frame={frame} className={className} active={view} onNavigate={go} crumbs={sessionError ? [ws, "Not connected"] : crumbs} actions={sessionError ? null : actions} collapsed={collapsed} onCollapsedChange={setCollapsed}
-        onSearch={() => setPalette(true)} segment={segment} onSegment={(s) => { setView("segments"); setSegment(s); }} defaultDrawer={drawer} hotkeys={hotkeys} account={account} onSignOut={signOut}>
+        onSearch={() => setPalette(true)} segment={segment} onSegment={(s) => { setView("segments"); setSegment(s); setBuilderOpen(false); }} defaultDrawer={drawer} hotkeys={hotkeys} account={account} onSignOut={signOut}>
         {sessionError ? <SessionUnavailable {...sessionError} /> : <>
         {view === "unibox" && <UniboxView threads={threads} active={active} setActive={setActive} tab={tab} setTab={setTab} pane={pane} setPane={setPane} />}
-        {table && <CompaniesView selected={selected} toggle={toggle} segment={segment} />}
+        {table && <LeadsView key={`${view}-${segment ?? ""}`} view={view} state={leads} segment={segment} importOpen={importOpen} onImportOpenChange={setImportOpen}
+          builderOpen={builderOpen} onBuilderOpenChange={setBuilderOpen} enrollAllSignal={enrollAll} onFind={() => setPalette(true)} onEnroll={(n, replied) => { setEnrollFor({ n, replied }); setEnroll(true); }} />}
         {view === "contacts" && <ContactsView />}
         {view === "knowledge" && <KnowledgeBase state={kb} addOpen={kbAdd} onAddOpenChange={setKbAdd} contained={frame === "contained"} />}
         {!table && view !== "unibox" && view !== "contacts" && view !== "knowledge" && <PendingView id={view} onSearch={() => setPalette(true)} />}
         </>}
       </AppShell>
       {palette && <CommandPalette open onClose={() => setPalette(false)} {...cmds} />}
-      <EnrollDialog open={enroll} onClose={() => setEnroll(false)} count={n} includesReplied={selected.has("pwani")} onConfirm={(msg, meta) => toast({ tone: "success", children: msg, meta, action: { label: "Undo", onClick: () => toast({ children: "Enrollment undone" }) } })} />
+      <EnrollDialog open={enroll} onClose={() => setEnroll(false)} count={enrollFor.n} includesReplied={enrollFor.replied} onConfirm={(msg, meta) => toast({ tone: "success", children: msg, meta, action: { label: "Undo", onClick: () => toast({ children: "Enrollment undone" }) } })} />
     </>
   );
 }

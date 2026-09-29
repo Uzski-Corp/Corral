@@ -15,8 +15,13 @@ export const LOGOS = {
 export type CompanyName = keyof typeof LOGOS;
 
 export type Lead = {
-  id: string; company: CompanyName; domain: string; person: string; title: string; avatar: string;
+  /** company: a sample name with a logo tile, or any imported name (neutral tile). avatar "" = monogram. */
+  id: string; company: CompanyName | (string & {}); domain: string; person: string; title: string; avatar: string;
   fit: number; email: Status; reply: Status; last: string; why: string[];
+  /* M3 lead table: optional, so M1 rows still type-check */
+  country?: string; size?: string; industry?: string; source?: string;
+  /** Corral is still reading the site; fit isn't known yet */ scoring?: boolean;
+  /** id of the lead this one probably duplicates */ dupOf?: string;
 };
 export const LEADS: Lead[] = [
   { id: "kilima", company: "Kilima Dairies", domain: "kilima.co.ke", person: "Wanjiru Mwangi", title: "Head of Supply Chain", avatar: "wanjiru", fit: 94, email: "Verified", reply: "Interested", last: "2h ago", why: ["Read 38 pages of kilima.co.ke", "Matched “3-site pilot” proof", "Replied in 2h"] },

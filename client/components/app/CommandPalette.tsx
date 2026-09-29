@@ -97,12 +97,12 @@ export function CommandPalette({ open, onClose, commands, recent, entities, fall
         <Icon name="search" />
         <input ref={input} value={q} onChange={(e) => { setQ(e.target.value); setActive(0); }} placeholder="Search companies, people, or type a command"
           role="combobox" aria-expanded aria-controls={`${id}-l`} aria-activedescendant={items.length ? `${id}-${cur}` : undefined} autoComplete="off" spellCheck={false} />
-        {loading ? <span className="c-cmd__status"><span className="c-spin" />Searching</span> : <Kbd>esc</Kbd>}
+        {loading ? <span className="c-cmd__status" role="status"><span className="c-spin" />Searching</span> : <Kbd>esc</Kbd>}
       </div>
-      <div className="c-cmd__list" id={`${id}-l`} role="listbox" ref={list}>
+      <div className="c-cmd__list" id={`${id}-l`} role="listbox" aria-busy={loading || undefined} ref={list}>
         {groups.map(([g, cs]) => cs.length > 0 && <div key={g} role="group" aria-label={g}><div className="c-cmd__group">{g}</div>{cs.map(row)}</div>)}
         {loading && (
-          <div role="status" aria-label="Searching companies and people">
+          <div aria-hidden="true">
             <div className="c-cmd__group">Companies and people <span className="c-faint">· searching {entityCount}</span></div>
             {[148, 116, 172].map((w, i) => <div key={w} className="c-cmd__item c-cmd__item--skel"><span className="c-cmd__lead"><Skeleton w={20} h={20} r={i === 2 ? 10 : 5} /></span><Skeleton w={w} /><span style={{ flex: 1 }} /><Skeleton w={58} h={12} r={2} /></div>)}
           </div>

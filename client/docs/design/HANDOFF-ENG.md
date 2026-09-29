@@ -15,8 +15,10 @@ cd client && pnpm install && pnpm dev     # pnpm 12 (see packageManager)
 | `/app` | Shell + Unibox home (live: views, ⌘K, J/K/E, enroll dialog, toasts) | `?cmdk=1` palette open · `?view=companies`, `contacts`, `segments`, … · `?collapsed=1` · `?nav=1` (mobile drawer) · `?dialog=enroll` |
 | `/sign-in` | Email six-digit code (WorkOS Magic Auth) + Google | `?state=sent` (code entry) · `code-verifying` · `code-wrong` · `code-expired` · `code-resent` · `resend-limited` · `change-email` · `error` (sign-in didn't finish) · `invalid` · `cancelled` · `unavailable` (see §9) |
 | `/app?view=knowledge` | Knowledge base for one product (live: upload and reading simulators, edit, remove with Undo) | `&state=empty` · `drafting` · `loading` · `error` · `sources` · `source` · `partial` · `failed` · `upload` · `upload-errors` · `dragging` · `tray` · `editing` · `save-error` · `conflict` (see §10) |
+| `/app?view=companies` | Leads: the Companies table with sorting, selection, bulk bar, detail rail, filters as rules, CSV import (live) | `&state=loading` · `error` · `empty` · `no-results` · `partial` · `selected` · `select-all` · `bulk-confirm` · `bulk-running` · `status-menu` · `detail` · `duplicate` · `import` · `import-file-error` · `import-map` · `import-map-errors` · `import-review` · `import-running` · `import-done` (see §11) |
+| `/app?view=segments` | A saved segment (live rules, same table) and the segment builder | `&state=builder` · `builder-empty` · `builder-error` · `loading` · `error` · `selected` · `detail` (see §11) |
 | `/onboarding` | 5-step workspace setup with progress and skip | `?step=1…6` (6 = done) · `?skipped=3,4,5` · `?crawl=done` · `?mailbox=1` |
-| `/styleguide` | Every component, live, where it is used (sections 01–25; knowledge base is 20–24) | — |
+| `/styleguide` | Every component, live, where it is used (sections 01–30; knowledge base is 20–24, leads 25–29) | — |
 
 Keyboard in `/app`: ⌘K / Ctrl+K palette · `[` collapse sidebar · `G` then `I C P S Q R K ,` to jump · `J`/`K` next/previous thread · `E` archive (with Undo toast) · Esc closes the top layer.
 
@@ -305,7 +307,8 @@ WorkOS emails a **six-digit code** (not a link) that **expires in 10 minutes**. 
 - **One real `<input>`**, drawn as six cells (3 + 3). Don't build six inputs: one field gives one-time-code autofill, whole-code paste, one label and one error for free.
 - Attributes: `type="text"`, `inputMode="numeric"`, `pattern="[0-9]*"`, `autoComplete="one-time-code"`, `autoCorrect="off"`, `spellCheck={false}`, `enterKeyHint="go"`, and a font size of 16px or more (no iOS zoom). No `maxLength`: paste "123 456", "123-456" or "Your code is 123456" and `sanitizeCode` keeps the six digits.
 - Label: visible "Sign-in code" (`<label for>`). `aria-describedby` points at the hint or the error. `aria-invalid` is set when the code is wrong or expired, and `aria-busy` / `readOnly` while it is checking.
-- Hint: "From login@corral.app. Paste it whole, or type it." Errors replace the hint in the same slot, with `role="alert"`.
+- Hint: **"From Corral. Paste it whole, or type it."** No sender address is shown (updated Sep 30, PR #7). Errors replace the hint in the same slot, with `role="alert"`.
+- **Focus:** the code field auto-focuses after the first send, after a resend (**send a new code** or **Send a new code**), and after changing the email and sending again. It also re-focuses when a `verify-limited` countdown ends (below).
 - `onComplete` fires once, when the value becomes six digits. **Continue** stays for keyboard and assistive-tech users and is disabled until there are six digits.
 - Cells use `--color-border-control` (3.24:1, WCAG 1.4.11). The caret cell gets the action ring, wrong gets negative-600, checking gets muted, and expired gets muted digits with a strike-through.
 
@@ -317,21 +320,37 @@ WorkOS emails a **six-digit code** (not a link) that **expires in 10 minutes**. 
 | `code-wrong` | Inline error. **The digits stay** and are selected on focus, so typing replaces them and Backspace edits. Editing clears the error. | "That code isn't right. Check the newest email from Corral and try again." |
 | `code-expired` | The field is locked. The primary becomes **Send a new code**, and the resend line hides (the primary is the resend). | "That code has expired. Codes last 10 minutes." |
 | `code-resent` | Success banner. The field is cleared and refocused, and the cooldown restarts at 0:20. | "**New code sent.** Use the code in the newest email. It expires in 10 minutes." |
+| `verify-limited` | 429 on **verify**. The field is **locked and keeps its digits**; **Continue** is disabled. Caution tone (caution banner/hint slot, not negative). A live countdown from `Retry-After` (seconds or an HTTP date, **60s if missing**, via `retryAfterSeconds`). At 0:00 the field unlocks and takes focus; the digits stay, so Continue or Enter retries. | "Too many tries for now. You can try again in 0:42." |
+| `code-failed` | A generic `auth_failed` on verify. The field is locked. The primary becomes **Send a new code** (it resends, then clears and focuses the field as `code-resent`). Negative tone, in the error slot. | "We couldn't sign you in with that code. Send a new code and try again." |
 | `resend-limited` | Caution banner with a live countdown. The resend link shows the same countdown. The banner clears itself at 0:00. | "**Too many codes asked for.** You can ask for 3 codes a minute. The last code we sent still works, or send another in 0:41." |
 | `change-email` | Back on the form. The old address is prefilled and selected on focus, with a note under the field. | "We'll send a new code to this address. The code sent to {old} won't work for it." |
 
-Also designed, without their own review state: a failed first send stays on the form with "**Couldn't send your code.** Check your connection, then try again. Nothing was sent."; a failed resend shows "**Couldn't send a new code.** Check your connection, then try again. The last code we sent still works."; and a failed verify (no answer) shows "Couldn't check the code. Check your connection and try again." (field stays editable).
+`verify-limited` and `code-failed` are new with PR #7. Krak adds them to the sign-in review states and to `SignIn.tsx`; this batch does not touch `SignIn.tsx`, and §19 of the styleguide will show them once they land.
+
+Also designed, without their own review state: a failed first send stays on the form with "**Couldn't send your code.** Check your connection, then try again. Nothing was sent."; a failed resend shows "**Couldn't send a new code.** Check your connection, then try again. The last code we sent still works."; and a failed verify shows "Couldn't check the code. Check your connection and try again." (field stays editable). That copy is **only for network errors, timeouts and 5xx**; a 429 is `verify-limited` and `auth_failed` is `code-failed`.
 
 ### What Krak wires (`SignInActions`, `components/app/screens/SignIn.tsx`)
 ```ts
 sendCode?:   (email: string) => Promise<CodeSendResult>;   // { ok: true } | { ok: false, reason: "rate-limited", retryAfter } | { ok: false, reason: "network" }
-verifyCode?: (email: string, code: string) => Promise<CodeVerifyResult>; // { ok: true } | { ok: false, reason: "wrong" | "expired" | "network" }
+verifyCode?: (email: string, code: string) => Promise<CodeVerifyResult>; // { ok: true } | { ok: false, reason: "wrong" | "expired" | "failed" | "network" } | { ok: false, reason: "limited", retryAfter }
 ```
 - If `sendCode` is **absent**, the email button keeps today's behaviour (`startEmail` → AuthKit hosted page), so nothing breaks before the endpoints land. Once both are present, the email path stays in the app.
 - `sendCode` is used for the first send, for **send a new code** and for **Send a new code** after expiry. Map a 429 to `rate-limited`, with `retryAfter = retryAfterSeconds(res.headers.get("Retry-After"))` (seconds or an HTTP date; 60 if missing). Map network errors, timeouts and 5xx to `network`. A rate limit on the *first* send still opens the code screen with the limited banner, because an earlier code may be in the inbox.
-- `verifyCode`: map WorkOS "invalid code" to `wrong` and "expired" to `expired`. On `{ ok: true }`, set the session and navigate (to `safeReturnTo(next) ?? APP_HOME`, then `/onboarding` for new workspaces, as the callback does). The screen stays on "Checking…" until the page unloads.
+- `verifyCode` mapping (decided Sep 30; Krak implements on PR #7, reason names are Krak's call):
+
+  | API answer | Result | State |
+  |---|---|---|
+  | 400 `code_invalid`, or 422 | `wrong` | `code-wrong` |
+  | 400 `code_expired` | `expired` | `code-expired` |
+  | 400 `one_time_code_too_many_attempts` | `expired` | `code-expired` |
+  | 429 (any code) | `limited` + `retryAfter` from `Retry-After` (60 if missing) | `verify-limited` |
+  | 400 `auth_failed` | `failed` | `code-failed` |
+  | network error, timeout, 5xx | `network` | "Couldn't check the code…" |
+
+  At the time of this batch the tree (after f49c3cc) still maps `too_many_attempts` → expired, and `auth_failed` and a verify 429 → network (`lib/api/auth.ts` `toCodeVerifyResult`, `lib/api/authCode.test.ts`). PR #7 replaces those rows.
+- `verifyCode` success: on `{ ok: true }`, set the session and navigate (to `safeReturnTo(next) ?? APP_HOME`, then `/onboarding` for new workspaces, as the callback does). The screen stays on "Checking…" until the page unloads.
 - **Soft cooldown:** after every successful send the resend link waits 20s (60s ÷ 3). One tab never hits the WorkOS limit. The server limit still wins (other tabs, other devices), which is when `resend-limited` shows.
-- Don't count or cap wrong attempts in the client. If WorkOS locks a code after too many tries, return `expired` and the UI already says the right thing (open question below).
+- Don't count or cap wrong attempts in the client. When WorkOS locks a code after too many tries (`one_time_code_too_many_attempts`, HTTP 400), return `expired` and the UI says the right thing.
 - Review mode (no API): `123456` signs in, `111111` is expired, anything else is wrong, and the 4th send inside a minute is rate-limited.
 
 ### Copy changes (every "link" and "15 minutes" is gone)
@@ -342,9 +361,9 @@ verifyCode?: (email: string, code: string) => Promise<CodeVerifyResult>; // { ok
 - Tests updated for the new copy: `components/session/SignInScreen.test.tsx`, `test/pages.test.tsx`, `e2e/auth.spec.ts`. New tests: `components/app/screens/SignIn.code.test.tsx`, `lib/auth/code.test.ts`, and extra cases in `lib/auth/signInState.test.ts`. **Playwright visual baselines `sign-in.png` and `sign-in-error.png` need regenerating**, because the lede, button and error banner copy changed.
 
 ### Open questions
-1. Does WorkOS lock a code after N wrong attempts, and what does the API return then? The design treats it as `expired`, which leads to "Send a new code".
+1. ~~Does WorkOS lock a code after N wrong attempts?~~ Answered: it returns `one_time_code_too_many_attempts` (400), mapped to `expired`. Still open: whether `code-expired` copy ("Codes last 10 minutes") should say "too many tries" for that case. The design keeps one state for now.
 2. Does sending a new code invalidate the previous one? The copy says "use the code in the newest email", which is safe either way. If old codes stay valid, the limited banner's "the last code we sent still works" is still true.
-3. The sender address in the hint is `login@corral.app`. Confirm it matches the WorkOS email template.
+3. ~~The sender address in the hint.~~ Resolved: the hint says "From Corral" and shows no address.
 
 ## 10. Knowledge base (M2, ENG-52 → build ENG-79, backend ENG-65/66)
 
@@ -418,3 +437,82 @@ Shapes (`components/app/kb/data.ts`) are the starting contract: `Source { id, na
 6. A retrieval test ("Ask what Corral would say") is designed out of M2 and deferred.
 7. Is the product switcher one KB per product (as designed), or one KB per workspace with product tags?
 8. Where does the pricing switch ("Corral may quote prices in emails") persist: per product KB or per sequence?
+
+## 11. Leads: table, bulk actions, detail, status tags, segments, CSV import (M3, ENG-53 → build ENG-81)
+
+Everything extends the M1 Companies table (`SegmentTable`) and primitives; nothing is forked. Styleguide §25–29. Rules and import logic are pure and tested in `lib/leads/` (`segment.ts`, `import.ts`, `state.ts`); components are in `components/app/leads/` (CSS `leads.css`, `l-*` classes, imported in `app/globals.css`).
+
+### Routes and states (`/app?view=companies|segments&state=…` outside production)
+| `?view=companies&state=` | What shows |
+|---|---|
+| (none) | Live. Tabs All 1,284 · Fit 80+ 212 · In a sequence 38 · Replied 9. Sortable headers, row checkboxes, click a row for the detail rail. |
+| `loading` | Skeleton rows at 40px (two-line cards at 390). |
+| `error` | "Couldn't load companies", with Try again. |
+| `empty` | First run: "Bring in the companies you already know", with Import a CSV / Find companies. |
+| `no-results` | Filters Fit ≥ 90 + Ethiopia. Names the tightest rule and what loosening it gives ("At ≥ 80, 1 company matches"), plus Clear filters. |
+| `partial` | Info banner: "Corral is still scoring 212 of 1,284 companies." Scoring rows show a shimmer in the fit cell. |
+| `selected` | 3 selected; the floating bulk bar: count · Enroll · Set status · Add to segment · Export · clear · Esc. |
+| `select-all` | Whole view selected: "All **1,284** companies in All are selected. Clear selection". Selecting a page first offers "All 23 on this page are selected. Select all 212 in Fit 80+". |
+| `bulk-confirm` | Enrolling 1,284 → a dry-run breakdown: 1,072 will be enrolled; 38 already in a sequence, 9 replied in the last 30 days, 41 unsubscribed/said no, 124 no verified email. Sends spread over 6 working days at the pool's 210/day. |
+| `bulk-running` | The bar becomes progress ("Enrolling 407 of 1,072") and keeps running if you navigate; a toast with "View the 212 skipped" when done. |
+| `status-menu` | Set status for 3 selected, from the bar. |
+| `detail` | Kilima Dairies in the 400px rail (full screen with a back row at 390). |
+| `duplicate` | Kilima Dairies Ltd: caution banner "Looks like Kilima Dairies" (same website root and a matching person; merging keeps the original's history and status), Merge / Keep both. It's still scoring, so Enroll is disabled and says why. |
+| `import` · `import-file-error` | Step 1: drop zone and what Corral needs; an .xlsx with the one fix (File → Save As → CSV UTF-8). |
+| `import-map` · `import-map-errors` | Step 2: every column with sample values, a Select per column and how it was matched ("Matched by name/values"). Errors: no company or website column, two columns on Work email, Full name together with First/Last. Continue is blocked with "Fix 3 things above to continue". |
+| `import-review` | Step 3: 53 new · 5 already in Corral · 2 repeated in this file · 4 can't be imported; the duplicate policy (Skip / Fill in blanks / Overwrite); bad rows by spreadsheet row, column, value and problem. The button says what happens: "Import 53, update 5". |
+| `import-running` · `import-done` | Progress, closable ("Keeps going if you close this.", Hide); then receipts, "Download them as CSV" for the 4 rows left behind, and **Make a segment from this import**. |
+
+| `?view=segments&state=` | What shows |
+|---|---|
+| (none) | The saved segment's rules as chips over the same table; top bar Export + **Enroll segment**. |
+| `builder` | Rules editor above the table: field · condition · value per rule, all/any, a live "Matches now" count and a peek list. |
+| `builder-empty` | Rules that match nothing: the tightest rule and what loosening it would give. |
+| `builder-error` | An out-of-range number and an empty pick: marked inline, ignored in the count ("2 unfinished rules are ignored"), Save disabled with "Finish 2 rules to save". |
+| `loading` · `error` · `selected` · `detail` | As for companies. |
+
+### Decisions
+1. **Filters and segments are one rule model** (`Rule { id, field, op, value }`, `Match = all | any`). The chips over the table are rules; **Save as segment** saves them. A segment is **live**: companies join and leave as Corral re-scores them.
+2. **Add to segment** (from the bulk bar) **pins** companies, even if they stop matching the rules. The toast says so ("pinned, even if rules change"). A segment is rules plus pinned ids.
+3. **Selection:** checkbox per row, a header checkbox with a mixed state, and the Gmail pattern for the whole view (page first, then "Select all N"). One floating bar holds every bulk action; Esc clears it. "Whole view" is the current tab plus filters, and it doesn't span tabs.
+4. **Large actions** (≥ `BULK_CONFIRM_AT` = 100) always confirm with a **dry-run breakdown** of what will be skipped and why, and how the mailbox pool spreads the sends. They then run in the background with progress in the bar. Smaller ones run at once with an Undo toast.
+5. **Duplicates** match by work email first, then by website domain (`normDomain` strips protocol, www and path). On import you pick a policy (skip, fill in blanks, overwrite). Repeats inside the file keep the first row. In the table a likely duplicate gets a mark and, in the detail, **Merge** (keeps the original's history and sequences) or **Keep both**.
+6. **Import never writes until the last step.** Columns are guessed by header synonyms, then by sniffing values, and each field is taken once. Mapping problems block Continue and name the columns. Bad rows are skipped, not fatal, and can be downloaded to fix. Limits: 20 MB, 50,000 rows, CSV/TSV (comma, semicolon, tab), UTF-8 with or without BOM.
+7. **Statuses:** two tags per company. **Reply status** (Not contacted, Contacted, Interested, Objection, Referral, Meeting booked, Not interested, **Unsubscribed**) is set by Corral from replies; a status you set sticks until they reply again. **Email status** (Verified, Catch-all, **Unverified**, Bounced) comes from verification. Unsubscribed and Bounced are permanent blocks on enrolling. The tag is the control (`StatusMenu`); each option carries its meaning (`STATUS_HELP`). New in M3: Unverified (neutral) and Unsubscribed (negative).
+8. **Logos:** an unknown company gets a neutral monogram tile (`Logo` accepts any name). Colour in the table is only for exceptions (status tags, fit bar, errors).
+9. **Mobile (≤ 767px container):** rows become two-line cards (company + fit, person + reply), the detail goes full screen with a back row, the bulk bar compacts to count + Enroll + clear, builder rules stack, and import mapping rows stack.
+
+### Component APIs (`import { … } from "@/components/app"`)
+```tsx
+<LeadsView view="companies"|"segments" state? segment? importOpen onImportOpenChange builderOpen onBuilderOpenChange onEnroll(n, replied) onFind reviewSample? enrollAllSignal? />
+<SegmentTable leads selected onToggle? label? sort? onSort?(key) allChecked?: boolean|"mixed" onToggleAll? onOpen?(id) active? limit? hover? />   // M3 props are all optional; M1 usage unchanged
+<LeadDetail lead onClose onStatus(id, status, "reply"|"email") onEnroll onMerge? onKeepBoth? onOpenLead? />
+<SegmentBuilder rules onRules match onMatch leads name? onName? onSave onCancel saveLabel? total? />   // name present = new segment
+<ImportDialog open onClose existing: Existing[] seed? sample? onDone?(message) onSegment? inline? />
+<StatusMenu value onChange label options?={LEAD_STATUSES|EMAIL_STATUSES} defaultOpen? align? side? />   <MultiPick values options onChange label invalid? />
+```
+Also changed, with backwards-compatible props: `Check` (`mixed`, stops click propagation), `Toggle` (`label`; aria-hidden without one), `Select` (`label` names its listbox), `DropZone` (`hint`, `accept`, `multiple`, `lead`), `Logo` (any string), `Lead` type (optional `country`, `size`, `industry`, `source`, `scoring`, `dupOf`; `company` is a string).
+Logic (`lib/leads/`): `filterLeads`, `matches`, `ruleIssue`, `describeRule`, `sortLeads`, `nextSort`, `selectionLabel`, `selectedCount`, `parseCsv`, `checkCsvFile`, `checkCsvShape`, `guessMapping`, `mappingIssues`, `rowErrors`, `findDuplicates`, `importPlan`, `leadsReviewState`.
+
+### What Krak wires (ENG-81)
+- **Server-side everything that counts:** filtering, sorting and totals run in the API. The client helpers mirror the semantics for review, and so tests can pin them. Selection sends either ids or `{ all: true, rules, match, tab }`, never 1,284 ids.
+- **Dry-run endpoint** for bulk actions: returns `{ willEnroll, skipped: [{ reason, n }], days }` for the confirm dialog. Run the real job in the background with progress events for the bar.
+- **Segment preview count** for the builder (debounced ~250ms as rules change), plus a 4-row peek.
+- **Import:** parse on the client for mapping and preview (first 5 rows), then upload the file and mapping. The server re-parses and re-validates (limits, emails, dedupe against the whole workspace, not just loaded rows), streams progress, and returns the bad-rows CSV.
+- **Dedupe:** email, then domain, server-side and case-insensitive. Merge moves people, activity, sequences and segment pins onto the original.
+- **Virtualize the table** at scale (ENG-81 asks for 10k rows). Keep the 40px row, sticky header and container-query columns. "Showing the first N. The rest load as you scroll." stays as the fallback copy.
+- **Statuses:** manual reply-status changes are stored with `setBy: "you"` until the next inbound reply. Unsubscribed is final and also suppresses the address workspace-wide.
+- **Tests (ENG-81):** component tests exist (`components/app/leads/leads.test.tsx`, 19; `lib/leads/*.test.ts`, 18; a `/app?view=companies&state=empty` page case). Still to add: e2e import → segment, 10k-row virtualization, a11y and visual. **The Playwright visual baseline `app-companies.png` needs regenerating** (new top bar, sortable headers, header checkbox), and the sidebar segment counts changed (13 / 12 / 5, to match the sample rules).
+- Review mode: `?state=` seeds each state. The Import CSV dialog offers "Try it with a sample trade-show export" (64 rows with 3 bad emails, 1 row with no company, 5 already in Corral and 2 in-file repeats).
+
+### Also fixed (M1 a11y findings on `/styleguide`)
+⌘K loading list is `aria-busy` with the skeleton hidden from AT (the "Searching" status announces). The calendar is a labelled `group` (not a `grid` without rows), with full-date labels on day buttons. The demo toggle is named. Select listboxes are named. Both 390px scroll areas (contrast ladder, skeleton table) are focusable, labelled regions. The kbd hint on primary buttons is now `rgb(255 255 255 / .9)` (4.9:1; was 4.26:1). axe: 0 findings across 33 routes × 1440/390.
+
+### Open questions
+1. Real limits: 20 MB / 50,000 rows per import? A workspace cap on companies?
+2. Dedupe keys: is email → website right? Should a company name plus country match count as "possible"?
+3. Merge rules: which side wins per field? The design keeps the original and fills blanks from the duplicate.
+4. Should "Select all" span tabs, or stay within the current tab plus filters (as designed)?
+5. Status taxonomy: are Referral and Objection statuses or reply labels? Is Unsubscribed per address or per company?
+6. The ENG-53 Linear attachments link GitHub `Uzski-Corp/camposocial-client` #162/#190. Is that the right repo, or stale links from another project?
+7. Pool rate: the confirm uses 210/day from the mailbox pool card. Does the API expose the real per-day capacity for the dry run?

@@ -54,6 +54,14 @@ describe("/onboarding and /app pages keep their review params", () => {
     expect(await screen.findByRole("heading", { name: "Teach Corral what you sell" })).toBeInTheDocument();
   });
 
+  it("opens a leads review state (M3)", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DESIGN_REVIEW", "1");
+    resetConfigCache();
+    const page = await AppPage(params({ view: "companies", state: "empty" }) as never);
+    render(AppLayout({ children: page, params: Promise.resolve({}) } as never));
+    expect(await screen.findByRole("heading", { name: "Bring in the companies you already know" })).toBeInTheDocument();
+  });
+
   it("wraps onboarding in the session layout", async () => {
     vi.stubEnv("NEXT_PUBLIC_DESIGN_REVIEW", "1");
     resetConfigCache();

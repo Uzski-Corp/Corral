@@ -103,10 +103,13 @@ export function RadioGroup({ value, onChange, options, variant = "list", label }
 /* ------------------------------------------------------------- Select
    Button + listbox. For < 12 options; beyond that use a combobox (M2). */
 export type SelectOption = { value: string; label: string; meta?: ReactNode; lead?: ReactNode };
-export function Select({ value, onChange, options, placeholder = "Select…", width, defaultOpen = false, icon }: {
+export function Select({ value, onChange, options, placeholder = "Select…", width, defaultOpen = false, icon, label }: {
   value: string | null; onChange?: (v: string) => void; options: SelectOption[]; placeholder?: string; width?: number | string; defaultOpen?: boolean; icon?: IconName;
+  /** accessible name when there is no <FormField> label (table cells, rule rows) */ label?: string;
 }) {
   const f = useField();
+  const own = useId();
+  const bid = f?.id ?? own;
   const [open, setOpen] = useState(defaultOpen);
   const cur = options.findIndex((o) => o.value === value);
   const [active, setActive] = useState(Math.max(0, cur));
@@ -123,14 +126,14 @@ export function Select({ value, onChange, options, placeholder = "Select…", wi
   };
   return (
     <div ref={ref} className="c-popwrap" style={{ width }} onKeyDown={onKey}>
-      <button type="button" id={f?.id} aria-haspopup="listbox" aria-expanded={open} aria-describedby={f?.describedBy}
+      <button type="button" id={bid} aria-haspopup="listbox" aria-expanded={open} aria-describedby={f?.describedBy} aria-label={label ? `${label}: ${sel ? sel.label : placeholder}` : undefined}
         className={cx("c-input c-select", open && "is-focus", f?.invalid && "is-error", !sel && "is-placeholder")}
         onClick={() => { setOpen((o) => !o); setActive(Math.max(0, cur)); }}>
         {icon && <Icon name={icon} />}{sel?.lead}<span className="c-select__v">{sel ? sel.label : placeholder}</span>
         {sel?.meta && <span className="c-select__meta">{sel.meta}</span>}<Icon name="down" size={12} />
       </button>
       {open && (
-        <div role="listbox" className="c-menu c-menu--float c-pop-in" style={{ width: "100%", minWidth: 200 }}>
+        <div role="listbox" aria-label={label ?? undefined} aria-labelledby={label ? undefined : bid} className="c-menu c-menu--float c-pop-in" style={{ width: "100%", minWidth: 200 }}>
           {options.map((o, i) => (
             <div key={o.value} role="option" aria-selected={o.value === value} className={cx("c-menu__item", i === active && "is-hover")}
               onPointerMove={() => setActive(i)} onClick={() => { onChange?.(o.value); close(); }}>
@@ -167,13 +170,14 @@ export function Calendar({ value, onChange, today, min, quick }: { value: Date |
           <button type="button" className="c-iconbtn" aria-label="Next month" onClick={() => setView(new Date(view.getFullYear(), view.getMonth() + 1, 1))}><Icon name="chev" /></button>
         </span>
       </div>
-      <div className="c-cal__grid" role="grid">
-        {DOW.map((d) => <span key={d} className="c-cal__dow">{d}</span>)}
+      {/* A named group of day buttons (not role="grid": a grid needs rows and gridcells, and arrow-key roving). */}
+      <div className="c-cal__grid" role="group" aria-label={`${MONTHS[view.getMonth()]} ${view.getFullYear()}`}>
+        {DOW.map((d) => <span key={d} className="c-cal__dow" aria-hidden="true">{d}</span>)}
         {cells.map((n, i) => {
           if (n < 1 || n > days) return <span key={i} />;
           const d = new Date(view.getFullYear(), view.getMonth(), n);
           const off = !!floor && d < floor;
-          return <button type="button" key={i} disabled={off} aria-pressed={!!value && same(d, value)}
+          return <button type="button" key={i} disabled={off} aria-pressed={!!value && same(d, value)} aria-label={formatDate(d)}
             className={cx("c-cal__day", same(d, today) && "is-today", value && same(d, value) && "is-on")} onClick={() => onChange(d)}>{n}</button>;
         })}
       </div>

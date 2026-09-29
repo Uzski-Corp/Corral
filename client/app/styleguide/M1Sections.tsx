@@ -178,7 +178,7 @@ export function StatesDemo() {
           : retry === "loading" ? <EmptyState icon="globe" title={<span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}><Spinner />Reading kivucoffee.rw</span>}>Usually under a minute.</EmptyState>
           : <EmptyState icon="check" title="Read 22 pages" actions={<Button variant="quiet" onClick={() => setRetry("error")}>Reset demo</Button>}>Fit updated: 64 → 71.</EmptyState>}
       </div>
-      <div className="c-win c-win--flat sg-statecard sg-statecard--wide c-app"><div className="sg-statecard__bar"><span className="c-strong">Companies</span><span className="c-sep">/</span>loading · same 40px rows, no layout jump</div><SkeletonTable rows={5} /></div>
+      <div className="c-win c-win--flat sg-statecard sg-statecard--wide c-app"><div className="sg-statecard__bar"><span className="c-strong">Companies</span><span className="c-sep">/</span>loading · same 40px rows, no layout jump</div><div className="sg-hscroll" tabIndex={0} role="region" aria-label="Loading table (scrolls sideways on small screens)"><SkeletonTable rows={5} /></div></div>
       <div className="c-win c-win--flat sg-statecard c-app"><div className="sg-statecard__bar"><span className="c-strong">Unibox</span><span className="c-sep">/</span>loading</div><SkeletonThreads rows={3} /></div>
       <div className="sg-banners">
         <Label>banners · top of a form or panel</Label>
@@ -211,7 +211,7 @@ const TAGS: [string, string, string, string, string][] = [
 export function ContrastDemo() {
   return (
     <div className="sg-contrast">
-      <div className="sg-card"><Label>text ladder · 12px sample on white and on active nav (#EBEBE9)</Label>
+      <div className="sg-card" tabIndex={0} role="region" aria-label="Text contrast ladder (scrolls sideways on small screens)"><Label>text ladder · 12px sample on white and on active nav (#EBEBE9)</Label>
         <table className="sg-ctable"><thead><tr><th>Token</th><th>Was</th><th>Now</th><th>On white</th><th>Worst real surface</th><th>Sample</th></tr></thead>
           <tbody>{LADDER.map((r) => (
             <tr key={r.token}><td className="c-mono">{r.token}</td><td className="c-mono"><i style={{ background: r.was.startsWith("#") ? r.was : "transparent" }} />{r.was}</td>
