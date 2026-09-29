@@ -1,1 +1,41 @@
-Generic single-database configuration with an async dbapi.
+Alembic migrations (async, asyncpg). Run as the schema-owning role:
+
+    alembic upgrade head          # apply
+    alembic downgrade -1          # roll back one revision
+    alembic revision --autogenerate -m "short description"
+
+Zero-downtime policy
+====================
+
+API and worker pods roll one at a time, so for a while old and new code run against the
+same schema. Every migration must therefore be compatible with the code version before it
+and the code version after it.
+
+1. Expand, then contract. Additive changes (new table, new nullable column, new index)
+   ship first. Code that stops using a column ships next. The drop ships in a later
+   release, never in the same deploy as the code change.
+2. Renames are add + backfill + switch reads + drop, across releases. Never use
+   ALTER ... RENAME on a column that live code reads.
+3. NOT NULL on an existing column: add it nullable, backfill in batches, add a
+   `CHECK (col IS NOT NULL) NOT VALID` constraint, `VALIDATE CONSTRAINT`, then SET NOT NULL.
+4. Indexes on large tables use `op.create_index(..., postgresql_concurrently=True)` inside
+   `with op.get_context().autocommit_block():` (CONCURRENTLY cannot run in a transaction).
+5. Keep locks short. Set `lock_timeout` (e.g. `SET LOCAL lock_timeout = '5s'`) in
+   migrations that take ACCESS EXCLUSIVE locks, so a blocked migration fails fast instead
+   of queueing every query behind it. Retry it off-peak.
+6. No long data backfills inside a migration. Do them with a batched job (arq worker) or
+   a separate script.
+7. Every revision has a working downgrade(). `tests/test_migrations.py` runs
+   up -> down -> up on a scratch database and checks that the models match the schema.
+8. New org-scoped tables: enable RLS with a `tenant_isolation` policy and grant access to
+   `corral_app` in the same migration that creates the table (see 0003).
+
+Connection pool
+===============
+
+Each process holds up to DB_POOL_SIZE + DB_MAX_OVERFLOW connections (default 10 + 5).
+Size it so that (api processes + worker processes) x (pool + overflow) stays below the
+server's max_connections minus headroom for migrations and admin sessions. Put PgBouncer
+(transaction mode) in front of the database before scaling past that. pool_pre_ping
+drops dead connections after failovers. statement_timeout (DB_STATEMENT_TIMEOUT_MS) and
+the connect timeout bound every query.
