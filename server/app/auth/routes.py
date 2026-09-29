@@ -1,63 +1,169 @@
-from dataclasses import asdict, is_dataclass
+"""AuthKit endpoints: login, callback, refresh, logout, me.
 
-from fastapi import APIRouter, Depends
+Login CSRF is prevented with a random ``state`` bound to a short-lived HttpOnly cookie
+and compared in constant time on callback.
+"""
+
+import secrets
+from typing import Annotated, Literal
+from urllib.parse import urlencode
+
+import structlog
+from fastapi import APIRouter, Query, Request, Response
 from fastapi.responses import RedirectResponse
-from workos.session import seal_session_from_auth_response
 
-from app.auth.deps import SESSION_COOKIE, get_current_user
-from app.auth.workos_client import get_workos
-from app.core.config import get_settings
+from app.auth.deps import (
+    AuthContextDep,
+    DbDep,
+    SessionManagerDep,
+    SettingsDep,
+    clear_session_cookie,
+    set_session_cookie,
+)
+from app.auth.provisioning import provision_identity
+from app.auth.schemas import (
+    LogoutResponse,
+    MeResponse,
+    OrganizationOut,
+    RefreshResponse,
+    UserOut,
+)
+from app.auth.session import AuthProviderUnavailable, SessionInvalid
+from app.core.config import Settings
+from app.core.errors import Unauthenticated
+
+log = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+STATE_COOKIE = "wos_auth_state"
+STATE_MAX_AGE_S = 600
+# Routes reachable without a session. Everything else under /api/v1 requires auth.
+PUBLIC_PATHS = frozenset(
+    {
+        "/api/v1/auth/login",
+        "/api/v1/auth/callback",
+        "/api/v1/auth/logout",
+        "/api/v1/auth/refresh",
+    }
+)
+
+
+def _frontend_error(settings: Settings, code: str) -> RedirectResponse:
+    target = f"{settings.frontend_url.rstrip('/')}/sign-in?{urlencode({'error': code})}"
+    response = RedirectResponse(target, status_code=303)
+    response.delete_cookie(STATE_COOKIE, path="/api/v1/auth")
+    return response
+
 
 @router.get("/login")
-async def login() -> RedirectResponse:
-    url = get_workos().user_management.get_authorization_url(
-        provider="authkit", redirect_uri=get_settings().workos_redirect_uri
+async def login(
+    settings: SettingsDep,
+    manager: SessionManagerDep,
+    screen_hint: Annotated[Literal["sign-in", "sign-up"] | None, Query()] = None,
+) -> RedirectResponse:
+    state = secrets.token_urlsafe(32)
+    url = manager.authorization_url(
+        redirect_uri=settings.workos_redirect_uri, state=state, screen_hint=screen_hint
     )
-    return RedirectResponse(url)
+    response = RedirectResponse(url, status_code=303)
+    response.set_cookie(
+        STATE_COOKIE,
+        state,
+        max_age=STATE_MAX_AGE_S,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+        path="/api/v1/auth",
+    )
+    return response
 
 
 @router.get("/callback")
-async def callback(code: str) -> RedirectResponse:
-    s = get_settings()
-    auth = get_workos().user_management.authenticate_with_code(code=code)
-    user = (
-        auth.user.to_dict()
-        if hasattr(auth.user, "to_dict")
-        else (asdict(auth.user) if is_dataclass(auth.user) else dict(auth.user))
+async def callback(
+    request: Request,
+    settings: SettingsDep,
+    manager: SessionManagerDep,
+    db: DbDep,
+    code: Annotated[str | None, Query(max_length=512)] = None,
+    state: Annotated[str | None, Query(max_length=512)] = None,
+    error: Annotated[str | None, Query(max_length=128)] = None,
+) -> RedirectResponse:
+    if error:
+        log.info("auth_callback_provider_error", error=error)
+        return _frontend_error(settings, "provider_error")
+    expected_state = request.cookies.get(STATE_COOKIE)
+    if not code or not state or not expected_state:
+        return _frontend_error(settings, "invalid_request")
+    if not secrets.compare_digest(state, expected_state):
+        log.warning("auth_callback_state_mismatch")
+        return _frontend_error(settings, "invalid_state")
+
+    try:
+        exchange = await manager.exchange_code(
+            code,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+    except SessionInvalid:
+        return _frontend_error(settings, "auth_failed")
+    except AuthProviderUnavailable:
+        return _frontend_error(settings, "auth_unavailable")
+
+    identity = await provision_identity(db, exchange.profile)
+    log.info(
+        "auth_signed_in",
+        user_id=str(identity.user_id),
+        org_id=str(identity.org_id),
+        role=identity.role,
     )
-    sealed = seal_session_from_auth_response(
-        access_token=auth.access_token,
-        refresh_token=auth.refresh_token,
-        user=user,
-        cookie_password=s.workos_cookie_password,
-    )
-    # TODO: upsert local user + workspace from auth.user / auth.organization_id
-    res = RedirectResponse(s.frontend_url)
-    res.set_cookie(
-        SESSION_COOKIE,
-        sealed,
-        httponly=True,
-        samesite="lax",
-        secure=s.app_env != "local",
-        path="/",
-    )
-    return res
+    response = RedirectResponse(settings.frontend_url, status_code=303)
+    set_session_cookie(response, settings, exchange.sealed_session)
+    response.delete_cookie(STATE_COOKIE, path="/api/v1/auth")
+    return response
 
 
-@router.get("/logout")
-async def logout(user: dict = Depends(get_current_user)) -> RedirectResponse:
-    s = get_settings()
-    url = get_workos().user_management.get_logout_url(
-        session_id=user["session_id"], return_to=s.frontend_url
-    )
-    res = RedirectResponse(url)
-    res.delete_cookie(SESSION_COOKIE, path="/")
-    return res
+@router.post("/refresh")
+async def refresh(
+    request: Request, response: Response, settings: SettingsDep, manager: SessionManagerDep
+) -> RefreshResponse:
+    sealed = request.cookies.get(settings.session_cookie_name)
+    if not sealed:
+        raise Unauthenticated("Not signed in")
+    try:
+        resolved = await manager.refresh(sealed)
+    except SessionInvalid as exc:
+        raise Unauthenticated("Session invalid or expired", clear_cookie=True) from exc
+    except AuthProviderUnavailable:
+        response.status_code = 503
+        return RefreshResponse(refreshed=False)
+    assert resolved.refreshed_cookie is not None  # noqa: S101 - refresh always reseals
+    set_session_cookie(response, settings, resolved.refreshed_cookie)
+    return RefreshResponse(refreshed=True)
+
+
+@router.post("/logout")
+async def logout(
+    request: Request, response: Response, settings: SettingsDep, manager: SessionManagerDep
+) -> LogoutResponse:
+    """Clear the local cookie and return the WorkOS URL that ends the hosted session."""
+    clear_session_cookie(response, settings)
+    sealed = request.cookies.get(settings.session_cookie_name)
+    if not sealed:
+        return LogoutResponse(logout_url=settings.frontend_url)
+    try:
+        resolved = await manager.resolve(sealed)
+    except (SessionInvalid, AuthProviderUnavailable) as exc:
+        log.info("logout_without_valid_session", reason=exc.reason)
+        return LogoutResponse(logout_url=settings.frontend_url)
+    url = manager.logout_url(session_id=resolved.claims.session_id, return_to=settings.frontend_url)
+    return LogoutResponse(logout_url=url)
 
 
 @router.get("/me")
-async def me(user: dict = Depends(get_current_user)) -> dict:
-    return user
+async def me(ctx: AuthContextDep) -> MeResponse:
+    return MeResponse(
+        user=UserOut.model_validate(ctx.user),
+        organization=OrganizationOut.model_validate(ctx.org),
+        role=ctx.role,
+    )
