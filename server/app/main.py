@@ -91,6 +91,8 @@ def create_app(
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Content-Type", "Authorization", "X-Request-ID"],
+        # The email-code screen reads Retry-After on a 429 for its countdown.
+        expose_headers=["Retry-After", "X-Request-ID"],
     )
     app.add_middleware(
         TimeoutMiddleware, timeout_s=settings.request_timeout_s, metrics=http_metrics

@@ -198,6 +198,19 @@ async def test_send_code_unavailable(
     assert "retry-after" not in res.headers
 
 
+async def test_cross_origin_clients_can_read_retry_after(
+    clean_redis: str, workos: WorkOSHarness
+) -> None:
+    workos.create_magic_auth.side_effect = RateLimitExceededError("slow", retry_after=5)
+    origin = "http://localhost:3000"  # in CORS_ORIGINS
+    app = create_app(make_settings(redis_url=clean_redis))
+    async for c in _running_app(app, workos):
+        res = await c.post(SEND, json={"email": EMAIL}, headers={"Origin": origin})
+    assert res.status_code == 429
+    assert res.headers["access-control-allow-origin"] == origin
+    assert "retry-after" in res.headers["access-control-expose-headers"].lower()
+
+
 async def test_send_code_rate_limited_per_email(
     code_client: AsyncClient, workos: WorkOSHarness
 ) -> None:
