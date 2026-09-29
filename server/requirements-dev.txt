@@ -3,5 +3,6 @@ pytest-asyncio==1.4.0
 pytest-cov==7.1.0
 ruff==0.16.9
 mypy==2.3.1
-# Disposable Postgres/Redis for integration tests (skipped when Docker is unavailable)
-testcontainers[postgres,redis]==4.15.0
+# Disposable Postgres/Redis for integration tests (skipped when Docker is unavailable).
+# No [redis] extra: it requires redis>=7, but arq pins redis<6 (RedisContainer works with 5.x).
+testcontainers[postgres]==4.15.0
