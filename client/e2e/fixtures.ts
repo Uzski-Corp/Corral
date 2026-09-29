@@ -4,7 +4,7 @@ export const API = `http://localhost:${process.env.E2E_API_PORT ?? 8787}`;
 export const WEB = `http://localhost:${process.env.E2E_WEB_PORT ?? 3100}`;
 
 type Fixtures = {
-  mockApi: { deny(): Promise<void>; down(): Promise<void>; calls(): Promise<string[]> };
+  mockApi: { deny(): Promise<void>; down(): Promise<void>; limitSends(retryAfter: number): Promise<void>; calls(): Promise<string[]> };
   onboarded: () => Promise<void>;
 };
 
@@ -14,6 +14,7 @@ export const test = base.extend<Fixtures>({
     await provide({
       deny: async () => { await request.post(`${API}/__mock/scenario`, { data: { deny: true } }); },
       down: async () => { await request.post(`${API}/__mock/scenario`, { data: { down: true } }); },
+      limitSends: async (retryAfter) => { await request.post(`${API}/__mock/scenario`, { data: { sendLimited: retryAfter } }); },
       calls: async () => (await request.get(`${API}/__mock/calls`)).json(),
     });
   },
@@ -23,6 +24,13 @@ export const test = base.extend<Fixtures>({
 });
 
 export { expect };
+
+/** Ask for an email code from /sign-in and wait for the code screen. */
+export async function requestCode(page: Page, email = "wanjiru@kilima.co.ke") {
+  await page.getByRole("textbox", { name: "Work email" }).fill(email);
+  await page.getByRole("button", { name: "Email me a code" }).click();
+  await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible();
+}
 
 /** Sign in from wherever the page is (it must be on /sign-in). */
 export async function signInWithGoogle(page: Page) {

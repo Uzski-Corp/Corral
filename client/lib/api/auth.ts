@@ -7,9 +7,19 @@
  *   POST /api/v1/auth/logout    -> { logout_url: string }  (always clears the cookie)
  *   GET  /api/v1/auth/me        -> { user, organization, role }  (401 signed out, 403 no membership)
  *
+ * Email code sign-in (WorkOS Magic Auth, ENG-80 / eng-61b-magic-auth). JSON POSTs; errors are
+ * { error, detail } and a 429 carries Retry-After (seconds):
+ *
+ *   POST /api/v1/auth/code/send    { email }        -> 202 { sent: true }  (same answer for unknown addresses)
+ *                                                      429 rate_limited · 503 auth_unavailable · 422 bad email
+ *   POST /api/v1/auth/code/verify  { email, code }  -> 200 { redirect_to } + the wos_session cookie
+ *                                                      400 code_invalid | code_expired | too_many_attempts | auth_failed
+ *                                                      429 rate_limited · 503 auth_unavailable · 422 malformed code
+ *
  * The session is the HttpOnly `wos_session` cookie; the client never sees it.
  */
 import { err, ok, type Result } from "../result";
+import { retryAfterSeconds, type CodeSendResult, type CodeVerifyResult } from "../auth/code";
 import type { ApiClient, Decoder } from "./client";
 import type { ApiError } from "./errors";
 import { field, isBoolean, isHttpUrl, isNonEmptyString, isOptionalString, isRecord, isString } from "./decode";
@@ -20,6 +30,8 @@ export const AUTH_PATHS = {
   refresh: "/api/v1/auth/refresh",
   logout: "/api/v1/auth/logout",
   me: "/api/v1/auth/me",
+  codeSend: "/api/v1/auth/code/send",
+  codeVerify: "/api/v1/auth/code/verify",
 } as const;
 
 export type User = {
@@ -72,6 +84,37 @@ export const decodeLogout: Decoder<{ logoutUrl: string }> = (input) => {
   return r.ok ? ok({ logoutUrl: r.value }) : r;
 };
 
+export const decodeCodeSent: Decoder<{ sent: true }> = (input) =>
+  isRecord(input) && input.sent === true ? ok({ sent: true }) : err("code/send: expected { sent: true }");
+
+export const decodeSignedIn: Decoder<{ redirectTo: string }> = (input) => {
+  if (!isRecord(input)) return err("code/verify: expected an object");
+  const r = field(input, "redirect_to", isHttpUrl, "an http(s) URL", "code/verify");
+  return r.ok ? ok({ redirectTo: r.value }) : r;
+};
+
+/** HANDOFF §9: a 429 is `rate-limited` with Retry-After; anything else that isn't a 2xx is `network`. */
+export function toCodeSendResult(r: Result<unknown, ApiError>): CodeSendResult {
+  if (r.ok) return { ok: true };
+  const e = r.error;
+  if (e.kind === "http" && e.status === 429) return { ok: false, reason: "rate-limited", retryAfter: retryAfterSeconds(e.retryAfter) };
+  return { ok: false, reason: "network" };
+}
+
+/**
+ * HANDOFF §9: a wrong code is `wrong`; expired, already used and locked (too many attempts) are
+ * `expired`, so the screen offers "Send a new code". No answer, 5xx and anything unexpected is `network`.
+ */
+export function toCodeVerifyResult(r: Result<unknown, ApiError>): CodeVerifyResult {
+  if (r.ok) return { ok: true };
+  const e = r.error;
+  if (e.kind === "http") {
+    if (e.code === "code_invalid" || e.status === 422) return { ok: false, reason: "wrong" };
+    if (e.code === "code_expired" || e.code === "too_many_attempts") return { ok: false, reason: "expired" };
+  }
+  return { ok: false, reason: "network" };
+}
+
 export type ScreenHint = "sign-in" | "sign-up";
 
 export type AuthApi = {
@@ -80,6 +123,10 @@ export type AuthApi = {
   me(signal?: AbortSignal): Promise<Result<Me, ApiError>>;
   refresh(signal?: AbortSignal): Promise<Result<{ refreshed: boolean }, ApiError>>;
   logout(signal?: AbortSignal): Promise<Result<{ logoutUrl: string }, ApiError>>;
+  /** Ask the API to email a six-digit sign-in code. */
+  sendCode(email: string, signal?: AbortSignal): Promise<Result<{ sent: true }, ApiError>>;
+  /** Exchange the code for a session; on success the API has set the session cookie. */
+  verifyCode(email: string, code: string, signal?: AbortSignal): Promise<Result<{ redirectTo: string }, ApiError>>;
 };
 
 export function createAuthApi(client: ApiClient): AuthApi {
@@ -88,6 +135,9 @@ export function createAuthApi(client: ApiClient): AuthApi {
     me: (signal) => client.request(AUTH_PATHS.me, { decode: decodeMe, signal }),
     refresh: (signal) => client.request(AUTH_PATHS.refresh, { method: "POST", decode: decodeRefresh, signal }),
     logout: (signal) => client.request(AUTH_PATHS.logout, { method: "POST", decode: decodeLogout, signal }),
+    sendCode: (email, signal) => client.request(AUTH_PATHS.codeSend, { method: "POST", body: { email }, decode: decodeCodeSent, signal }),
+    verifyCode: (email, code, signal) =>
+      client.request(AUTH_PATHS.codeVerify, { method: "POST", body: { email, code }, decode: decodeSignedIn, signal }),
   };
 }
 

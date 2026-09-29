@@ -96,7 +96,7 @@ export function createApiClient({ baseUrl, timeoutMs: defaultTimeout, fetch: fet
         return err({ kind: "network", op, message: e instanceof Error ? e.message : String(e) });
       }
 
-      if (!res.ok) return err(httpError(op, res.status, body.ok ? body.value : undefined));
+      if (!res.ok) return err(httpError(op, res.status, body.ok ? body.value : undefined, res.headers.get("retry-after")));
       if (!body.ok) return err({ kind: "invalid_response", op, status: res.status, message: body.error });
       const decoded = o.decode(body.value);
       if (!decoded.ok) return err({ kind: "invalid_response", op, status: res.status, message: decoded.error });

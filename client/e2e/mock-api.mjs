@@ -1,7 +1,9 @@
 // A stand-in for the Corral API auth endpoints (PR #2), so e2e runs without WorkOS or Postgres.
 // It mirrors the real contract: cookie names, 303 redirects, status codes and JSON shapes.
 // Control: POST /__mock/scenario {"deny": true} makes the next AuthKit round trip fail, {"down": true}
-// makes /me answer 503 (API unreachable);
+// makes /me answer 503 (API unreachable), {"sendLimited": 41} makes code sends answer 429 with Retry-After: 41;
+// email codes (Magic Auth, eng-61b-magic-auth): 123456 signs in, 111111 has expired, anything else is wrong,
+// and a 4th send for one address inside a minute is rate-limited, as WorkOS does;
 // GET /__mock/calls lists requests seen; POST /__mock/reset clears both.
 import http from "node:http";
 
@@ -15,7 +17,9 @@ const ME = {
   role: "owner",
 };
 
-let scenario = { deny: false, down: false };
+const FRESH = { deny: false, down: false, sendLimited: 0 };
+let scenario = { ...FRESH };
+let sends = new Map();
 let calls = [];
 let n = 0;
 
@@ -25,10 +29,13 @@ const cors = (req, res) => {
     res.setHeader("Access-Control-Allow-Origin", FRONTEND);
     res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader("Vary", "Origin");
+    res.setHeader("Access-Control-Expose-Headers", "Retry-After");
   }
 };
 const json = (res, status, body, extra = {}) => { res.writeHead(status, { "Content-Type": "application/json", ...extra }); res.end(JSON.stringify(body)); };
 const redirect = (res, to, setCookie = []) => { res.writeHead(303, { Location: to, "Set-Cookie": setCookie }); res.end(); };
+const readJson = (req) => new Promise((resolve) => { let b = ""; req.on("data", (c) => (b += c)); req.on("end", () => { try { resolve(JSON.parse(b || "{}")); } catch { resolve({}); } }); });
+const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const clearSession = "wos_session=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax";
 const signedIn = (req) => (cookies(req).wos_session ?? "").startsWith("sealed-");
 
@@ -47,7 +54,7 @@ const server = http.createServer((req, res) => {
   if (path === "/__mock/scenario" && req.method === "POST") {
     let body = ""; req.on("data", (c) => (body += c)); req.on("end", () => { scenario = { ...scenario, ...JSON.parse(body || "{}") }; json(res, 200, scenario); }); return;
   }
-  if (path === "/__mock/reset" && req.method === "POST") { scenario = { deny: false, down: false }; calls = []; return json(res, 200, {}); }
+  if (path === "/__mock/reset" && req.method === "POST") { scenario = { ...FRESH }; calls = []; sends = new Map(); return json(res, 200, {}); }
   if (path === "/__mock/calls") return json(res, 200, calls);
 
   if (path === "/api/v1/auth/login" && req.method === "GET") {
@@ -73,6 +80,29 @@ const server = http.createServer((req, res) => {
   }
   if (path === "/api/v1/auth/refresh" && req.method === "POST") {
     return signedIn(req) ? json(res, 200, { refreshed: true }, { "Set-Cookie": `wos_session=sealed-r${++n}; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax` }) : json(res, 401, { detail: "Not signed in" });
+  }
+  if ((path === "/api/v1/auth/code/send" || path === "/api/v1/auth/code/verify") && req.method === "POST") {
+    if (req.headers.origin !== FRONTEND) return json(res, 403, { detail: "Origin not allowed" });
+    readJson(req).then((body) => {
+      if (typeof body.email !== "string" || !EMAIL.test(body.email)) return json(res, 422, { detail: "email: not a valid address" });
+      const email = body.email.toLowerCase();
+      if (path.endsWith("/send")) {
+        if (scenario.sendLimited) return json(res, 429, { error: "rate_limited", detail: "Too many requests.", retry_after: scenario.sendLimited }, { "Retry-After": String(scenario.sendLimited) });
+        const now = Date.now();
+        const recent = (sends.get(email) ?? []).filter((t) => now - t < 60_000);
+        if (recent.length >= 3) {
+          const wait = Math.ceil((60_000 - (now - recent[0])) / 1000);
+          return json(res, 429, { error: "rate_limited", detail: "Too many requests.", retry_after: wait }, { "Retry-After": String(wait) });
+        }
+        sends.set(email, [...recent, now]);
+        return json(res, 202, { sent: true });
+      }
+      if (typeof body.code !== "string" || !/^\d{6}$/.test(body.code)) return json(res, 422, { detail: "code: six digits" });
+      if (body.code === "111111") return json(res, 400, { error: "code_expired", detail: "That code has expired." });
+      if (body.code !== "123456") return json(res, 400, { error: "code_invalid", detail: "That code isn't right." });
+      return json(res, 200, { redirect_to: FRONTEND }, { "Set-Cookie": `wos_session=sealed-c${++n}; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax` });
+    });
+    return;
   }
   if (path === "/api/v1/auth/logout" && req.method === "POST") {
     return json(res, 200, { logout_url: `${FRONTEND}/` }, { "Set-Cookie": clearSession });

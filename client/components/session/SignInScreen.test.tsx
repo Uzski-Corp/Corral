@@ -1,13 +1,16 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { delay, http, HttpResponse } from "msw";
 import { describe, expect, it, vi } from "vitest";
-import { API, testConfig } from "@/test/msw";
+import { API, GOOD_CODE, rateLimited, server, testConfig } from "@/test/msw";
 import { router } from "@/test/router";
-import { authApiFor } from "@/lib/api";
+import { authApiFor, type AuthApi } from "@/lib/api";
 import { resetConfigCache } from "@/lib/config";
 import { SignInScreen, signInActions } from "./SignInScreen";
 
 const LOGIN = `${API}/api/v1/auth/login`;
+const SEND = `${API}/api/v1/auth/code/send`;
+const VERIFY = `${API}/api/v1/auth/code/verify`;
 
 describe("signInActions", () => {
   it("remembers a safe return path, then goes to the API login redirect", () => {
@@ -19,6 +22,34 @@ describe("signInActions", () => {
     expect(go).toHaveBeenCalledWith(LOGIN);
     a.startEmail("wanjiru@kilima.co.ke");
     expect(go).toHaveBeenCalledTimes(2);
+  });
+
+  it("sends codes through the API and maps a 429 to rate-limited", async () => {
+    const a = signInActions(authApiFor(testConfig()), null, vi.fn(), vi.fn());
+    expect(await a.sendCode?.("wanjiru@kilima.co.ke")).toEqual({ ok: true });
+    server.use(http.post(SEND, () => rateLimited("41")));
+    expect(await a.sendCode?.("wanjiru@kilima.co.ke")).toEqual({ ok: false, reason: "rate-limited", retryAfter: 41 });
+  });
+
+  it("on a verified code remembers the return path and lands on / like the callback", async () => {
+    const go = vi.fn();
+    const remember = vi.fn();
+    const a = signInActions(authApiFor(testConfig()), "/app?view=segments", go, remember);
+    expect(await a.verifyCode?.("wanjiru@kilima.co.ke", "000000")).toEqual({ ok: false, reason: "wrong" });
+    expect(go).not.toHaveBeenCalled();
+    expect(remember).not.toHaveBeenCalled();
+    expect(await a.verifyCode?.("wanjiru@kilima.co.ke", GOOD_CODE)).toEqual({ ok: true });
+    expect(remember).toHaveBeenCalledWith("/app?view=segments");
+    expect(go).toHaveBeenCalledWith("/");
+  });
+
+  it("passes the email and code to the API as typed", async () => {
+    const auth = { sendCode: vi.fn().mockResolvedValue({ ok: true, value: { sent: true } }), verifyCode: vi.fn().mockResolvedValue({ ok: true, value: { redirectTo: "http://x.test" } }) } as unknown as AuthApi;
+    const a = signInActions(auth, null, vi.fn(), vi.fn());
+    await a.sendCode?.("a@b.co");
+    await a.verifyCode?.("a@b.co", "123456");
+    expect(auth.sendCode).toHaveBeenCalledWith("a@b.co");
+    expect(auth.verifyCode).toHaveBeenCalledWith("a@b.co", "123456");
   });
 
   it("falls back to /app for missing or unsafe return paths", () => {
@@ -44,7 +75,7 @@ describe("SignInScreen (live)", () => {
     expect(document.cookie).toContain("corral_return_to=%2Fapp%3Fview%3Dcompanies");
   });
 
-  it("validates the email before handing off, without sample prefill", async () => {
+  it("validates the email, then sends a code without leaving the page (no sample prefill)", async () => {
     const user = userEvent.setup();
     const go = mount();
     const email = screen.getByRole("textbox", { name: "Work email" });
@@ -56,7 +87,42 @@ describe("SignInScreen (live)", () => {
     expect(screen.getByText(/doesn’t look like a full address/)).toBeInTheDocument();
     await user.type(email, ".co.ke");
     await user.click(screen.getByRole("button", { name: "Email me a code" }));
-    expect(go).toHaveBeenCalledWith(LOGIN);
+    expect(await screen.findByRole("heading", { name: "Check your email" })).toBeInTheDocument();
+    expect(screen.getByText(/six-digit code to/)).toHaveTextContent("wanjiru@kilima.co.ke");
+    expect(go).not.toHaveBeenCalled();
+  });
+
+  it("signs in with the emailed code and goes to / with the return path remembered", async () => {
+    const user = userEvent.setup();
+    let verified: unknown;
+    server.use(http.post(VERIFY, async ({ request }) => { verified = await request.json(); return HttpResponse.json({ redirect_to: "http://localhost:3000" }); }));
+    const go = mount("default", "/app?view=companies");
+    await user.type(screen.getByRole("textbox", { name: "Work email" }), "wanjiru@kilima.co.ke");
+    await user.click(screen.getByRole("button", { name: "Email me a code" }));
+    await user.type(await screen.findByLabelText("Sign-in code"), GOOD_CODE);
+    await vi.waitFor(() => expect(go).toHaveBeenCalledWith("/"));
+    expect(verified).toEqual({ email: "wanjiru@kilima.co.ke", code: GOOD_CODE });
+    expect(document.cookie).toContain("corral_return_to=%2Fapp%3Fview%3Dcompanies");
+    expect(screen.getByRole("button", { name: /Checking code/ })).toBeDisabled();
+  });
+
+  it("shows the limited banner with the server's Retry-After on a first-send 429", async () => {
+    const user = userEvent.setup();
+    server.use(http.post(SEND, () => rateLimited("41")));
+    mount();
+    await user.type(screen.getByRole("textbox", { name: "Work email" }), "wanjiru@kilima.co.ke");
+    await user.click(screen.getByRole("button", { name: "Email me a code" }));
+    expect(await screen.findByText("Too many codes asked for")).toBeInTheDocument();
+    expect(screen.getByText(/You can ask for 3 codes a minute/)).toHaveTextContent(/0:4[01]/);
+  });
+
+  it("stays on the form when the API can't be reached", async () => {
+    const user = userEvent.setup();
+    server.use(http.post(SEND, () => HttpResponse.error()));
+    mount();
+    await user.type(screen.getByRole("textbox", { name: "Work email" }), "wanjiru@kilima.co.ke");
+    await user.click(screen.getByRole("button", { name: "Email me a code" }));
+    expect(await screen.findByText("Couldn’t send your code")).toBeInTheDocument();
   });
 
   it("shows the designed failure banner for a callback error, with an empty email", () => {
@@ -110,6 +176,7 @@ describe("SignInScreen (live)", () => {
 
   it("resets the email pending state from the bfcache too", async () => {
     const user = userEvent.setup();
+    server.use(http.post(SEND, async () => { await delay("infinite"); return HttpResponse.json({ sent: true }); }));
     mount();
     await user.type(screen.getByRole("textbox", { name: "Work email" }), "wanjiru@kilima.co.ke");
     await user.click(screen.getByRole("button", { name: "Email me a code" }));
