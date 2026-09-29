@@ -11,6 +11,32 @@ from fastapi.responses import JSONResponse
 log = structlog.get_logger(__name__)
 
 
+class ApiProblem(Exception):
+    """A typed client error: ``{"error": <code>, "detail": <message>}``.
+
+    ``retry_after_s`` adds a ``Retry-After`` header (and a ``retry_after`` field).
+    """
+
+    def __init__(
+        self, status_code: int, error: str, detail: str, *, retry_after_s: int | None = None
+    ) -> None:
+        super().__init__(error)
+        self.status_code = status_code
+        self.error = error
+        self.detail = detail
+        self.retry_after_s = retry_after_s
+
+
+async def _api_problem_handler(request: Request, exc: Exception) -> JSONResponse:
+    assert isinstance(exc, ApiProblem)  # noqa: S101 - handler registered for this type
+    body: dict[str, object] = {"error": exc.error, "detail": exc.detail}
+    headers: dict[str, str] = {}
+    if exc.retry_after_s is not None:
+        body["retry_after"] = exc.retry_after_s
+        headers["Retry-After"] = str(exc.retry_after_s)
+    return JSONResponse(body, status_code=exc.status_code, headers=headers)
+
+
 class Unauthenticated(Exception):
     """The request carries no valid session. Optionally clears the session cookie."""
 
@@ -43,4 +69,5 @@ async def _unhandled_handler(request: Request, exc: Exception) -> JSONResponse:
 
 def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(Unauthenticated, _unauthenticated_handler)
+    app.add_exception_handler(ApiProblem, _api_problem_handler)
     app.add_exception_handler(Exception, _unhandled_handler)

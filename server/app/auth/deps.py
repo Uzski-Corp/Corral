@@ -6,11 +6,13 @@ router. Handlers that need the caller use ``current_user`` / ``current_org``.
 
 from dataclasses import dataclass
 from typing import Annotated
+from urllib.parse import urlsplit
 
 import structlog
 from fastapi import Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.ratelimit import RateLimiter
 from app.auth.session import (
     AuthProviderUnavailable,
     ResolvedSession,
@@ -41,6 +43,31 @@ def get_session_manager(request: Request) -> SessionManager:
 SettingsDep = Annotated[Settings, Depends(get_app_settings)]
 SessionManagerDep = Annotated[SessionManager, Depends(get_session_manager)]
 DbDep = Annotated[AsyncSession, Depends(get_db)]
+
+
+def get_rate_limiter(request: Request, settings: SettingsDep) -> RateLimiter:
+    return RateLimiter(request.app.state.queue.redis, timeout_s=settings.redis_timeout_s)
+
+
+RateLimiterDep = Annotated[RateLimiter, Depends(get_rate_limiter)]
+
+
+def _origin(url: str) -> str:
+    parts = urlsplit(url)
+    return f"{parts.scheme}://{parts.netloc}".lower()
+
+
+def require_trusted_origin(request: Request, settings: SettingsDep) -> None:
+    """CSRF guard for state-changing JSON POSTs called with ``fetch``.
+
+    Browsers always send ``Origin`` on cross-origin (and same-origin) POSTs, so a
+    missing or unknown origin is refused. Allowed: the frontend and ``CORS_ORIGINS``.
+    """
+    origin = request.headers.get("origin")
+    allowed = {_origin(settings.frontend_url), *(_origin(o) for o in settings.cors_origins)}
+    if origin is None or _origin(origin) not in allowed:
+        log.warning("auth_origin_rejected", path=request.url.path, has_origin=origin is not None)
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Origin not allowed")
 
 
 def set_session_cookie(response: Response, settings: Settings, sealed: str) -> None:

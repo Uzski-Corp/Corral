@@ -6,19 +6,24 @@ the SDK's union return types / exceptions into two typed failures:
 * :class:`SessionInvalid` - the caller must sign in again (maps to 401).
 * :class:`AuthProviderUnavailable` - WorkOS could not be reached (maps to 503).
 
+The email-code (Magic Auth) flow adds finer-grained failures - wrong / expired code, too
+many attempts, provider rate limit - so the client can show the right recovery.
+
 Expired access tokens are refreshed transparently with the stored refresh token.
 """
 
 import asyncio
+import math
 from collections.abc import Awaitable, Mapping
 from dataclasses import dataclass
 from typing import Any, TypeVar
 
 import structlog
 from jwt.exceptions import PyJWKClientError
-from workos import AsyncWorkOSClient
+from workos import AsyncWorkOSClient, RequestOptions
 from workos._errors import (
     APIError,
+    BadRequestError,
     RateLimitExceededError,
     ServerError,
     WorkOSConnectionError,
@@ -33,6 +38,7 @@ from workos.session import (
     RefreshWithSessionCookieSuccessResponse,
     seal_session_from_auth_response,
 )
+from workos.user_management.models import AuthenticateResponse
 
 from app.auth.provisioning import WorkOSProfile
 
@@ -46,6 +52,10 @@ _UNAVAILABLE_ERRORS = (
     ServerError,
     RateLimitExceededError,
 )
+# The SDK retries 429/5xx by default (sleeping for Retry-After). For Magic Auth a retry
+# can send a second email and hides the 429 the client needs for its countdown.
+_NO_RETRY: RequestOptions = {"max_retries": 0}
+DEFAULT_RETRY_AFTER_S = 60
 
 
 class SessionError(Exception):
@@ -60,6 +70,44 @@ class SessionInvalid(SessionError):
 
 class AuthProviderUnavailable(SessionError):
     """WorkOS could not be reached or timed out; retrying later may succeed."""
+
+
+class MagicCodeInvalid(SessionInvalid):
+    """The one-time code does not match (WorkOS ``invalid_one_time_code``)."""
+
+
+class MagicCodeExpired(SessionInvalid):
+    """The code expired or was already used; a new one is needed."""
+
+
+class MagicCodeTooManyAttempts(SessionInvalid):
+    """WorkOS locked the code after too many wrong attempts; a new one is needed."""
+
+
+class MagicCodeNotSent(SessionError):
+    """WorkOS refused to issue a code (policy or address); never revealed to the caller."""
+
+
+class ProviderRateLimited(SessionError):
+    """WorkOS answered 429; ``retry_after_s`` comes from its Retry-After header."""
+
+    def __init__(self, reason: str, retry_after_s: int) -> None:
+        super().__init__(reason)
+        self.retry_after_s = retry_after_s
+
+
+_CODE_ERRORS: dict[str, type[SessionInvalid]] = {
+    "invalid_one_time_code": MagicCodeInvalid,
+    "one_time_code_expired": MagicCodeExpired,
+    "one_time_code_previously_used": MagicCodeExpired,
+    "one_time_code_too_many_attempts": MagicCodeTooManyAttempts,
+}
+
+
+def _retry_after(exc: RateLimitExceededError) -> int:
+    if exc.retry_after is None or exc.retry_after <= 0:
+        return DEFAULT_RETRY_AFTER_S
+    return max(1, math.ceil(exc.retry_after))
 
 
 @dataclass(frozen=True, slots=True)
@@ -175,20 +223,93 @@ class SessionManager:
                 um.authenticate_with_code(code=code, ip_address=ip_address, user_agent=user_agent),
                 op="authenticate_with_code",
             )
-            org_name: str | None = None
-            if auth.organization_id:
-                org = await self._bounded(
-                    self._client.organizations.get_organization(auth.organization_id),
-                    op="get_organization",
-                )
-                org_name = org.name
+            org_name = await self._organization_name(auth)
         except _UNAVAILABLE_ERRORS as exc:
             log.warning("workos_unavailable", error_type=type(exc).__name__)
             raise AuthProviderUnavailable("code_exchange_unavailable") from exc
         except (APIError, WorkOSError) as exc:
             log.info("workos_code_rejected", error_type=type(exc).__name__)
             raise SessionInvalid("code_exchange_failed") from exc
+        return await self._finish(auth, org_name)
 
+    async def send_magic_code(
+        self, email: str, *, ip_address: str | None = None, user_agent: str | None = None
+    ) -> None:
+        """Ask WorkOS to email a six-digit Magic Auth code. The code itself is discarded."""
+        try:
+            await self._bounded(
+                self._client.user_management.create_magic_auth(
+                    email=email,
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                    request_options=_NO_RETRY,
+                ),
+                op="create_magic_auth",
+            )
+        except RateLimitExceededError as exc:
+            raise ProviderRateLimited("magic_auth_rate_limited", _retry_after(exc)) from exc
+        except _UNAVAILABLE_ERRORS as exc:
+            log.warning("workos_unavailable", op="create_magic_auth", error_type=type(exc).__name__)
+            raise AuthProviderUnavailable("magic_auth_unavailable") from exc
+        except APIError as exc:
+            raise MagicCodeNotSent(exc.code or type(exc).__name__) from exc
+        except WorkOSError as exc:
+            log.warning("workos_unavailable", op="create_magic_auth", error_type=type(exc).__name__)
+            raise AuthProviderUnavailable("magic_auth_unavailable") from exc
+
+    async def verify_magic_code(
+        self,
+        email: str,
+        code: str,
+        *,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> CodeExchange:
+        """Authenticate with an emailed code; same sealed session + profile as the callback."""
+        um = self._client.user_management
+        try:
+            auth = await self._bounded(
+                um.authenticate_with_magic_auth(
+                    code=code,
+                    email=email,
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                    request_options=_NO_RETRY,
+                ),
+                op="authenticate_with_magic_auth",
+            )
+            org_name = await self._organization_name(auth)
+        except RateLimitExceededError as exc:
+            raise ProviderRateLimited("magic_auth_rate_limited", _retry_after(exc)) from exc
+        except BadRequestError as exc:
+            error = _CODE_ERRORS.get(exc.code or "")
+            if error is None:
+                log.info("workos_code_rejected", error_type="BadRequestError", error_code=exc.code)
+                raise SessionInvalid("magic_auth_failed") from exc
+            raise error(exc.code or "") from exc
+        except _UNAVAILABLE_ERRORS as exc:
+            log.warning(
+                "workos_unavailable",
+                op="authenticate_with_magic_auth",
+                error_type=type(exc).__name__,
+            )
+            raise AuthProviderUnavailable("magic_auth_unavailable") from exc
+        except (APIError, WorkOSError) as exc:
+            log.info("workos_code_rejected", error_type=type(exc).__name__)
+            raise SessionInvalid("magic_auth_failed") from exc
+        return await self._finish(auth, org_name)
+
+    async def _organization_name(self, auth: AuthenticateResponse) -> str | None:
+        if not auth.organization_id:
+            return None
+        org = await self._bounded(
+            self._client.organizations.get_organization(auth.organization_id),
+            op="get_organization",
+        )
+        return org.name
+
+    async def _finish(self, auth: AuthenticateResponse, org_name: str | None) -> CodeExchange:
+        """Seal the session and build the profile; shared by every sign-in method."""
         sealed = seal_session_from_auth_response(
             access_token=auth.access_token,
             refresh_token=auth.refresh_token,

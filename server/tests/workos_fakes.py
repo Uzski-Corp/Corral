@@ -2,7 +2,8 @@
 
 We use the *real* ``AsyncWorkOSClient`` and sealed-session code from the SDK and replace
 only the network edges: the JWKS fetch, the refresh-token HTTP call, the code exchange and
-the organization lookup. Access tokens are genuine RS256 JWTs signed with a test key.
+the organization lookup,
+and the Magic Auth (email code) calls. Access tokens are genuine RS256 JWTs signed with a test key.
 """
 
 import time
@@ -120,6 +121,8 @@ class WorkOSHarness:
     request_raw: AsyncMock
     authenticate_with_code: AsyncMock
     get_organization: AsyncMock
+    create_magic_auth: AsyncMock
+    authenticate_with_magic_auth: AsyncMock
     sealed: list[str] = field(default_factory=list)
 
     def seal(
@@ -158,6 +161,13 @@ def build_harness(monkeypatch: pytest.MonkeyPatch, cookie_password: str) -> Work
     monkeypatch.setattr(client.user_management, "authenticate_with_code", authenticate_with_code)
     get_organization = AsyncMock(name="get_organization", return_value=workos_organization())
     monkeypatch.setattr(client.organizations, "get_organization", get_organization)
+    # The response (which carries the code itself) is discarded by the app.
+    create_magic_auth = AsyncMock(name="create_magic_auth", return_value=SimpleNamespace(id="ma_1"))
+    monkeypatch.setattr(client.user_management, "create_magic_auth", create_magic_auth)
+    authenticate_with_magic_auth = AsyncMock(name="authenticate_with_magic_auth")
+    monkeypatch.setattr(
+        client.user_management, "authenticate_with_magic_auth", authenticate_with_magic_auth
+    )
     return WorkOSHarness(
         client=client,
         cookie_password=cookie_password,
@@ -165,4 +175,6 @@ def build_harness(monkeypatch: pytest.MonkeyPatch, cookie_password: str) -> Work
         request_raw=request_raw,
         authenticate_with_code=authenticate_with_code,
         get_organization=get_organization,
+        create_magic_auth=create_magic_auth,
+        authenticate_with_magic_auth=authenticate_with_magic_auth,
     )

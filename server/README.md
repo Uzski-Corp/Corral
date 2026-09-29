@@ -23,6 +23,32 @@ uvicorn app.main:create_app --factory --reload --port 8000
 | `POST /api/v1/auth/refresh` | Forces a refresh-token rotation and re-seals the cookie. |
 | `POST /api/v1/auth/logout` | Clears the cookie and returns `{"logout_url": ...}` to end the hosted WorkOS session. |
 | `GET /api/v1/auth/me` | Current user, organization and role. |
+| `POST /api/v1/auth/code/send` | `{email}` → `202 {"sent": true}`. Emails a six-digit WorkOS Magic Auth code. Same answer whether or not the address has an account. |
+| `POST /api/v1/auth/code/verify` | `{email, code}` → `200 {"redirect_to": FRONTEND_URL}` plus the sealed `wos_session` cookie (same provisioning as the callback). |
+
+### Email-code sign-in
+
+Both code routes are JSON-only and require an `Origin` equal to `FRONTEND_URL` or one of
+`CORS_ORIGINS` (403 otherwise). Errors are `{"error": <code>, "detail": <message>}`:
+
+| Status | `error` | Meaning |
+| --- | --- | --- |
+| 400 | `code_invalid` | Wrong code (`invalid_one_time_code`). |
+| 400 | `code_expired` | Expired or already used (`one_time_code_expired`, `one_time_code_previously_used`). |
+| 400 | `too_many_attempts` | WorkOS locked the code (`one_time_code_too_many_attempts`); send a new one. |
+| 400 | `auth_failed` | Any other WorkOS rejection. |
+| 429 | `rate_limited` | Ours or WorkOS's; `Retry-After` header (seconds) and `retry_after` in the body. |
+| 503 | `auth_unavailable` | WorkOS unreachable, 5xx or timed out. |
+| 422 | – | Invalid body (bad email, code not six digits). |
+
+Our fixed-window limits live in Redis (keys `corral:rl:<rule>:<hmac>`, emails lower-cased
+and HMAC-keyed, never stored or logged in plaintext). Defaults, all configurable:
+`AUTH_CODE_SEND_PER_EMAIL=3` per `AUTH_CODE_SEND_WINDOW_S=60`,
+`AUTH_CODE_VERIFY_PER_EMAIL=10` per `AUTH_CODE_VERIFY_WINDOW_S=600`,
+`AUTH_CODE_SEND_PER_IP=20` and `AUTH_CODE_VERIFY_PER_IP=50` per `AUTH_CODE_IP_WINDOW_S=600`.
+If Redis is down the limiter fails open (logged as `rate_limit_unavailable`) and WorkOS's
+own limits still apply. The SDK's automatic retries are off for these calls so a 429 reaches
+the client and a retried POST never sends a second email.
 
 Every other `/api/v1/*` router is mounted with `Depends(require_auth)`; a test enumerates
 the OpenAPI schema to prove no non-public route answers anonymously. Handlers use the

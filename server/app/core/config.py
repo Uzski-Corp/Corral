@@ -64,6 +64,15 @@ class Settings(BaseSettings):
     session_cookie_max_age_s: int = Field(default=60 * 60 * 24 * 30, ge=60)
     session_cookie_domain: str | None = None
 
+    # Email-code sign-in limits, enforced in Redis before WorkOS's own limits.
+    auth_code_send_per_email: int = Field(default=3, ge=1)
+    auth_code_send_window_s: int = Field(default=60, ge=1)
+    auth_code_verify_per_email: int = Field(default=10, ge=1)
+    auth_code_verify_window_s: int = Field(default=600, ge=1)
+    auth_code_send_per_ip: int = Field(default=20, ge=1)
+    auth_code_verify_per_ip: int = Field(default=50, ge=1)
+    auth_code_ip_window_s: int = Field(default=600, ge=1)
+
     @field_validator("workos_cookie_password")
     @classmethod
     def _cookie_password_is_fernet_key(cls, value: SecretStr) -> SecretStr:
