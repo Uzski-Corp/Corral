@@ -32,6 +32,32 @@ transparently and the new cookie is written on the response.
 Without WorkOS keys the API still boots locally and auth endpoints answer 503;
 `APP_ENV=staging|production` refuses to start without them.
 
+## Tenancy & row-level security
+
+Tenant isolation is enforced twice:
+
+1. **Repositories** (`app/repositories`) are constructed with the caller's `org_id`
+   (`Depends(repository(LeadRepository))`); every query filters by it and every insert is
+   stamped with it. `id`/`org_id` can't be set by callers, and bodies use `extra="forbid"`.
+2. **Postgres RLS** (migration `0003_row_level_security`). Each request transaction
+   switches to the NOLOGIN role `corral_app` (`set_config('role', ...)`, lazily on first
+   DB use), and the auth dependency sets transaction-local `app.current_org` /
+   `app.current_user_id`. Policies on `organizations`, `memberships`, `users` and every
+   domain table key off those settings, so even a query that forgets the filter only sees
+   the current org. With no tenant context set, those tables look empty.
+
+Sign-in happens before a tenant is known, so two narrowly scoped `SECURITY DEFINER`
+functions (`app_provision_identity`, `app_resolve_membership`) are the only cross-tenant
+path; `PUBLIC` cannot execute them.
+
+Operational requirements:
+- Run `alembic upgrade head` as the role that owns the schema. It creates `corral_app`
+  (if missing) and grants it to `CURRENT_USER`, so it needs `CREATEROLE` (or run it as a
+  superuser). The API's login role must be a member of `corral_app`; if it isn't the
+  migration role, run `GRANT corral_app TO <api_login_role>`.
+- New org-scoped tables: subclass `TenantModel`, add a migration, and add the table to the
+  RLS migration pattern (`ENABLE ROW LEVEL SECURITY` + `tenant_isolation` policy + grants).
+
 ## Tests
 
 ```bash
@@ -41,3 +67,5 @@ pytest --cov                     # unit tests always run
 Database tests need Postgres and pick, in order: `TEST_DATABASE_URL`
 (e.g. `postgresql+asyncpg://postgres@localhost:5432/corral_test`), a disposable
 testcontainers Postgres when Docker is running, otherwise they are **skipped** with a reason.
+The suite applies the real Alembic migrations, runs up/down/up round trips in a scratch
+database (so the DB user needs `CREATEDB`), and checks models match migrations.
