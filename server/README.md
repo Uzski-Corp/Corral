@@ -8,7 +8,9 @@ cp .env.example .env          # fill in DATABASE_URL + WorkOS keys
 uvicorn app.main:create_app --factory --reload --port 8000
 ```
 
-- Health: `GET /health` · API: `/api/v1/*` · Docs: http://localhost:8000/docs
+- Worker: `arq app.worker.main.WorkerSettings` (same `.env`; needs Redis)
+- Probes: `GET /healthz` (liveness, `/health` alias) · `GET /readyz` (DB + Redis, 503 while
+  draining) · `GET /metrics` (Prometheus) · API: `/api/v1/*` · Docs: http://localhost:8000/docs
 - Lint/format/types: `ruff check . && ruff format --check . && mypy`
 - Migrations: `alembic revision --autogenerate -m "msg"` then `alembic upgrade head` (needs Postgres)
 
@@ -58,6 +60,23 @@ Operational requirements:
 - New org-scoped tables: subclass `TenantModel`, add a migration, and add the table to the
   RLS migration pattern (`ENABLE ROW LEVEL SECURITY` + `tenant_isolation` policy + grants).
 
+## Background jobs & observability
+
+- Jobs live in `app/worker/jobs.py` and are registered in `app/worker/main.py`. Enqueue from
+  request handlers via `request.app.state.queue` (typed helpers such as
+  `JobQueue.enqueue_count_org_leads`, deduplicated by job id). Jobs taking `org_id`
+  open their own session with the tenant context pinned, so RLS applies in the worker too.
+  Transient failures raise `arq.Retry` with backoff, capped by `WORKER_MAX_TRIES`; each job is
+  bounded by `WORKER_JOB_TIMEOUT_S`.
+- Every response carries `X-Request-ID` (incoming valid IDs are propagated) and it is bound to
+  the structured access log line. Requests past `REQUEST_TIMEOUT_S` return 504.
+- Metrics: `http_requests_total`, `http_request_duration_seconds`, `http_requests_in_progress`,
+  labelled by route template (never raw paths) to keep cardinality bounded.
+- Tracing: set `OTEL_ENABLED=true` and `OTEL_EXPORTER_OTLP_ENDPOINT`; FastAPI and SQLAlchemy
+  spans are exported over OTLP/HTTP.
+- Shutdown: when the lifespan exits (SIGTERM) `/readyz` flips to 503 first, then the queue
+  pool, telemetry and DB are closed in that order.
+
 ## Tests
 
 ```bash
@@ -69,3 +88,5 @@ Database tests need Postgres and pick, in order: `TEST_DATABASE_URL`
 testcontainers Postgres when Docker is running, otherwise they are **skipped** with a reason.
 The suite applies the real Alembic migrations, runs up/down/up round trips in a scratch
 database (so the DB user needs `CREATEDB`), and checks models match migrations.
+Redis-backed tests (queue, worker, readiness) use `TEST_REDIS_URL` (e.g.
+`redis://localhost:6379/15`; the DB is flushed), then a testcontainers Redis, else skip.
