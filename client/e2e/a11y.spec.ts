@@ -45,7 +45,7 @@ test("the Companies table has no axe violations", async ({ page, mockApi, onboar
   await onboarded();
   await page.goto("/sign-in?next=%2Fapp%3Fview%3Dcompanies");
   await signInWithGoogle(page);
-  const table = page.getByRole("table", { name: /^Segment:/ });
+  const table = page.getByRole("table", { name: /^(Segment|Companies):/ });
   await expect(table).toBeVisible();
   await expect(table.getByRole("columnheader", { name: "Company" })).toBeVisible();
   await expect(table.getByRole("row").nth(1).getByRole("cell").first().getByRole("checkbox")).toBeVisible();

@@ -43,7 +43,7 @@ test("companies table", async ({ page, mockApi, onboarded }) => {
   await onboarded();
   await page.goto("/sign-in?next=%2Fapp%3Fview%3Dcompanies");
   await signInWithGoogle(page);
-  await expect(page.getByRole("table", { name: /^Segment:/ })).toBeVisible();
+  await expect(page.getByRole("table", { name: /^(Segment|Companies):/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Account" })).toContainText("Wanjiru Mwangi");
   await page.evaluate(() => document.fonts.ready);
   await expect(page).toHaveScreenshot("app-companies.png");
