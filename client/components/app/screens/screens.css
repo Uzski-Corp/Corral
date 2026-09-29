@@ -134,3 +134,32 @@
 .s-providers .c-radio .c-choice__txt { flex-direction: row; gap: 10px; align-items: baseline; }
 .s-providers .c-radio__dot { margin-top: 0; }
 }
+
+/* ---------------------------------------------------------------- Sign-in code (ENG-80)
+   One real input stretched over six drawn cells (CodeInput.tsx). 3 + 3 grouping. */
+.s-code__form { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.s-code__form > .c-btn { margin-top: 8px; }
+.s-code__top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.s-code__top label { font-size: var(--text-label); font-weight: 500; color: var(--color-text); }
+.s-code__busy { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-meta); color: var(--color-text-tertiary); }
+.s-code { position: relative; width: 100%; }
+.s-code__input { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; outline: 0; background: transparent;
+  color: transparent; caret-color: transparent; font-size: 16px; letter-spacing: 1em; cursor: text; }
+.s-code__input::selection { background: transparent; color: transparent; }
+.s-code__input:disabled { cursor: not-allowed; }
+.s-code__cells { display: grid; grid-template-columns: repeat(3, 1fr) 10px repeat(3, 1fr); gap: 8px; }
+.s-code__cells > .s-code__cell:nth-child(4) { grid-column: 5; }
+.s-code__cell { height: 56px; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: var(--color-canvas);
+  box-shadow: inset 0 0 0 1px var(--color-border-control); font: 500 24px/1 var(--font-sans); font-variant-numeric: tabular-nums; letter-spacing: 0; color: var(--color-text);
+  transition: box-shadow 120ms, background 120ms; }
+.s-code__cell.is-caret { box-shadow: inset 0 0 0 1.5px var(--color-action), 0 0 0 3px var(--color-action-ring); }
+.s-code__cell.is-caret:empty::after { content: ""; width: 1.5px; height: 24px; background: var(--color-action); animation: s-blink 1s steps(1) infinite; }
+@keyframes s-blink { 50% { opacity: 0; } }
+.s-code.is-focus .s-code__cell.is-sel { background: var(--color-action-subtle); box-shadow: inset 0 0 0 1.5px var(--color-action); }
+.s-code.is-invalid .s-code__cell { box-shadow: inset 0 0 0 1px var(--color-negative-600); }
+.s-code.is-invalid .s-code__cell.is-caret, .s-code.is-invalid.is-focus .s-code__cell.is-sel { box-shadow: inset 0 0 0 1.5px var(--color-negative-600), 0 0 0 3px rgb(190 18 60 / .14); background: var(--color-negative-50); }
+.s-code.is-busy .s-code__cell { background: var(--color-surface-muted); box-shadow: inset 0 0 0 1px var(--color-border); color: var(--color-text-secondary); }
+.s-code.is-disabled .s-code__cell { background: var(--color-surface-muted); box-shadow: inset 0 0 0 1px var(--color-border); color: var(--color-text-quaternary); text-decoration: line-through; text-decoration-color: rgb(95 95 95 / .45); }
+.s-auth__row--quiet .c-btn { flex: 1; justify-content: center; }
+@media (prefers-reduced-motion: reduce) { .s-code__cell.is-caret:empty::after { animation: none; } }
+@media (max-width: 400px) { .s-code__cells { gap: 6px; grid-template-columns: repeat(3, 1fr) 6px repeat(3, 1fr); } .s-code__cell { height: 52px; font-size: 22px; } }

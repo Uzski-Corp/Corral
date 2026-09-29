@@ -2,7 +2,8 @@
  * Which sign-in screen to show, from the URL.
  *
  * Real failures arrive from the API callback as `?error=<code>`. Bau's review states arrive as
- * `?state=sent|error|invalid|cancelled|unavailable` and are honoured outside production (and in the review build).
+ * `?state=sent|error|invalid|cancelled|unavailable` and the code states (`code-verifying|code-wrong|code-expired|
+ * code-resent|resend-limited|change-email`, ENG-80), honoured outside production (and in the review build).
  */
 import type { SignInState } from "@/components/app/screens/SignIn";
 
@@ -10,12 +11,15 @@ import type { SignInState } from "@/components/app/screens/SignIn";
 export const CALLBACK_ERRORS = ["provider_error", "invalid_request", "invalid_state", "auth_failed", "auth_unavailable"] as const;
 export type CallbackError = (typeof CALLBACK_ERRORS)[number];
 
-const REVIEW_STATES: SignInState[] = ["sent", "error", "invalid", "cancelled", "unavailable"];
+export const REVIEW_STATES: SignInState[] = [
+  "sent", "error", "invalid", "cancelled", "unavailable",
+  "code-verifying", "code-wrong", "code-expired", "code-resent", "resend-limited", "change-email",
+];
 
 /**
  * Which failure screen each callback code gets (M1 follow-up 3):
  * provider_error: the person backed out at Google, friendly retry · auth_unavailable: AuthKit is down,
- * status screen · everything else: the "link expired / try again" banner.
+ * status screen · everything else: the "that sign-in didn't finish / start again" banner.
  */
 export function screenForError(code: CallbackError | "unknown"): SignInState {
   if (code === "provider_error") return "cancelled";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CALLBACK_ERRORS, screenForError, signInView } from "./signInState";
+import { CALLBACK_ERRORS, REVIEW_STATES, screenForError, signInView } from "./signInState";
 
 describe("signInView", () => {
   it.each(CALLBACK_ERRORS)("shows the designed failure screen for ?error=%s", (code) => {
@@ -29,5 +29,11 @@ describe("signInView", () => {
     expect(signInView({ state: "sent" }, false).initial).toBe("default");
     expect(signInView({ state: "bogus" }, true).initial).toBe("default");
     expect(signInView({}, true).initial).toBe("default");
+  });
+
+  it.each(["code-verifying", "code-wrong", "code-expired", "code-resent", "resend-limited", "change-email"])("reaches the code state ?state=%s in review", (s) => {
+    expect(REVIEW_STATES).toContain(s);
+    expect(signInView({ state: s }, true).initial).toBe(s);
+    expect(signInView({ state: s }, false).initial).toBe("default");
   });
 });

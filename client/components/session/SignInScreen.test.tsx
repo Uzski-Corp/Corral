@@ -50,26 +50,26 @@ describe("SignInScreen (live)", () => {
     const email = screen.getByRole("textbox", { name: "Work email" });
     expect(email).toHaveValue("");
     await user.type(email, "wanjiru@kilima");
-    await user.click(screen.getByRole("button", { name: "Email me a sign-in link" }));
+    await user.click(screen.getByRole("button", { name: "Email me a code" }));
     expect(go).not.toHaveBeenCalled();
     expect(email).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByText(/doesn’t look like a full address/)).toBeInTheDocument();
     await user.type(email, ".co.ke");
-    await user.click(screen.getByRole("button", { name: "Email me a sign-in link" }));
+    await user.click(screen.getByRole("button", { name: "Email me a code" }));
     expect(go).toHaveBeenCalledWith(LOGIN);
   });
 
   it("shows the designed failure banner for a callback error, with an empty email", () => {
     mount("error");
-    expect(screen.getByText("That link has expired")).toBeInTheDocument();
+    expect(screen.getByText("That sign-in didn’t finish")).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Work email" })).toHaveValue("");
-    expect(screen.getByRole("button", { name: "Email me a new link" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Email me a code" })).toBeInTheDocument();
   });
 
   it("tells someone who cancelled at Google that nothing happened, and retries Google", async () => {
     const go = mount("cancelled");
     expect(screen.getByText("You cancelled at Google")).toBeInTheDocument();
-    expect(screen.queryByText("That link has expired")).toBeNull();
+    expect(screen.queryByText("That sign-in didn’t finish")).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Try Google again" }));
     expect(go).toHaveBeenCalledWith(LOGIN);
   });
@@ -112,12 +112,12 @@ describe("SignInScreen (live)", () => {
     const user = userEvent.setup();
     mount();
     await user.type(screen.getByRole("textbox", { name: "Work email" }), "wanjiru@kilima.co.ke");
-    await user.click(screen.getByRole("button", { name: "Email me a sign-in link" }));
-    expect(screen.getByRole("button", { name: /Sending link/ })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Email me a code" }));
+    expect(screen.getByRole("button", { name: /Sending code/ })).toBeDisabled();
     const ev = new Event("pageshow");
     Object.defineProperty(ev, "persisted", { value: true });
     act(() => { window.dispatchEvent(ev); });
-    expect(screen.getByRole("button", { name: "Email me a sign-in link" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Email me a code" })).toBeEnabled();
   });
 
   it("uses window.location by default", async () => {
@@ -140,7 +140,7 @@ describe("SignInScreen (review)", () => {
     try {
       render(<SignInScreen initial="default" next={null} config={testConfig({ mode: "review", apiUrl: "" })} />);
       fireEvent.change(screen.getByRole("textbox", { name: "Work email" }), { target: { value: "tomas@coldtrace.io" } });
-      fireEvent.click(screen.getByRole("button", { name: "Email me a sign-in link" }));
+      fireEvent.click(screen.getByRole("button", { name: "Email me a code" }));
       act(() => { vi.advanceTimersByTime(700); });
       expect(screen.getByRole("heading", { name: "Check your email" })).toBeInTheDocument();
       fireEvent.click(screen.getByRole("button", { name: "Use a different email" }));

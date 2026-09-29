@@ -13,7 +13,7 @@ cd client && pnpm install && pnpm dev     # pnpm 12 (see packageManager)
 | Route | What it is | Review states |
 |---|---|---|
 | `/app` | Shell + Unibox home (live: views, ⌘K, J/K/E, enroll dialog, toasts) | `?cmdk=1` palette open · `?view=companies`, `contacts`, `segments`, … · `?collapsed=1` · `?nav=1` (mobile drawer) · `?dialog=enroll` |
-| `/sign-in` | Email magic link + Google | `?state=sent` · `?state=error` (expired link) · `?state=invalid` |
+| `/sign-in` | Email six-digit code (WorkOS Magic Auth) + Google | `?state=sent` (code entry) · `code-verifying` · `code-wrong` · `code-expired` · `code-resent` · `resend-limited` · `change-email` · `error` (sign-in didn't finish) · `invalid` · `cancelled` · `unavailable` (see §9) |
 | `/onboarding` | 5-step workspace setup with progress and skip | `?step=1…6` (6 = done) · `?skipped=3,4,5` · `?crawl=done` · `?mailbox=1` |
 | `/styleguide` | Every component, live, where it is used (sections 01–15) | — |
 
@@ -216,7 +216,7 @@ Sources: @_heyrico posts [2015453625791979955](https://x.com/_heyrico/status/201
 - `EmptyState`: `{ title; children?; actions?; icon?; art? ["range" | "grass"]; compact? }`. Say what the place is for, then give one way to fill it.
 - `ErrorState`: `{ title; children?; detail? (mono); actions? }`. Say what failed and whether anything was lost, then offer a retry.
 - `Banner`: `{ tone? ["info" | "error" | "caution" | "success"]; title?; children?; action?; icon? }`.
-- `SessionUnavailable` (C): `{ onRetry?() => Promise<boolean> | boolean; detail? (mono, e.g. "GET /api/v1/auth/me · 503"); checkedAt?; autoRetrySeconds? [30, 0 = off]; statusHref? ["#status"] }`. The body of the full-shell fallback. `AppDemo` takes it as `sessionError`.
+- `SessionUnavailable` (C): `{ onRetry?() => Promise<boolean> | boolean; detail? (mono, e.g. "GET /api/v1/auth/me · 503"); checkedAt?; autoRetrySeconds? [30, 0 = off]; statusHref? [`statusUrl()`, i.e. `NEXT_PUBLIC_STATUS_URL`] }`. The body of the full-shell fallback. `AppDemo` takes it as `sessionError`.
 - `Skeleton`: `{ w?; h? [10]; r? [4] }` · `SkeletonTable`: `{ rows? [6]; label? }` · `SkeletonThreads`: `{ rows? [5] }` · `Spinner`: `{ size? [14] }`.
 
 ### Core (round 3, APIs unchanged except where noted)
@@ -233,7 +233,8 @@ Sources: @_heyrico posts [2015453625791979955](https://x.com/_heyrico/status/201
 - `Toast` (new props: `tone`, `action`, `onClose`).
 
 ### Screens
-- `SignIn` (C, `components/app/screens/SignIn.tsx`): `{ initial? ["default" | "sent" | "error" | "invalid" | "cancelled" | "unavailable"]; actions? }`. `error` = expired link, `cancelled` = backed out at Google, `unavailable` = auth provider down.
+- `SignIn` (C, `components/app/screens/SignIn.tsx`): `{ initial? ["default" | "sent" | "error" | "invalid" | "cancelled" | "unavailable" | "code-verifying" | "code-wrong" | "code-expired" | "code-resent" | "resend-limited" | "change-email"]; actions? }`. `error` = the sign-in didn't finish (callback error), `cancelled` = backed out at Google, `unavailable` = auth provider down. The code states and `actions.sendCode` / `actions.verifyCode` are specified in §9.
+- `CodeInput` (C, `components/app/screens/CodeInput.tsx`): `{ id; value; onChange(code); onComplete?(code); invalid?; disabled?; busy?; describedBy?; autoFocus? }` + ref `{ focus(select?) }`. See §9.
 - `Onboarding` (C, `components/app/screens/Onboarding.tsx`): `{ initialStep?; skipped?; crawl?; connected? }`. Steps 1–2 are required and 3–5 are skippable. Skipped steps show in the rail in caution and on the done screen with a "Finish" action.
 
 ## 6. Layout, responsive, accessibility
@@ -250,7 +251,7 @@ Sources: @_heyrico posts [2015453625791979955](https://x.com/_heyrico/status/201
 
 - Sequences, Products, Knowledge base and Settings render a placeholder inside the final shell. Their layouts are later milestones.
 - Contacts reuses the company table as a stand-in.
-- Search latency, OAuth, magic links, crawling and mailbox connection are simulated with timers.
+- Search latency, OAuth, email sign-in codes, crawling and mailbox connection are simulated with timers.
 - A combobox (Select with search) and multi-select are not designed yet.
 
 ## 8. M1 follow-ups (PR #7 design questions, decided Sep 29)
@@ -272,13 +273,13 @@ Sources: @_heyrico posts [2015453625791979955](https://x.com/_heyrico/status/201
 
 You can drop `color-contrast` and `link-in-text-block` from `KNOWN` in `e2e/a11y.spec.ts`. A local axe-core 4.13 pass over every M1 route and state found none. The Companies table still has a separate `aria-required-children` finding (row/cell roles), which isn't a design question.
 
-**Onboarding help link and inline links (Q2).** Links inside running text are underlined (1px at 45% of their colour, full on hover). The rule sits in `system.css`, so "Book 15 minutes", Terms and Privacy, "send it again" and "open Corral" all get it with no per-link work.
+**Onboarding help link and inline links (Q2).** Links inside running text are underlined (1px at 45% of their colour, full on hover). The rule sits in `system.css`, so "Book 15 minutes", Terms and Privacy, "send a new code" and "open Corral" all get it with no per-link work.
 
 **Sign-in failures (Q3).** Each case has its own screen, all reachable with `?state=` (outside production) and from the callback `?error=` (`lib/auth/signInState.ts#screenForError`):
 - `provider_error` → `cancelled`: an info banner that says "You cancelled at Google. No problem, nothing was shared with Corral…". The Google button reads "Try Google again" and the email form stays.
-- `auth_unavailable` → `unavailable`: a status screen. "Sign-in is down for a moment", a primary **Try again** (restarts the AuthKit hand-off), a **Status page** link, and "Already signed in on this browser? … open Corral" (→ `/app`) as the fallback. Email links go through the same provider, so they aren't offered as a fallback; the screen says so. When an in-app magic-link endpoint exists, add "Email me a link" here.
-- `invalid_request`, `invalid_state`, `auth_failed`, unknown → `error` (the expired-link banner, unchanged).
-- The status URL is `#status` for now. Point it at the real status page.
+- `auth_unavailable` → `unavailable`: a status screen. "Sign-in is down for a moment", a primary **Try again** (restarts the AuthKit hand-off), a **Status page** link, and "Already signed in on this browser? … open Corral" (→ `/app`) as the fallback. Email codes go through the same provider, so they aren't offered as a fallback; the screen says so. Sign-in codes go through the same provider, so they aren't offered as a fallback either.
+- `invalid_request`, `invalid_state`, `auth_failed`, unknown → `error`: the banner "That sign-in didn't finish. It may have timed out or been opened twice. Start again below; it only takes a minute." (was the expired-link banner; there are no links any more).
+- Every status link (sign-in footer, **Status page** on `unavailable`, `SessionUnavailable`) reads `statusUrl()` from `lib/config.ts`, i.e. **`NEXT_PUBLIC_STATUS_URL`** (an http(s) URL, a `/path` or a `#fragment`; `#status` only when it is unset). Set it per environment; a malformed value throws a `ConfigError`.
 
 **Session check failing (Q7).** If `/me` fails with 502/503/504, a timeout or a network error before any session is confirmed, the shell stays up and its body becomes `<SessionUnavailable>`. It shows what failed, says nothing is lost and you're still signed in, and offers **Try again** (calls `session.refresh()`, which re-fetches `/me`), a Status page link, an automatic retry every 30s with a countdown, and the failing request in mono. The account row switches from skeleton to a static "Not connected", and nav counts and the mailbox pool are hidden. A 401 still goes to sign-in. Wired in `components/session/AppScreen.tsx`. Review at `/app?state=api-down`, and on `/styleguide` §18.
 
@@ -288,5 +289,59 @@ You can drop `color-contrast` and `link-in-text-block` from `KNOWN` in `e2e/a11y
 
 **Sign-out failure toast (Q6).** Final copy: "Sign-out didn't go through. You're still signed in.", with a **Try again** action that retries the same sign-out. It uses the error tone and stays up 10s. Review at `/app?state=signout-failed`, then Account → Sign out.
 
-**Not decided in this batch:** Q4 (keep the in-app "Check your email" screen vs hand off to AuthKit, and the pending label). The current behaviour is unchanged.
+**Q4 (in-app "Check your email" vs AuthKit hand-off): decided in §9.** The screen stays in the app and takes the six-digit code.
+
+## 9. Email sign-in with a six-digit code (ENG-80, WorkOS Magic Auth)
+
+WorkOS emails a **six-digit code** (not a link) that **expires in 10 minutes**. Sending is rate-limited to **3 per minute**. WorkOS owns issuing, expiry and the limit; the client mirrors those numbers in copy and in one soft cooldown. The rules live in `lib/auth/code.ts` (`CODE_LENGTH`, `CODE_TTL_MINUTES`, `RESEND_PER_MINUTE`, `RESEND_COOLDOWN_SECONDS`, `sanitizeCode`, `formatCountdown`, `retryAfterSeconds`, result types). Styleguide §19.
+
+### The flow
+1. **Form** (`default`). "Use your work email. We email you a six-digit code instead of asking for a password." Primary: **Email me a code** → "Sending code…".
+2. **Check your email** (`sent`). "We sent a six-digit code to **{email}**. Enter it below; it expires in 10 minutes." Then the code field, a primary **Continue**, quiet **Open Gmail** / **Open Outlook**, and "Nothing after a minute? Check spam, or send a new code." plus **Use a different email**.
+3. The sixth digit submits by itself. On success the page navigates away (same as the Google callback today).
+
+### The code field (`CodeInput`)
+- **One real `<input>`**, drawn as six cells (3 + 3). Don't build six inputs: one field gives one-time-code autofill, whole-code paste, one label and one error for free.
+- Attributes: `type="text"`, `inputMode="numeric"`, `pattern="[0-9]*"`, `autoComplete="one-time-code"`, `autoCorrect="off"`, `spellCheck={false}`, `enterKeyHint="go"`, and a font size of 16px or more (no iOS zoom). No `maxLength`: paste "123 456", "123-456" or "Your code is 123456" and `sanitizeCode` keeps the six digits.
+- Label: visible "Sign-in code" (`<label for>`). `aria-describedby` points at the hint or the error. `aria-invalid` is set when the code is wrong or expired, and `aria-busy` / `readOnly` while it is checking.
+- Hint: "From login@corral.app. Paste it whole, or type it." Errors replace the hint in the same slot, with `role="alert"`.
+- `onComplete` fires once, when the value becomes six digits. **Continue** stays for keyboard and assistive-tech users and is disabled until there are six digits.
+- Cells use `--color-border-control` (3.24:1, WCAG 1.4.11). The caret cell gets the action ring, wrong gets negative-600, checking gets muted, and expired gets muted digits with a strike-through.
+
+### States (all reachable with `/sign-in?state=…` outside production)
+| `?state=` | What shows | Copy |
+|---|---|---|
+| `sent` | Code entry, empty and focused. The resend link is on a 0:20 cooldown. | "We sent a six-digit code to {email}. Enter it below; it expires in 10 minutes." · "…or send a new code in 0:20." |
+| `code-verifying` | The field is read-only, "Checking…" sits next to the label, and the button reads "Checking code…" (disabled). | — |
+| `code-wrong` | Inline error. **The digits stay** and are selected on focus, so typing replaces them and Backspace edits. Editing clears the error. | "That code isn't right. Check the newest email from Corral and try again." |
+| `code-expired` | The field is locked. The primary becomes **Send a new code**, and the resend line hides (the primary is the resend). | "That code has expired. Codes last 10 minutes." |
+| `code-resent` | Success banner. The field is cleared and refocused, and the cooldown restarts at 0:20. | "**New code sent.** Use the code in the newest email. It expires in 10 minutes." |
+| `resend-limited` | Caution banner with a live countdown. The resend link shows the same countdown. The banner clears itself at 0:00. | "**Too many codes asked for.** You can ask for 3 codes a minute. The last code we sent still works, or send another in 0:41." |
+| `change-email` | Back on the form. The old address is prefilled and selected on focus, with a note under the field. | "We'll send a new code to this address. The code sent to {old} won't work for it." |
+
+Also designed, without their own review state: a failed first send stays on the form with "**Couldn't send your code.** Check your connection, then try again. Nothing was sent."; a failed resend shows "**Couldn't send a new code.** Check your connection, then try again. The last code we sent still works."; and a failed verify (no answer) shows "Couldn't check the code. Check your connection and try again." (field stays editable).
+
+### What Krak wires (`SignInActions`, `components/app/screens/SignIn.tsx`)
+```ts
+sendCode?:   (email: string) => Promise<CodeSendResult>;   // { ok: true } | { ok: false, reason: "rate-limited", retryAfter } | { ok: false, reason: "network" }
+verifyCode?: (email: string, code: string) => Promise<CodeVerifyResult>; // { ok: true } | { ok: false, reason: "wrong" | "expired" | "network" }
+```
+- If `sendCode` is **absent**, the email button keeps today's behaviour (`startEmail` → AuthKit hosted page), so nothing breaks before the endpoints land. Once both are present, the email path stays in the app.
+- `sendCode` is used for the first send, for **send a new code** and for **Send a new code** after expiry. Map a 429 to `rate-limited`, with `retryAfter = retryAfterSeconds(res.headers.get("Retry-After"))` (seconds or an HTTP date; 60 if missing). Map network errors, timeouts and 5xx to `network`. A rate limit on the *first* send still opens the code screen with the limited banner, because an earlier code may be in the inbox.
+- `verifyCode`: map WorkOS "invalid code" to `wrong` and "expired" to `expired`. On `{ ok: true }`, set the session and navigate (to `safeReturnTo(next) ?? APP_HOME`, then `/onboarding` for new workspaces, as the callback does). The screen stays on "Checking…" until the page unloads.
+- **Soft cooldown:** after every successful send the resend link waits 20s (60s ÷ 3). One tab never hits the WorkOS limit. The server limit still wins (other tabs, other devices), which is when `resend-limited` shows.
+- Don't count or cap wrong attempts in the client. If WorkOS locks a code after too many tries, return `expired` and the UI already says the right thing (open question below).
+- Review mode (no API): `123456` signs in, `111111` is expired, anything else is wrong, and the 4th send inside a minute is rate-limited.
+
+### Copy changes (every "link" and "15 minutes" is gone)
+- Lede: "Use your work email. We email you a six-digit code instead of asking for a password."
+- Button: "Email me a sign-in link" / "Email me a new link" → **"Email me a code"**; pending state "Sending link…" → **"Sending code…"**.
+- Callback `error` banner: "That link has expired. Sign-in links work once and last 15 minutes…" → **"That sign-in didn't finish. It may have timed out or been opened twice. Start again below; it only takes a minute."**
+- `unavailable`: "…send email links right now" → "…send sign-in codes right now". "Email links go through the same provider…" → "Email codes go through the same provider…".
+- Tests updated for the new copy: `components/session/SignInScreen.test.tsx`, `test/pages.test.tsx`, `e2e/auth.spec.ts`. New tests: `components/app/screens/SignIn.code.test.tsx`, `lib/auth/code.test.ts`, and extra cases in `lib/auth/signInState.test.ts`. **Playwright visual baselines `sign-in.png` and `sign-in-error.png` need regenerating**, because the lede, button and error banner copy changed.
+
+### Open questions
+1. Does WorkOS lock a code after N wrong attempts, and what does the API return then? The design treats it as `expired`, which leads to "Send a new code".
+2. Does sending a new code invalidate the previous one? The copy says "use the code in the newest email", which is safe either way. If old codes stay valid, the limited banner's "the last code we sent still works" is still true.
+3. The sender address in the hint is `login@corral.app`. Confirm it matches the WorkOS email template.
 

@@ -1,6 +1,7 @@
 "use client";
 /* /styleguide — M1 system pieces, each shown live in the place it is used. */
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
+import { CodeInput } from "@/components/app/screens/CodeInput";
 import {
   AppDemo, Avatar, Banner, Button, Calendar, Checkbox, CommandPalette, DatePicker, DEMO_TODAY, DropdownMenu, EmptyState, EnrollDialog, ErrorState,
   FormField, Icon, Logo, RadioGroup, Segmented, Select, SegmentTable, SkeletonTable, SkeletonThreads, Spinner, Switch, Tabs, TextInput, Textarea,
@@ -183,7 +184,7 @@ export function StatesDemo() {
         <Label>banners · top of a form or panel</Label>
         <Banner tone="info" title="Corral is reading 1,284 companies">Scores land in Companies as they finish. About 10 minutes.</Banner>
         <Banner tone="caution" title="coldtrace.io has no DMARC record" action={<Button>Copy record</Button>}>Add one before sending more than 30 a day.</Banner>
-        <Banner tone="error" title="That link has expired">Sign-in links work once and last 15 minutes.</Banner>
+        <Banner tone="error" title="That sign-in didn’t finish">It may have timed out or been opened twice. Start again below.</Banner>
         <Banner tone="success" title="Mailbox connected">tomas@coldtrace.io starts warming today.</Banner>
       </div>
     </div>
@@ -262,6 +263,50 @@ export function SessionErrorDemo() {
           <li>One blue <b>Try again</b>. Status page is secondary. Automatic retry every 30s, shown as a countdown.</li>
           <li>The failing request in mono, last, for support. Account row switches from skeleton to a static “Not connected”.</li>
           <li>401 never shows this: it goes to sign-in. Only 502/503/504, timeouts and network errors do.</li></ul></div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------ ENG-80 · sign-in code */
+function CodeCell({ label, value = "", invalid, disabled, busy, hint, error }: { label: string; value?: string; invalid?: boolean; disabled?: boolean; busy?: boolean; hint?: ReactNode; error?: ReactNode }) {
+  const id = useId();
+  const [v, setV] = useState(value);
+  return (
+    <div className="sg-code c-app">
+      <Label>{label}</Label>
+      <div className="s-code__form">
+        <div className="s-code__top"><label htmlFor={id}>Sign-in code</label>{busy && <span className="s-code__busy"><Spinner size={12} />Checking…</span>}</div>
+        <CodeInput id={id} value={v} onChange={setV} invalid={invalid} disabled={disabled} busy={busy} describedBy={`${id}-m`} />
+        <span id={`${id}-m`} className={invalid ? "c-field__hint is-error" : "c-field__hint"}>{error ? <><Icon name="alert" size={12} />{error}</> : hint ?? "From login@corral.app. Paste it whole, or type it."}</span>
+      </div>
+    </div>
+  );
+}
+
+const CODE_URLS: [string, string][] = [
+  ["sent", "code entry, resend cooldown 0:20"], ["code-verifying", "sixth digit landed, checking"], ["code-wrong", "inline error, digits kept, selected"],
+  ["code-expired", "field locked, primary becomes Send a new code"], ["code-resent", "success banner, field cleared"],
+  ["resend-limited", "3 a minute, countdown from Retry-After"], ["change-email", "form, old address selected, note"],
+];
+
+export function CodeStatesDemo() {
+  return (
+    <div className="sg-codes">
+      <div className="sg-codes__grid">
+        <CodeCell label="empty · click to focus" />
+        <CodeCell label="typing" value="482" />
+        <CodeCell label="verifying · read-only" value="482913" busy />
+        <CodeCell label="wrong · kept, retry" value="482193" invalid error="That code isn’t right. Check the newest email from Corral and try again." />
+        <CodeCell label="expired · locked" value="639204" invalid disabled error="That code has expired. Codes last 10 minutes." />
+        <div className="sg-code c-app"><Label>banners on the code screen</Label>
+          <Banner tone="success" title="New code sent">Use the code in the newest email. It expires in 10 minutes.</Banner>
+          <Banner tone="caution" icon="clock" title="Too many codes asked for">You can ask for 3 codes a minute. The last code we sent still works, or send another in <span className="c-strong c-num">0:41</span>.</Banner>
+        </div>
+      </div>
+      <div className="sg-card"><Label>reach every state · /sign-in?state=</Label>
+        <ul className="sg-anatomy">{CODE_URLS.map(([s, d]) => <li key={s}><a className="c-link" href={`/sign-in?state=${s}`}><code>{s}</code></a> · {d}</li>)}</ul>
+        <p className="sg-faint" style={{ margin: "10px 0 0", fontSize: 12.5 }}>Review flow without an API: <code>123456</code> signs in, <code>111111</code> is expired, anything else is wrong. The 4th send inside a minute is rate-limited.</p>
       </div>
     </div>
   );

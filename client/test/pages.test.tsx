@@ -14,7 +14,7 @@ afterEach(() => { vi.unstubAllEnvs(); resetConfigCache(); });
 describe("/sign-in page", () => {
   it("shows the failure screen for a callback error", async () => {
     render(await SignInPage(params({ error: "auth_failed" }) as never));
-    expect(screen.getByText("That link has expired")).toBeInTheDocument();
+    expect(screen.getByText("That sign-in didn’t finish")).toBeInTheDocument();
   });
 
   it("honours review states outside production", async () => {

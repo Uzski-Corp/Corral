@@ -10,7 +10,8 @@ const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 /**
  * /sign-in: WorkOS AuthKit (Google or email) through the API.
  * `?error=<code>` comes from the API callback. `?next=` is where to go afterwards.
- * Review states (outside production): ?state=sent | error (expired link) | invalid | cancelled (backed out at Google) | unavailable (auth provider down)
+ * Review states (outside production): ?state=sent (code entry) | error (sign-in didn't finish) | invalid | cancelled (backed out at Google) | unavailable (auth provider down)
+ * Code flow (ENG-80): ?state=code-verifying | code-wrong | code-expired | code-resent | resend-limited | change-email
  */
 export default async function SignInPage({ searchParams }: PageProps<"/sign-in">) {
   const q = await searchParams;

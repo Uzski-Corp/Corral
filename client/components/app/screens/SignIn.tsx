@@ -1,37 +1,67 @@
 "use client";
 /* Sign-in: the one brand moment inside the product. Form in the app language on the left;
    the Open Range sky on the right with one real product fragment floating on it. */
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Avatar, Button, FitBar, Logo, Receipt, Receipts, Tag } from "../primitives";
+import { Avatar, Button, FitBar, Logo, Receipt, Receipts, Tag, cx } from "../primitives";
 import { GoogleG, Icon, Mark } from "../icons";
 import { FormField, TextInput } from "../Form";
 import { Banner, Spinner } from "../States";
 import { statusUrl } from "@/lib/config";
+import { CODE_TTL_MINUTES, RESEND_COOLDOWN_SECONDS, RESEND_PER_MINUTE, formatCountdown, isCompleteCode, reviewVerify, type CodeSendResult, type CodeVerifyResult } from "@/lib/auth/code";
+import { CodeInput, type CodeInputHandle } from "./CodeInput";
 
-/** error = expired link · cancelled = the person backed out at Google · unavailable = the auth provider is down */
-export type SignInState = "default" | "sent" | "error" | "invalid" | "sending" | "cancelled" | "unavailable";
+/**
+ * error = the sign-in didn't finish (callback error) · cancelled = backed out at Google · unavailable = the auth provider is down.
+ * Code screen (ENG-80): sent · code-verifying · code-wrong · code-expired · code-resent · resend-limited; change-email = back on
+ * the form after "Use a different email".
+ */
+export type SignInState = "default" | "sent" | "error" | "invalid" | "sending" | "cancelled" | "unavailable"
+  | "code-verifying" | "code-wrong" | "code-expired" | "code-resent" | "resend-limited" | "change-email";
+export const CODE_SCREEN_STATES: SignInState[] = ["sent", "code-verifying", "code-wrong", "code-expired", "code-resent", "resend-limited"];
+type Check = "idle" | "verifying" | "wrong" | "expired" | "network";
+type Notice = null | "resent" | "limited" | "send-failed";
+const SAMPLE = "tomas@coldtrace.io";
 const EMAIL = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
 const PERSONAL = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com"];
 
 /**
  * Real sign-in. Without it the screen runs Bau's simulated flow (timers), for review.
- * Both start the WorkOS AuthKit redirect; the page is about to unload when they return.
+ * startGoogle / startEmail start the WorkOS AuthKit redirect; the page is about to unload when they return.
+ * With sendCode + verifyCode (Magic Auth, ENG-80) the email path stays in the app: the form sends a code,
+ * "Check your email" takes it. verifyCode's success should navigate (like the callback); the screen stays
+ * on "Checking…" until the page goes.
  */
-export type SignInActions = { startGoogle: () => void; startEmail: (email: string) => void };
+export type SignInActions = {
+  startGoogle: () => void; startEmail: (email: string) => void;
+  sendCode?: (email: string) => Promise<CodeSendResult>;
+  verifyCode?: (email: string, code: string) => Promise<CodeVerifyResult>;
+};
 
 export function SignIn({ initial = "default", actions }: { initial?: SignInState; actions?: SignInActions }) {
-  const [state, setState] = useState<SignInState>(initial === "cancelled" ? "default" : initial);
+  const onCode = CODE_SCREEN_STATES.includes(initial);
+  const [state, setState] = useState<SignInState>(initial === "cancelled" || initial === "change-email" ? "default" : onCode ? "sent" : initial);
   // Review states prefill the sample address; a real sign-in never guesses someone's email.
-  const [email, setEmail] = useState(actions ? "" : initial === "error" || initial === "sent" ? "tomas@coldtrace.io" : initial === "invalid" ? "tomas@coldtrace" : "");
+  const [email, setEmail] = useState(actions ? "" : initial === "error" || onCode || initial === "change-email" ? SAMPLE : initial === "invalid" ? "tomas@coldtrace" : "");
   const [expired, setExpired] = useState(initial === "error");
-  const [left, setLeft] = useState(42);
   const [google, setGoogle] = useState(false);
   const [cancelled, setCancelled] = useState(initial === "cancelled");
   const [checking, setChecking] = useState(false);
+  const [sendFailed, setSendFailed] = useState(false);
+  // "Use a different email": the address the last code went to.
+  const [prevEmail, setPrevEmail] = useState<string | null>(initial === "change-email" && !actions ? SAMPLE : null);
+  // Code screen
+  const [code, setCode] = useState(initial === "code-verifying" ? "482913" : initial === "code-wrong" ? "482193" : initial === "code-expired" ? "639204" : "");
+  const [check, setCheck] = useState<Check>(initial === "code-verifying" ? "verifying" : initial === "code-wrong" ? "wrong" : initial === "code-expired" ? "expired" : "idle");
+  const [notice, setNotice] = useState<Notice>(initial === "code-resent" ? "resent" : initial === "resend-limited" ? "limited" : null);
+  const [wait, setWait] = useState(initial === "resend-limited" ? 41 : initial === "sent" || initial === "code-resent" ? RESEND_COOLDOWN_SECONDS : 0);
+  const [resending, setResending] = useState(false);
+  const sends = useRef<number[]>([]); // review only: mirrors the 3-a-minute limit
+  const codeRef = useRef<CodeInputHandle>(null);
   const router = useRouter();
+  const ids = useId();
   const startGoogle = () => { setGoogle(true); if (actions) actions.startGoogle(); else setTimeout(() => router.push("/onboarding"), 700); };
   // Provider down: "Try again" re-enters the same AuthKit hand-off; in review it just recovers.
   const retryProvider = () => {
@@ -45,20 +75,76 @@ export function SignIn({ initial = "default", actions }: { initial?: SignInState
     window.addEventListener("pageshow", reset);
     return () => window.removeEventListener("pageshow", reset);
   }, []);
+  // One countdown for both the soft cooldown and the rate limit.
   useEffect(() => {
-    if (state !== "sent" || left <= 0) return;
-    const t = setTimeout(() => setLeft((s) => s - 1), 1000);
+    if (state !== "sent" || wait <= 0) return;
+    const t = setTimeout(() => {
+      setWait((s) => s - 1);
+      if (wait <= 1) setNotice((n) => (n === "limited" ? null : n)); // limit over: the banner goes, the link comes back
+    }, 1000);
     return () => clearTimeout(t);
-  }, [state, left]);
+  }, [state, wait]);
+
+  /** Review only: the same 3-a-minute limit WorkOS applies, so resend-limited can be reached by hand. */
+  const simulateSend = useCallback((): CodeSendResult => {
+    const now = Date.now();
+    sends.current = sends.current.filter((t) => now - t < 60000);
+    if (sends.current.length >= RESEND_PER_MINUTE) return { ok: false, reason: "rate-limited", retryAfter: Math.ceil((60000 - (now - sends.current[0])) / 1000) };
+    sends.current.push(now);
+    return { ok: true };
+  }, []);
+  /** Sends (or resends) a code: the real endpoint, or the review simulation. */
+  const send = useCallback(async (to: string): Promise<CodeSendResult> => {
+    if (actions?.sendCode) return actions.sendCode(to);
+    await new Promise((r) => setTimeout(r, 700));
+    return simulateSend();
+  }, [actions, simulateSend]);
+
+  const toCodeScreen = (r: CodeSendResult) => {
+    setState("sent"); setExpired(false); setCode(""); setCheck("idle"); setPrevEmail(null);
+    if (r.ok) { setNotice(null); setWait(RESEND_COOLDOWN_SECONDS); }
+    else if (r.reason === "rate-limited") { setNotice("limited"); setWait(r.retryAfter); }
+  };
 
   const domain = email.split("@")[1]?.toLowerCase() ?? "";
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!EMAIL.test(email.trim())) { setState("invalid"); return; }
-    setState("sending"); setCancelled(false);
-    if (actions) { actions.startEmail(email.trim()); return; }
-    setTimeout(() => { setState("sent"); setExpired(false); setLeft(42); }, 700);
+    setState("sending"); setCancelled(false); setSendFailed(false);
+    if (actions && !actions.sendCode) { actions.startEmail(email.trim()); return; }
+    if (!actions) { setTimeout(() => toCodeScreen(simulateSend()), 700); return; }
+    const r = await send(email.trim());
+    if (!r.ok && r.reason === "network") { setState("default"); setSendFailed(true); return; }
+    toCodeScreen(r);
   };
+
+  const verify = async (c: string) => {
+    if (!isCompleteCode(c) || check === "verifying") return;
+    setCheck("verifying"); setNotice((n) => (n === "resent" ? null : n));
+    const r = actions?.verifyCode ? await actions.verifyCode(email.trim(), c) : await new Promise<CodeVerifyResult>((res) => setTimeout(() => res(reviewVerify(c)), 900));
+    if (r.ok) { if (!actions?.verifyCode) router.push("/onboarding"); return; }
+    setCheck(r.reason);
+    if (r.reason !== "expired") setTimeout(() => codeRef.current?.focus(true), 0);
+  };
+
+  const resendNow = async () => {
+    setResending(true);
+    const r = await send(email.trim());
+    setResending(false);
+    if (r.ok) { setCode(""); setCheck("idle"); setNotice("resent"); setWait(RESEND_COOLDOWN_SECONDS); setTimeout(() => codeRef.current?.focus(), 0); return; }
+    if (r.reason === "rate-limited") { setNotice("limited"); setWait(r.retryAfter); return; }
+    setNotice("send-failed");
+  };
+  const resend = async () => {
+    if (resending || wait > 0) return;
+    await resendNow();
+  };
+  const differentEmail = () => { setPrevEmail(email.trim()); setState("default"); setCode(""); setCheck("idle"); setNotice(null); setWait(0); };
+  const codeMsg = check === "wrong" ? "That code isn’t right. Check the newest email from Corral and try again."
+    : check === "expired" ? `That code has expired. Codes last ${CODE_TTL_MINUTES} minutes.`
+    : check === "network" ? "Couldn’t check the code. Check your connection and try again."
+    : undefined;
+  const bad = check === "wrong" || check === "expired" || check === "network";
 
   return (
     <div className="s-auth c-app">
@@ -69,47 +155,64 @@ export function SignIn({ initial = "default", actions }: { initial?: SignInState
             <div className="s-auth__sent s-auth__down" role="alert">
               <span className="s-auth__icon s-auth__icon--caution"><Icon name="alert" size={18} /></span>
               <h1>Sign-in is down for a moment</h1>
-              <p>Our sign-in provider isn’t responding, so we can’t open Google or send email links right now. Your account and workspace are fine.</p>
+              <p>Our sign-in provider isn’t responding, so we can’t open Google or send sign-in codes right now. Your account and workspace are fine.</p>
               <div className="s-auth__row">
                 <Button variant="primary" size="lg" onClick={retryProvider} disabled={checking}>{checking ? <><Spinner />Checking…</> : <><Icon name="refresh" />Try again</>}</Button>
                 <a className="c-btn c-btn--lg" href={statusUrl()}>Status page</a>
               </div>
               <div className="s-auth__hr" />
               <p className="s-auth__small">Already signed in on this browser? Your session still works: <Link href="/app">open Corral</Link>.</p>
-              <p className="s-auth__small">Email links go through the same provider, so they’re paused too. Most outages clear within a few minutes.</p>
+              <p className="s-auth__small">Email codes go through the same provider, so they’re paused too. Most outages clear within a few minutes.</p>
             </div>
           ) : state === "sent" ? (
-            <div className="s-auth__sent" role="status">
+            <div className="s-auth__sent s-auth__code">
               <span className="s-auth__icon"><Icon name="mail" size={18} /></span>
               <h1>Check your email</h1>
-              <p>We sent a sign-in link to <span className="c-strong">{email}</span>. It works once and expires in 15 minutes.</p>
-              <div className="s-auth__row">
-                <a className="c-btn c-btn--lg" href="https://mail.google.com" target="_blank" rel="noreferrer"><GoogleG size={14} />Open Gmail</a>
-                <a className="c-btn c-btn--lg" href="https://outlook.office.com/mail" target="_blank" rel="noreferrer"><Icon name="mail" />Open Outlook</a>
+              <p>We sent a six-digit code to <span className="c-strong">{email}</span>. Enter it below; it expires in {CODE_TTL_MINUTES} minutes.</p>
+              {notice === "resent" && <Banner tone="success" title="New code sent">Use the code in the newest email. It expires in {CODE_TTL_MINUTES} minutes.</Banner>}
+              {notice === "limited" && <Banner tone="caution" icon="clock" title="Too many codes asked for">
+                You can ask for {RESEND_PER_MINUTE} codes a minute. The last code we sent still works, or send another in <span className="c-strong c-num">{formatCountdown(wait)}</span>.</Banner>}
+              {notice === "send-failed" && <Banner tone="error" title="Couldn’t send a new code">Check your connection, then try again. The last code we sent still works.</Banner>}
+              <form className="s-code__form" noValidate onSubmit={(e) => { e.preventDefault(); void verify(code); }}>
+                <div className="s-code__top"><label htmlFor={`${ids}-code`}>Sign-in code</label>{check === "verifying" && <span className="s-code__busy" role="status"><Spinner size={12} />Checking…</span>}</div>
+                <CodeInput ref={codeRef} id={`${ids}-code`} value={code} onChange={(v) => { setCode(v); if (check === "wrong" || check === "network") setCheck("idle"); }}
+                  onComplete={(v) => void verify(v)} invalid={bad} disabled={check === "expired"} busy={check === "verifying"}
+                  describedBy={`${ids}-code-m`} autoFocus={!actions || initial === "sent"} />
+                <span id={`${ids}-code-m`} className={cx("c-field__hint", bad && "is-error")} role={bad ? "alert" : undefined}>
+                  {bad ? <><Icon name="alert" size={12} />{codeMsg}</> : "From login@corral.app. Paste it whole, or type it."}</span>
+                {check === "expired"
+                  ? <Button variant="primary" size="lg" className="s-auth__wide" onClick={() => void resendNow()} disabled={resending}>{resending ? <><Spinner />Sending…</> : "Send a new code"}</Button>
+                  : <Button type="submit" variant="primary" size="lg" className="s-auth__wide" disabled={!isCompleteCode(code) || check === "verifying"}>{check === "verifying" ? <><Spinner />Checking code…</> : "Continue"}</Button>}
+              </form>
+              <div className="s-auth__row s-auth__row--quiet">
+                <a className="c-btn" href="https://mail.google.com" target="_blank" rel="noreferrer"><GoogleG size={14} />Open Gmail</a>
+                <a className="c-btn" href="https://outlook.office.com/mail" target="_blank" rel="noreferrer"><Icon name="mail" />Open Outlook</a>
               </div>
-              <Receipts><Receipt meta="just now">Sent from login@corral.app</Receipt><Receipt meta="single use">Link expires in 15 minutes</Receipt></Receipts>
               <div className="s-auth__hr" />
-              <p className="s-auth__small">Nothing after a minute? Check spam, or {left > 0
-                ? <span className="c-strong c-num">resend in 0:{String(left).padStart(2, "0")}</span>
-                : <button type="button" className="s-link" onClick={() => setLeft(42)}>send it again</button>}.</p>
-              <button type="button" className="s-link" onClick={() => { setState("default"); }}>Use a different email</button>
+              {check !== "expired" && <p className="s-auth__small" aria-live="polite">Nothing after a minute? Check spam, or {resending
+                ? <span className="c-strong">sending…</span>
+                : wait > 0 ? <span>send a new code in <span className="c-strong c-num">{formatCountdown(wait)}</span></span>
+                : <button type="button" className="s-link" onClick={() => void resend()}>send a new code</button>}.</p>}
+              <button type="button" className="s-link" onClick={differentEmail}>Use a different email</button>
             </div>
           ) : (
             <form onSubmit={submit} noValidate>
               <h1>Sign in to Corral</h1>
-              <p className="s-auth__lede">Use your work email. We send a link instead of asking for a password.</p>
-              {expired && <Banner tone="error" title="That link has expired">Sign-in links work once and last 15 minutes. Send yourself a new one below.</Banner>}
+              <p className="s-auth__lede">Use your work email. We email you a six-digit code instead of asking for a password.</p>
+              {expired && <Banner tone="error" title="That sign-in didn’t finish">It may have timed out or been opened twice. Start again below; it only takes a minute.</Banner>}
+              {sendFailed && <Banner tone="error" title="Couldn’t send your code">Check your connection, then try again. Nothing was sent.</Banner>}
               {cancelled && <Banner tone="info" icon="back" title="You cancelled at Google">No problem, nothing was shared with Corral. Try Google again, or use your work email instead.</Banner>}
               <Button size="lg" className="s-auth__wide" disabled={google} onClick={startGoogle}>{google ? <Spinner /> : <GoogleG />}{google ? "Opening Google…" : cancelled ? "Try Google again" : "Continue with Google"}</Button>
               <div className="s-auth__or"><span>or</span></div>
               <FormField label="Work email"
                 error={state === "invalid" ? `That doesn’t look like a full address. Try something like tomas@coldtrace.io.` : undefined}
-                help={PERSONAL.includes(domain) ? `${domain} works, but Corral learns about your company from your email domain. Use your work address if you have one.` : undefined}>
+                help={PERSONAL.includes(domain) ? `${domain} works, but Corral learns about your company from your email domain. Use your work address if you have one.`
+                  : prevEmail ? `We’ll send a new code to this address. The code sent to ${prevEmail} won’t work for it.` : undefined}>
                 <TextInput type="email" autoComplete="email" placeholder="you@company.com" value={email} icon="mail"
-                  onChange={(e) => { setEmail(e.target.value); if (state === "invalid") setState("default"); }} autoFocus={initial !== "sent"} />
+                  onChange={(e) => { setEmail(e.target.value); if (state === "invalid") setState("default"); }} autoFocus={!onCode} onFocus={prevEmail ? (e) => e.currentTarget.select() : undefined} />
               </FormField>
               <Button type="submit" variant="primary" size="lg" className="s-auth__wide" disabled={state === "sending"}>
-                {state === "sending" ? <><Spinner />Sending link…</> : expired ? "Email me a new link" : "Email me a sign-in link"}</Button>
+                {state === "sending" ? <><Spinner />Sending code…</> : "Email me a code"}</Button>
               <p className="s-auth__small">New to Corral? Signing in with a new work email creates your workspace. By continuing you agree to the <a href="#terms">Terms</a> and <a href="#privacy">Privacy Policy</a>.</p>
             </form>
           )}

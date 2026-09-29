@@ -48,11 +48,11 @@ test.describe("sign-in", () => {
     await page.goto("/sign-in");
     const email = page.getByRole("textbox", { name: "Work email" });
     await email.fill("wanjiru@kilima");
-    await page.getByRole("button", { name: "Email me a sign-in link" }).click();
+    await page.getByRole("button", { name: "Email me a code" }).click();
     await expect(email).toHaveAttribute("aria-invalid", "true");
     await expect(page).toHaveURL(`${WEB}/sign-in`);
     await email.fill("wanjiru@kilima.co.ke");
-    await page.getByRole("button", { name: "Email me a sign-in link" }).click();
+    await page.getByRole("button", { name: "Email me a code" }).click();
     await expect(page).toHaveURL(`${WEB}/app`);
   });
 

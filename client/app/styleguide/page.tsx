@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./styleguide.css";
 import Link from "next/link";
-import { AccountStatesDemo, CmdkDemo, ContrastDemo, FormDemo, OverlayDemo, SessionErrorDemo, ShellDemo, StatesDemo, TabsToastDemo } from "./M1Sections";
+import { AccountStatesDemo, CodeStatesDemo, CmdkDemo, ContrastDemo, FormDemo, OverlayDemo, SessionErrorDemo, ShellDemo, StatesDemo, TabsToastDemo } from "./M1Sections";
 import {
   Avatar, Button, ContextRail, Field, FilterBar, FitBar, Input, LEADS, Logo, MeetingCard, PersonCard, Receipt, Receipts,
   ReadingPane, ReplyCard, SegmentTable, SegmentWindow, Segmented, Tag, THREADS, ThreadList, Toast, Toggle, Mark,
@@ -160,7 +160,12 @@ export default function Styleguide() {
         <SessionErrorDemo />
       </Part>
 
-      <Part n="19" title="Things that float" tokens={["--shadow-pop", "--radius-window 14", "--color-surface-inverse"]}
+      <Part wide n="19" title="Sign-in code (Magic Auth)" tokens={["one <input> · six drawn cells 56px", "--color-border-control cells (3.24:1)", "action ring = caret", "negative-600 wrong · muted + strike expired", "cooldown 20s = 60s / 3"]}
+        notes={<p>WorkOS emails a six-digit code that lasts 10 minutes. The field is one real input (one-time-code autofill, whole-code paste, numeric keypad, one label) drawn as 3 + 3 cells, and it submits on the sixth digit. A wrong code stays put and is selected, so typing replaces it. An expired code locks the field and the primary becomes <b>Send a new code</b>.</p>}>
+        <CodeStatesDemo />
+      </Part>
+
+      <Part n="20" title="Things that float" tokens={["--shadow-pop", "--radius-window 14", "--color-surface-inverse"]}
         notes={<p>Only moments float: a booked meeting, a reply worth seeing, a toast. Faces are film-graded photos in circles, one treatment for everyone.</p>}>
         <div className="sg-float">
           <MeetingCard />
