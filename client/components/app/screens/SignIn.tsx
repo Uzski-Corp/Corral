@@ -9,6 +9,7 @@ import { Avatar, Button, FitBar, Logo, Receipt, Receipts, Tag } from "../primiti
 import { GoogleG, Icon, Mark } from "../icons";
 import { FormField, TextInput } from "../Form";
 import { Banner, Spinner } from "../States";
+import { statusUrl } from "@/lib/config";
 
 /** error = expired link · cancelled = the person backed out at Google · unavailable = the auth provider is down */
 export type SignInState = "default" | "sent" | "error" | "invalid" | "sending" | "cancelled" | "unavailable";
@@ -71,7 +72,7 @@ export function SignIn({ initial = "default", actions }: { initial?: SignInState
               <p>Our sign-in provider isn’t responding, so we can’t open Google or send email links right now. Your account and workspace are fine.</p>
               <div className="s-auth__row">
                 <Button variant="primary" size="lg" onClick={retryProvider} disabled={checking}>{checking ? <><Spinner />Checking…</> : <><Icon name="refresh" />Try again</>}</Button>
-                <a className="c-btn c-btn--lg" href="#status">Status page</a>
+                <a className="c-btn c-btn--lg" href={statusUrl()}>Status page</a>
               </div>
               <div className="s-auth__hr" />
               <p className="s-auth__small">Already signed in on this browser? Your session still works: <Link href="/app">open Corral</Link>.</p>
@@ -113,7 +114,7 @@ export function SignIn({ initial = "default", actions }: { initial?: SignInState
             </form>
           )}
         </div>
-        <footer className="s-auth__foot"><span>© 2026 Corral</span><span>Made in Nairobi</span><a href="#status">Status</a></footer>
+        <footer className="s-auth__foot"><span>© 2026 Corral</span><span>Made in Nairobi</span><a href={statusUrl()}>Status</a></footer>
       </section>
 
       <aside className="s-auth__art" aria-label="Corral">

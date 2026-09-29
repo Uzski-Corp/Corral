@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { API, testConfig } from "@/test/msw";
 import { router } from "@/test/router";
 import { authApiFor } from "@/lib/api";
+import { resetConfigCache } from "@/lib/config";
 import { SignInScreen, signInActions } from "./SignInScreen";
 
 const LOGIN = `${API}/api/v1/auth/login`;
@@ -77,10 +78,20 @@ describe("SignInScreen (live)", () => {
     const go = mount("unavailable");
     expect(screen.getByRole("heading", { name: "Sign-in is down for a moment" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "open Corral" })).toHaveAttribute("href", "/app");
-    expect(screen.getByRole("link", { name: "Status page" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Status page" })).toHaveAttribute("href", "#status");
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(go).toHaveBeenCalledWith(LOGIN);
     expect(screen.getByRole("button", { name: /Checking/ })).toBeDisabled();
+  });
+
+  it("points every status link at NEXT_PUBLIC_STATUS_URL", () => {
+    vi.stubEnv("NEXT_PUBLIC_STATUS_URL", "https://status.corral.app");
+    resetConfigCache();
+    try {
+      mount("unavailable");
+      expect(screen.getByRole("link", { name: "Status page" })).toHaveAttribute("href", "https://status.corral.app/");
+      expect(screen.getByRole("link", { name: "Status" })).toHaveAttribute("href", "https://status.corral.app/");
+    } finally { vi.unstubAllEnvs(); resetConfigCache(); }
   });
 
   it("resets its spinners when the page comes back from the bfcache", async () => {

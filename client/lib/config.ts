@@ -28,6 +28,7 @@ export type EnvInput = {
   NEXT_PUBLIC_DESIGN_REVIEW?: string;
   NEXT_PUBLIC_API_TIMEOUT_MS?: string;
   SESSION_COOKIE_NAME?: string;
+  NEXT_PUBLIC_STATUS_URL?: string;
 };
 
 export class ConfigError extends Error {
@@ -37,6 +38,8 @@ export class ConfigError extends Error {
 export const DEV_API_URL = "http://localhost:8000";
 export const DEFAULT_SESSION_COOKIE = "wos_session";
 export const DEFAULT_API_TIMEOUT_MS = 10_000;
+/** Where "Status" / "Status page" links go until NEXT_PUBLIC_STATUS_URL points at the real page. */
+export const DEFAULT_STATUS_URL = "#status";
 
 const COOKIE_NAME = /^[A-Za-z0-9_.-]+$/;
 
@@ -70,6 +73,18 @@ function parseTimeout(raw: string | undefined): Result<number, ConfigError> {
   return ok(n);
 }
 
+/** An absolute http(s) URL, a same-site path ("/status") or a fragment ("#status"). */
+export function parseStatusUrl(raw: string | undefined): Result<string, ConfigError> {
+  const value = raw?.trim();
+  if (!value) return ok(DEFAULT_STATUS_URL);
+  if (value.startsWith("#") || (value.startsWith("/") && !value.startsWith("//"))) return ok(value);
+  try {
+    const url = new URL(value);
+    if (url.protocol === "http:" || url.protocol === "https:") return ok(url.href);
+  } catch { /* reported below */ }
+  return err(new ConfigError(`NEXT_PUBLIC_STATUS_URL must be an http(s) URL, a /path or a #fragment, got ${JSON.stringify(value)}`));
+}
+
 export function parseConfig(env: EnvInput): Result<ClientConfig, ConfigError> {
   const production = env.NODE_ENV === "production";
   const review = env.NEXT_PUBLIC_DESIGN_REVIEW === "1" || env.NEXT_PUBLIC_DESIGN_REVIEW === "true";
@@ -93,7 +108,23 @@ export function readEnv(): EnvInput {
     NEXT_PUBLIC_DESIGN_REVIEW: process.env.NEXT_PUBLIC_DESIGN_REVIEW,
     NEXT_PUBLIC_API_TIMEOUT_MS: process.env.NEXT_PUBLIC_API_TIMEOUT_MS,
     SESSION_COOKIE_NAME: process.env.SESSION_COOKIE_NAME,
+    NEXT_PUBLIC_STATUS_URL: process.env.NEXT_PUBLIC_STATUS_URL,
   };
+}
+
+let status: string | undefined;
+
+/**
+ * The status page URL (NEXT_PUBLIC_STATUS_URL, else "#status"): the one value every status link
+ * uses. Separate from getConfig() because the design components that show it also render on the
+ * styleguide, which has no API. Throws ConfigError on a malformed value.
+ */
+export function statusUrl(): string {
+  if (status !== undefined) return status;
+  const r = parseStatusUrl(readEnv().NEXT_PUBLIC_STATUS_URL);
+  if (!r.ok) throw r.error;
+  status = r.value;
+  return status;
 }
 
 let cached: ClientConfig | undefined;
@@ -123,4 +154,5 @@ export function getConfig(): ClientConfig {
 export function resetConfigCache(): void {
   cached = undefined;
   warned = false;
+  status = undefined;
 }

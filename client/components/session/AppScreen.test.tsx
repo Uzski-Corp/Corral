@@ -108,6 +108,7 @@ describe("AppScreen", () => {
   it("previews the design-review states", async () => {
     const { unmount } = render(<AppScreen preview="api-down" hotkeys={false} />);
     expect(screen.getByRole("heading", { name: "Corral can’t reach its servers" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Status page" })).toHaveAttribute("href", "#status");
     unmount();
     render(<AppScreen preview="no-avatar" hotkeys={false} />);
     expect(account().querySelector(".c-mono-av")).toHaveTextContent("AO");

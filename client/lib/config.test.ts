@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_API_TIMEOUT_MS, DEV_API_URL, getConfig, parseConfig, readEnv, resetConfigCache, type EnvInput } from "./config";
+import { DEFAULT_API_TIMEOUT_MS, DEFAULT_STATUS_URL, DEV_API_URL, getConfig, parseConfig, parseStatusUrl, readEnv, resetConfigCache, statusUrl, type EnvInput } from "./config";
 
 const parse = (env: EnvInput) => parseConfig(env);
 
@@ -47,6 +47,49 @@ describe("parseConfig", () => {
     expect(parse({ NEXT_PUBLIC_API_TIMEOUT_MS: " " })).toMatchObject({ value: { apiTimeoutMs: DEFAULT_API_TIMEOUT_MS } });
     for (const v of ["50", "abc", "1.5", "999999"]) expect(parse({ NEXT_PUBLIC_API_TIMEOUT_MS: v }).ok).toBe(false);
     expect(parse({ NEXT_PUBLIC_DESIGN_REVIEW: "1", NEXT_PUBLIC_API_TIMEOUT_MS: "x" }).ok).toBe(false);
+  });
+});
+
+describe("parseStatusUrl", () => {
+  it.each([[undefined], [""], ["  "]])("falls back to #status for %j", (raw) => {
+    expect(parseStatusUrl(raw)).toEqual({ ok: true, value: DEFAULT_STATUS_URL });
+    expect(DEFAULT_STATUS_URL).toBe("#status");
+  });
+
+  it.each([
+    [" https://status.corral.app ", "https://status.corral.app/"],
+    ["http://localhost:4000/s", "http://localhost:4000/s"],
+    ["/status", "/status"],
+    ["#uptime", "#uptime"],
+  ])("accepts %j", (raw, value) => {
+    expect(parseStatusUrl(raw)).toEqual({ ok: true, value });
+  });
+
+  it.each(["javascript:alert(1)", "//evil.test", "status.corral.app", "mailto:ops@corral.app"])("rejects %j", (raw) => {
+    const r = parseStatusUrl(raw);
+    expect(!r.ok && r.error.message).toMatch(/NEXT_PUBLIC_STATUS_URL/);
+  });
+});
+
+describe("statusUrl", () => {
+  afterEach(() => { vi.unstubAllEnvs(); resetConfigCache(); });
+
+  it("reads NEXT_PUBLIC_STATUS_URL once, with the #status fallback", () => {
+    resetConfigCache();
+    vi.stubEnv("NEXT_PUBLIC_STATUS_URL", "");
+    expect(statusUrl()).toBe("#status");
+    resetConfigCache();
+    vi.stubEnv("NEXT_PUBLIC_STATUS_URL", "https://status.corral.app");
+    expect(readEnv().NEXT_PUBLIC_STATUS_URL).toBe("https://status.corral.app");
+    expect(statusUrl()).toBe("https://status.corral.app/");
+    vi.stubEnv("NEXT_PUBLIC_STATUS_URL", "https://other.test");
+    expect(statusUrl()).toBe("https://status.corral.app/");
+  });
+
+  it("throws the ConfigError on a malformed value", () => {
+    resetConfigCache();
+    vi.stubEnv("NEXT_PUBLIC_STATUS_URL", "javascript:void(0)");
+    expect(() => statusUrl()).toThrow(/NEXT_PUBLIC_STATUS_URL/);
   });
 });
 

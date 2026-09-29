@@ -22,6 +22,7 @@ Open both on `localhost` (not `127.0.0.1`) so the API's `wos_session` cookie rea
 | `NEXT_PUBLIC_DESIGN_REVIEW` | unset | `1` turns off auth and shows Bau's sample shell. Never set it on a real deploy. |
 | `NEXT_PUBLIC_API_TIMEOUT_MS` | `10000` | Per-request deadline for API calls. |
 | `SESSION_COOKIE_NAME` | `wos_session` | Must match the API's `SESSION_COOKIE_NAME`; read by `proxy.ts`. |
+| `NEXT_PUBLIC_STATUS_URL` | `#status` | Status page for every "Status" link (sign-in footer, sign-in-down screen, API-down shell). http(s) URL, `/path` or `#fragment`. Inlined at build time. |
 
 Review query params (`/sign-in?state=…`) are honoured outside production and in the review build.
 

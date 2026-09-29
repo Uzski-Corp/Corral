@@ -3,6 +3,7 @@
    The shell frame stays up so the product still feels like itself; the body says what failed,
    that nothing is lost, and offers one retry. It also retries on its own, calmly (every 30s). */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { statusUrl } from "@/lib/config";
 import { Icon } from "./icons";
 import { Button } from "./primitives";
 import { Spinner } from "./States";
@@ -16,10 +17,11 @@ export type SessionUnavailableProps = {
   checkedAt?: string;
   /** Seconds between automatic retries. 0 turns them off. */
   autoRetrySeconds?: number;
+  /** Defaults to the configured status page (NEXT_PUBLIC_STATUS_URL). */
   statusHref?: string;
 };
 
-export function SessionUnavailable({ onRetry, detail = "GET /api/v1/auth/me · 503 Service Unavailable", checkedAt, autoRetrySeconds = 30, statusHref = "#status" }: SessionUnavailableProps) {
+export function SessionUnavailable({ onRetry, detail = "GET /api/v1/auth/me · 503 Service Unavailable", checkedAt, autoRetrySeconds = 30, statusHref = statusUrl() }: SessionUnavailableProps) {
   const [busy, setBusy] = useState(false);
   const [left, setLeft] = useState(autoRetrySeconds);
   const [tries, setTries] = useState(0);
