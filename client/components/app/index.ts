@@ -18,3 +18,4 @@ export * from "./Shell";
 export * from "./AppDemo";
 export * from "./useDismiss";
 export * from "./SessionUnavailable";
+export * from "./kb";

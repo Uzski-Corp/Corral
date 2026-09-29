@@ -17,6 +17,8 @@ import { Tabs } from "./Tabs";
 import { EmptyState, SkeletonTable } from "./States";
 import { ToastProvider, useToast } from "./Toaster";
 import { SessionUnavailable, type SessionUnavailableProps } from "./SessionUnavailable";
+import { KnowledgeBase, PRODUCT } from "./kb";
+import type { KbReviewState } from "@/lib/kb/state";
 
 /** Fixed "today" for the demo so static renders are deterministic. Replace with new Date(). */
 export const DEMO_TODAY = new Date(2026, 8, 29);
@@ -144,10 +146,12 @@ export type AppDemoProps = {
   onSignOut?: () => Promise<{ ok: boolean }>;
   /** The session check failed (API down): the shell stays up and the body becomes <SessionUnavailable>. */
   sessionError?: SessionUnavailableProps;
+  /** Knowledge-base review state (M2): /app?view=knowledge&state=… */
+  kb?: KbReviewState;
 };
 export function AppDemo(p: AppDemoProps) { return <ToastProvider><Demo {...p} /></ToastProvider>; }
 
-function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, drawer = false, dialog = false, frame = "viewport", hotkeys = true, className, account, onSignOut, sessionError }: AppDemoProps) {
+function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, drawer = false, dialog = false, frame = "viewport", hotkeys = true, className, account, onSignOut, sessionError, kb }: AppDemoProps) {
   const router = useRouter();
   const toast = useToast();
   const signOut = useCallback(() => {
@@ -166,6 +170,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
   const [pane, setPane] = useState<"list" | "read">("list");
   const [selected, setSelected] = useState(() => new Set(["kilima", "pwani", "savanna"]));
   const [enroll, setEnroll] = useState(dialog);
+  const [kbAdd, setKbAdd] = useState(kb === "upload" || kb === "upload-errors");
 
   const toggle = (id: string) => setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const go = useCallback((v: ViewId) => { setView(v); setSegment(v === "segments" ? SAVED_SEGMENTS[0][0] : undefined); }, []);
@@ -200,7 +205,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
     const k = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPalette((o) => !o); return; }
       const t = e.target as HTMLElement;
-      if (palette || enroll || t.closest("input, textarea, [contenteditable], [role=dialog], [role=menu], [role=listbox]:not(.c-threads)")) return;
+      if (palette || enroll || kbAdd || t.closest("input, textarea, [contenteditable], [role=dialog], [role=menu], [role=listbox]:not(.c-threads)")) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const key = e.key.toLowerCase();
       if (Date.now() - gAt.current < 900) {
@@ -217,11 +222,12 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
     };
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);
-  }, [hotkeys, palette, enroll, view, tab, threads, active, go, archive]);
+  }, [hotkeys, palette, enroll, kbAdd, view, tab, threads, active, go, archive]);
 
   const label = APP_NAV.find((n) => n.id === view)!.label;
   const ws = typeof account === "object" ? account.workspace : account === undefined ? "ColdTrace" : "Corral";
   const crumbs = view === "unibox" ? [ws, "Unibox", TABS.find((x) => x.id === tab)!.label]
+    : view === "knowledge" ? [ws, "Knowledge base", PRODUCT.name]
     : segment ? [ws, "Segments", segment] : [ws, label];
   const table = view === "companies" || view === "segments";
   const n = selected.size;
@@ -230,6 +236,11 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
         trigger={(tp) => <button type="button" className="c-btn c-btn--quiet" {...tp}><Icon name="filter" />All products<Icon name="down" size={12} /></button>} />
       <Tooltip label="Archive thread" kbd="E" side="bottom"><button type="button" className="c-iconbtn" aria-label="Archive thread" onClick={() => archive(active)}><Icon name="archive" /></button></Tooltip>
       <Button kbd="C" onClick={() => toast({ icon: "mail", children: "Compose", meta: "sample action" })}>Compose</Button>
+    </>
+    : view === "knowledge" ? <>
+      <DropdownMenu align="end" width={240} label="Product" items={[{ heading: "Knowledge for" }, { label: "ColdTrace Sensors", checked: true, meta: "12 sources" }, { label: "ColdTrace Gateway", meta: "4 sources", onSelect: () => toast({ icon: "book", children: "ColdTrace Gateway", meta: "sample action" }) }]}
+        trigger={(tp) => <button type="button" className="c-btn c-btn--quiet k-prodbtn" {...tp}><Icon name="box" />ColdTrace Sensors<Icon name="down" size={12} /></button>} />
+      <Button variant="primary" onClick={() => setKbAdd(true)}><Icon name="plus" />Add sources</Button>
     </>
     : table ? <><Button>Export</Button><Button variant="primary" disabled={n === 0} onClick={() => setEnroll(true)}>{n ? `Enroll ${n} in sequence` : "Select to enroll"}</Button></>
     : null;
@@ -242,7 +253,8 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
         {view === "unibox" && <UniboxView threads={threads} active={active} setActive={setActive} tab={tab} setTab={setTab} pane={pane} setPane={setPane} />}
         {table && <CompaniesView selected={selected} toggle={toggle} segment={segment} />}
         {view === "contacts" && <ContactsView />}
-        {!table && view !== "unibox" && view !== "contacts" && <PendingView id={view} onSearch={() => setPalette(true)} />}
+        {view === "knowledge" && <KnowledgeBase state={kb} addOpen={kbAdd} onAddOpenChange={setKbAdd} contained={frame === "contained"} />}
+        {!table && view !== "unibox" && view !== "contacts" && view !== "knowledge" && <PendingView id={view} onSearch={() => setPalette(true)} />}
         </>}
       </AppShell>
       {palette && <CommandPalette open onClose={() => setPalette(false)} {...cmds} />}

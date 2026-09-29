@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./styleguide.css";
 import Link from "next/link";
+import { EditorDemo, KbShellDemo, SourceDetailDemo, SourceListDemo, UploadDemo } from "./M2Sections";
 import { AccountStatesDemo, CodeStatesDemo, CmdkDemo, ContrastDemo, FormDemo, OverlayDemo, SessionErrorDemo, ShellDemo, StatesDemo, TabsToastDemo } from "./M1Sections";
 import {
   Avatar, Button, ContextRail, Field, FilterBar, FitBar, Input, LEADS, Logo, MeetingCard, PersonCard, Receipt, Receipts,
@@ -165,7 +166,32 @@ export default function Styleguide() {
         <CodeStatesDemo />
       </Part>
 
-      <Part n="20" title="Things that float" tokens={["--shadow-pop", "--radius-window 14", "--color-surface-inverse"]}
+      <Part wide n="20" title="Knowledge base · source list" tokens={["k-srcrow 60px two-line rows", "k-tile #F7F6F2 paper, mono 8.5px", "status: quiet unless it needs you", "k-bar 3px --color-action"]}
+        notes={<p>A ledger of what Corral has read for one product. Exceptions sort to the top (needs you, then still reading). Ready rows stay quiet, just a passage count; only partial and failed rows get colour. Live rows show the stage in words and a 3px progress rule, not a spinner.</p>}>
+        <SourceListDemo />
+      </Part>
+
+      <Part wide n="21" title="Knowledge base · upload and progress" tokens={["dialog 600", "drop zone dashed --color-border-control", "error row #FFF8F8 + negative-600 title", "25 MB · 20 per drop · PDF DOCX MD + URLs"]}
+        notes={<p>One dialog adds files and web pages. The client checks type and size in 0ms, before a byte leaves the browser, and every failure names what happened and the one fix (Retry, Replace, or how to convert). Closing while uploads run leaves a small tray in the corner. Dropping files anywhere on the page opens the same dialog.</p>}>
+        <UploadDemo />
+      </Part>
+
+      <Part wide n="22" title="Knowledge base · source detail" tokens={["rail 380", "pipeline as receipts: Uploaded → Checked → Read → Split → Searchable", "ink check done · action ring live · caution partial · negative failed"]}
+        notes={<p>The detail shows its work: each pipeline step with the fact that proves it, which knowledge lines cite the source, and the passages retrieval actually sees. A partial read says which pages were skipped and why. A failed read says Corral is using nothing from it.</p>}>
+        <SourceDetailDemo />
+      </Part>
+
+      <Part wide n="23" title="Knowledge base · the knowledge page" tokens={["doc column 604 + sidenotes 220", "32/38 title · 15/24 body", "section numbers mono 01–07", "caution-50 attention box"]}
+        notes={<p>What Corral knows reads like a document, not a form: numbered sections, 15px body, and citations as sidenotes you can click through to the source. Provenance under each line says who wrote it (drafted by Corral from N sources, or edited by you). New lines, lines whose source was removed, and conflicts between sources are gathered at the top and resolved in place.</p>}>
+        <EditorDemo />
+      </Part>
+
+      <Part wide n="24" title="Knowledge base · in the shell, every state" tokens={["/app?view=knowledge", "?state= review states (outside production)", "top bar: product switcher + Add sources"]}
+        notes={<p>Two tabs, Knowledge and Sources. The top bar carries the product switcher and the one primary action, <b>Add sources</b>. At 390 the index hides, sidenotes drop under each line, rows stack, and the detail takes the full screen with a back row.</p>}>
+        <KbShellDemo />
+      </Part>
+
+      <Part n="25" title="Things that float" tokens={["--shadow-pop", "--radius-window 14", "--color-surface-inverse"]}
         notes={<p>Only moments float: a booked meeting, a reply worth seeing, a toast. Faces are film-graded photos in circles, one treatment for everyone.</p>}>
         <div className="sg-float">
           <MeetingCard />

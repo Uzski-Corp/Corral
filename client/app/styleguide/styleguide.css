@@ -165,3 +165,23 @@
 .sg-codes__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px 32px; }
 .sg-code { display: flex; flex-direction: column; gap: 10px; max-width: 360px; }
 @media (max-width: 900px) { .sg-codes__grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* M2 knowledge base */
+.sg-kb { display: flex; flex-direction: column; gap: 24px; max-width: 1060px; }
+.sg-kb__win { border-radius: var(--radius-card); overflow: hidden; box-shadow: 0 0 0 1px var(--color-border); background: var(--color-canvas); container: shell / inline-size; }
+.sg-kb__row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.sg-kb__row--top { align-items: start; }
+.sg-kb__tiles { display: flex; align-items: center; gap: 10px; }
+.sg-kb__states { display: flex; flex-direction: column; gap: 12px; }
+.sg-kb__dialog { position: relative; width: 632px; max-width: 100%; border-radius: var(--radius-card); background: var(--color-surface-sunken); overflow: hidden; }
+.sg-kb__dialog .c-scrim--inline { position: relative; inset: auto; padding: 16px; background: transparent; }
+.sg-kb__dialog .c-dialog { max-height: none; }
+.sg-kb__drops { display: flex; flex-direction: column; gap: 12px; }
+.sg-kb__tray { position: relative; height: 230px; border-radius: var(--radius-card); background: var(--color-surface-sunken); }
+.sg-kb__rows { list-style: none; margin: 0; padding: 0; }
+.sg-kb__details { display: grid; grid-template-columns: repeat(2, 380px); gap: 24px; }
+.sg-kb__detail { height: 100%; border-radius: var(--radius-card); background: var(--color-canvas); box-shadow: 0 0 0 1px var(--color-border); }
+.sg-kb__doc { max-height: 900px; overflow-y: auto; border-radius: var(--radius-card); background: var(--color-canvas); box-shadow: 0 0 0 1px var(--color-border); container: shell / inline-size; max-width: 1060px; }
+.sg-kb__row--stack { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 900px) { .sg-kb__details { grid-template-columns: minmax(0, 1fr); } .sg-kb__row { grid-template-columns: minmax(0, 1fr); } }
+.sg-shell--kb { width: 100%; max-width: 1180px; }

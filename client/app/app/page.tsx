@@ -3,6 +3,7 @@ import type { ViewId } from "@/components/app";
 import { AppScreen } from "@/components/session/AppScreen";
 import { appReviewState } from "@/lib/auth/appState";
 import { getConfig } from "@/lib/config";
+import { kbReviewState } from "@/lib/kb/state";
 
 export const metadata: Metadata = { title: "Corral · Unibox" };
 const VIEWS: ViewId[] = ["unibox", "companies", "contacts", "segments", "sequences", "products", "knowledge", "settings"];
@@ -11,11 +12,15 @@ const VIEWS: ViewId[] = ["unibox", "companies", "contacts", "segments", "sequenc
  * /app — the M1 shell with the Unibox as home.
  * Deep links (for review and screenshots): ?cmdk=1 opens ⌘K · ?view=companies · ?collapsed=1 · ?nav=1 (mobile drawer) · ?dialog=enroll
  * Review states (outside production): ?state=api-down | account-loading | no-avatar | signout-failed
+ * Knowledge base (M2): ?view=knowledge&state=empty | drafting | loading | error | sources | source | partial | failed |
+ *   upload | upload-errors | dragging | tray | editing | save-error | conflict  (see lib/kb/state.ts)
  */
 export default async function AppPage({ searchParams }: PageProps<"/app">) {
   const q = await searchParams;
   const one = (k: string) => (Array.isArray(q[k]) ? q[k][0] : q[k]);
   const view = VIEWS.find((v) => v === one("view")) ?? "unibox";
-  const preview = appReviewState(one("state"), getConfig().reviewStates);
-  return <AppScreen key={preview ?? "live"} preview={preview} initialView={view} cmdk={one("cmdk") === "1"} collapsed={one("collapsed") === "1"} drawer={one("nav") === "1"} dialog={one("dialog") === "enroll"} />;
+  const { reviewStates } = getConfig();
+  const preview = appReviewState(one("state"), reviewStates);
+  const kb = kbReviewState(view, one("state"), reviewStates);
+  return <AppScreen key={`${preview ?? "live"}-${kb ?? ""}`} preview={preview} kb={kb} initialView={view} cmdk={one("cmdk") === "1"} collapsed={one("collapsed") === "1"} drawer={one("nav") === "1"} dialog={one("dialog") === "enroll"} />;
 }

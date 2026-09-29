@@ -14,8 +14,9 @@ cd client && pnpm install && pnpm dev     # pnpm 12 (see packageManager)
 |---|---|---|
 | `/app` | Shell + Unibox home (live: views, ⌘K, J/K/E, enroll dialog, toasts) | `?cmdk=1` palette open · `?view=companies`, `contacts`, `segments`, … · `?collapsed=1` · `?nav=1` (mobile drawer) · `?dialog=enroll` |
 | `/sign-in` | Email six-digit code (WorkOS Magic Auth) + Google | `?state=sent` (code entry) · `code-verifying` · `code-wrong` · `code-expired` · `code-resent` · `resend-limited` · `change-email` · `error` (sign-in didn't finish) · `invalid` · `cancelled` · `unavailable` (see §9) |
+| `/app?view=knowledge` | Knowledge base for one product (live: upload and reading simulators, edit, remove with Undo) | `&state=empty` · `drafting` · `loading` · `error` · `sources` · `source` · `partial` · `failed` · `upload` · `upload-errors` · `dragging` · `tray` · `editing` · `save-error` · `conflict` (see §10) |
 | `/onboarding` | 5-step workspace setup with progress and skip | `?step=1…6` (6 = done) · `?skipped=3,4,5` · `?crawl=done` · `?mailbox=1` |
-| `/styleguide` | Every component, live, where it is used (sections 01–15) | — |
+| `/styleguide` | Every component, live, where it is used (sections 01–25; knowledge base is 20–24) | — |
 
 Keyboard in `/app`: ⌘K / Ctrl+K palette · `[` collapse sidebar · `G` then `I C P S Q R K ,` to jump · `J`/`K` next/previous thread · `E` archive (with Undo toast) · Esc closes the top layer.
 
@@ -345,3 +346,75 @@ verifyCode?: (email: string, code: string) => Promise<CodeVerifyResult>; // { ok
 2. Does sending a new code invalidate the previous one? The copy says "use the code in the newest email", which is safe either way. If old codes stay valid, the limited banner's "the last code we sent still works" is still true.
 3. The sender address in the hint is `login@corral.app`. Confirm it matches the WorkOS email template.
 
+## 10. Knowledge base (M2, ENG-52 → build ENG-79, backend ENG-65/66)
+
+One knowledge base per product. Users drop in files and web pages; Corral reads them, splits them into passages it can search, and drafts **one editable page** of what it knows, with every line cited back to a source. Code: `components/app/kb/` (CSS `kb.css`, `k-` prefix, container queries on the shell), rules in `lib/kb/upload.ts` and `lib/kb/state.ts`. Styleguide §20–24.
+
+### Routes and states (`/app?view=knowledge&state=…` outside production)
+| `state=` | Tab | What shows |
+|---|---|---|
+| (none) | Knowledge | Live. The drafted page; two sources still reading (they tick to ready); "Reading 2 sources" in the tab bar. |
+| `empty` | Knowledge | First run. "Teach Corral what you sell", the full drop zone + web page adder, and three "good first sources". The page **is** the drop zone. |
+| `drafting` | Knowledge | First source is being read: "Corral drafts this page once your first source is read", naming the file being read. |
+| `loading` | Knowledge | Skeleton at real sizes (index, title, sections). No live indicator. |
+| `error` | Knowledge | "Couldn't load the knowledge base". "Your sources and edits are safe; this is a connection problem. Corral keeps using the last saved version in emails meanwhile." **Try again**. |
+| `sources` | Sources | The ledger: needs-you rows first, then reading, then ready. Filters All / Files / Web / Needs you. |
+| `source` | Sources | A ready source in the detail rail. |
+| `partial` | Sources | Gateway spec sheet: 31 of 38 pages read, pages 12–18 are scans. |
+| `failed` | Sources | Calibration certificate: password-protected, Corral uses nothing from it. |
+| `upload` | Knowledge | Add sources dialog mid-upload (two active, queued, done). |
+| `upload-errors` | Knowledge | Every failure at once: stopped, unsupported (.key), too large, password, duplicate, plus one added. |
+| `dragging` | Knowledge | Files held over the page: full-window drop target. |
+| `tray` | Knowledge | Dialog closed while uploading: the tray in the bottom corner. |
+| `editing` | Knowledge | A Proof line open for editing. |
+| `save-error` | Knowledge | The same edit with "Couldn't save this line. Your edit is still here. Corral keeps using the previous version until it saves." and **Try again**. |
+| `conflict` | Knowledge | Pricing: two sources disagree ($35 vs $39); **Use this** on either. |
+
+Review states are frozen (no tickers), so screenshots are stable. `kbReviewState(view, state, reviewStates)` only honours them when `view === "knowledge"`, with the same `designReview` gate as every other `?state=`.
+
+### Decisions
+1. **Ready is quiet; colour is for exceptions.** A ready row shows only its passage count. Only partial (caution) and failed (negative) rows get colour, and they sort to the top. Reading rows show the stage in words plus a 3px bar, not a spinner.
+2. **Neutral file tiles.** PDF, DOCX and MD share one paper tile with a mono label; web pages get a globe. No red PDF/blue Word icons competing with the status column.
+3. **The knowledge is a document, not a form.** Numbered sections, 15px body, citations as sidenotes with the page or path (click → that source in the detail rail). At 390 the sidenotes drop under each line.
+4. **Your edits win.** Every line says who wrote it ("Drafted by Corral from 2 sources" / "Edited by you"). Re-reading a source never overwrites a line you edited; if a source now disagrees, it becomes a conflict instead.
+5. **Every drafted line is cited; an uncited line is yours.** Corral never drafts a line without a source. A line with no citation is labelled "Your claim · no source" (Never say rules: "Your rule"), and the editor says so while you type.
+6. **Three kinds of "needs you", resolved in place:** *review* (new line Corral isn't sure about: Looks right / Remove), *stale* (its source was removed: Keep as my claim / Cite another), *conflict* (sources disagree: both shown with dates, newest marked, Use this). They're gathered in one box at the top and counted in the index. Corral doesn't use a flagged line in emails until it's resolved.
+7. **Removing a source is undoable, and honest.** The confirm says how many lines cite it; lines that relied only on it are marked stale (not deleted), and the toast offers Undo.
+8. **One dialog for files and web pages.** "This page" or "Whole section" (crawl the path). Client-side checks (type, size, count, URL) happen before upload and name the fix. The drop zone works anywhere on the page.
+9. **The pipeline is shown as receipts.** The detail lists Uploaded → Checked → Read → Split → Searchable, each with the fact that proves it (size, "no macros", pages read, passage count). A partial read names the skipped pages and why.
+10. **The top bar carries the product switcher and one primary: Add sources.**
+
+### Component APIs (`import { … } from "@/components/app"`)
+```ts
+<KnowledgeBase state?: KbReviewState addOpen onAddOpenChange contained? />         // host: tabs, list+detail, dialogs, tray, toasts
+<SourceList sources filter onFilter selected? onOpen onAction?(id, "reread"|"replace"|"remove") onAdd? />
+<SourceDetail src knowledge? onBack? onAction? onJump?(itemId) />                   // pipelineSteps(src) gives the receipts
+<KnowledgeEditor sections onChange sources initialEditing? failFirstSave? initialFocus? onOpenSource? onShowSources? />
+<UploadDialog open onClose q product existing?: string[] inline? onReplace? />      // q = useUploadQueue({ initial?, live?, onDone? })
+<UploadTray q onOpen inline? />   <DropZone onFiles compact? />   <UrlAdder onAdd(host, path, whole) />   <QueueRow it onRetry? onDismiss? onReplace? />
+<FileTile kind size?: 20|28|36 label? />   <SourceState src compact? />   <Progress value? label tone? />   <CiteChip cite sources onOpen? onRemove? />
+```
+Shapes (`components/app/kb/data.ts`) are the starting contract: `Source { id, name, kind: "pdf"|"docx"|"md"|"url", host?, meta, passages?, cited, by, added, updated, status }`, `SourceStatus = ready | processing{stage, pct} | partial{read, total, skipped, note} | failed{failure, at}`, `KSection { id, title, hint, add, items: KItem[] }`, `KItem { id, q?, body, cites: {src, loc?}[], by: "corral"|"you", when, flag? }`, `KFlag = review{note} | stale{removed, when} | conflict{options[]}`.
+
+### What Krak wires to ENG-65/66
+- **Limits and types** from `lib/kb/upload.ts`: `MAX_FILE_BYTES` (25 MB), `MAX_FILES_PER_DROP` (20), `ACCEPTED` / `ACCEPT_ATTR` (PDF, DOCX, Markdown). `checkFile` returns the exact copy, including the convert-it fix for .key/.pages/.pptx/.doc/.xlsx/.csv/.zip/images. `checkUrl` adds https:// and rejects localhost/private addresses; the server must re-check (SSRF).
+- **Progress events per stage**: `upload` (bytes %), `scan`, `parse` (pages read of total), `chunk`, `embed`. Map each to `SourceStatus.processing{stage, pct}`; `stageLabel(stage, kind)` gives the words (web pages say Fetching / Reading pages). `overallPercent` weights stages equally for the tray.
+- **Failure codes** → `FAILURE` keys: `interrupted`, `encrypted`, `no-text`, `rejected` (macros/embedded files), `duplicate` (same content hash in this KB), `unreachable`, `blocked` (robots/403). Each carries its title, fix and the one action. Partial reads return `{read, total, skipped}`.
+- **429 / Retry-After** on upload or re-read: keep the item queued and retry after the header (reuse `retryAfterSeconds` from `lib/auth/code.ts`).
+- **Web pages re-read weekly** ("re-read weekly" in meta); a changed page that contradicts an edited line creates a `conflict`, never an overwrite.
+- **Remove** = soft delete: passages leave retrieval now; items whose only citations were this source get `flag: stale`. Undo (in the toast) restores both.
+- **Edits**: optimistic; a failed save keeps the text open with the save-error banner. ⌘↵ saves, Esc cancels.
+- Two uploads at a time per tab, as the simulator does.
+
+### Tests (added)
+`lib/kb/upload.test.ts`, `lib/kb/state.test.ts` (under the 90% coverage gate) and `components/app/kb/kb.test.tsx` (27 component tests: list sorting/filters, detail receipts for ready/partial/failed, upload validation and every failure, URL checks, tray, editor edit/save/save-error/Esc, review/stale/conflict resolution, remove + Undo), plus a `/app?view=knowledge&state=empty` case in `test/pages.test.tsx`. ENG-79 still owns e2e upload, a11y and visual baselines.
+
+### Open questions
+1. Are 25 MB per file and 20 files per drop the real limits? Any per-KB cap (pages, passages)?
+2. Supported types: PDF, DOCX, Markdown and URLs only? Plain .txt, .pptx and Google Docs links are the next most likely asks.
+3. OCR for scanned pages: the design treats them as skipped (partial). If ENG-66 adds OCR, partial becomes rarer but the state stays.
+4. Does the crawler support "Whole section" (a path prefix), and with what page cap? The design says "~40 pages".
+5. Duplicate detection: by content hash or file name? The copy says "Already in this knowledge base".
+6. A retrieval test ("Ask what Corral would say") is designed out of M2 and deferred.
+7. Is the product switcher one KB per product (as designed), or one KB per workspace with product tags?
+8. Where does the pricing switch ("Corral may quote prices in emails") persist: per product KB or per sequence?

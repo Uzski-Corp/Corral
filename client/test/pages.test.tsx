@@ -46,6 +46,14 @@ describe("/onboarding and /app pages keep their review params", () => {
     expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText("Companies")).toBeInTheDocument();
   });
 
+  it("opens a knowledge base review state", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DESIGN_REVIEW", "1");
+    resetConfigCache();
+    const page = await AppPage(params({ view: ["knowledge"], state: "empty" }) as never);
+    render(AppLayout({ children: page, params: Promise.resolve({}) } as never));
+    expect(await screen.findByRole("heading", { name: "Teach Corral what you sell" })).toBeInTheDocument();
+  });
+
   it("wraps onboarding in the session layout", async () => {
     vi.stubEnv("NEXT_PUBLIC_DESIGN_REVIEW", "1");
     resetConfigCache();
