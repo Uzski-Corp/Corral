@@ -1,0 +1,8 @@
+# CI-only tooling for .github/workflows/server-ci.yml (installed on top of
+# requirements.txt + requirements-dev.txt). Pins match requirements-dev.txt where shared.
+pytest-cov==7.1.0
+mypy==2.3.1
+testcontainers[postgres]==4.15.0  # no [redis] extra: needs redis>=7, arq pins <6
+diff-cover==10.6.0
+pip-audit==2.10.1
+bandit==1.9.4
