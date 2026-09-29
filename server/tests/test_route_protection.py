@@ -11,7 +11,16 @@ from tests.conftest import make_settings
 from tests.test_auth_routes import sign_in
 from tests.workos_fakes import WorkOSHarness
 
-ALWAYS_PUBLIC = {"/health", "/docs", "/redoc", "/openapi.json", "/docs/oauth2-redirect"}
+ALWAYS_PUBLIC = {
+    "/health",
+    "/healthz",
+    "/readyz",
+    "/metrics",
+    "/docs",
+    "/redoc",
+    "/openapi.json",
+    "/docs/oauth2-redirect",
+}
 
 
 def protected_routes() -> list[tuple[str, str]]:

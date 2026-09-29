@@ -5,14 +5,27 @@ JSON in deployed environments, pretty console output locally. Context variables 
 """
 
 import logging
+import sys
 
 import structlog
 
 
+class _LiveStderrHandler(logging.StreamHandler):  # type: ignore[type-arg]
+    """Writes to whatever ``sys.stderr`` is at emit time (robust to stream swaps)."""
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.stream = sys.stderr
+        super().emit(record)
+
+
 def configure_logging(env: str, level: str = "INFO") -> None:
     numeric_level = logging.getLevelNamesMapping().get(level.upper(), logging.INFO)
-    logging.basicConfig(level=numeric_level, format="%(message)s")
-    logging.getLogger().setLevel(numeric_level)
+    root = logging.getLogger()
+    if not any(isinstance(h, _LiveStderrHandler) for h in root.handlers):
+        handler = _LiveStderrHandler()
+        handler.setFormatter(logging.Formatter("%(levelname)s %(name)s %(message)s"))
+        root.addHandler(handler)
+    root.setLevel(numeric_level)
     renderer: structlog.typing.Processor = (
         structlog.dev.ConsoleRenderer() if env == "local" else structlog.processors.JSONRenderer()
     )
