@@ -35,14 +35,15 @@ def enforce_app_role(session: AsyncSession) -> None:
 
 
 async def apply_tenant_context(
-    session: AsyncSession, *, org_id: uuid.UUID, user_id: uuid.UUID
+    session: AsyncSession, *, org_id: uuid.UUID, user_id: uuid.UUID | None = None
 ) -> None:
+    """Pin the current transaction to ``org_id`` (``user_id`` is unset for system jobs)."""
     await session.execute(
         text(
             "SELECT set_config('app.current_org', :org, true),"
             " set_config('app.current_user_id', :user, true)"
         ),
-        {"org": str(org_id), "user": str(user_id)},
+        {"org": str(org_id), "user": str(user_id) if user_id else ""},
     )
 
 

@@ -145,6 +145,35 @@ async def db_session(db_engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
         yield session
 
 
+@pytest.fixture(scope="session")
+def redis_url() -> Iterator[str]:
+    url = os.environ.get("TEST_REDIS_URL")
+    if url:
+        yield url
+        return
+    if not docker_available():
+        pytest.skip("Redis unavailable: set TEST_REDIS_URL or start Docker")
+    from testcontainers.redis import RedisContainer
+
+    with RedisContainer("redis:7-alpine") as container:
+        host = container.get_container_host_ip()
+        yield f"redis://{host}:{container.get_exposed_port(6379)}/0"
+
+
+@pytest.fixture
+async def clean_redis(redis_url: str) -> AsyncIterator[str]:
+    """A Redis database emptied before (and after) the test."""
+    from redis.asyncio import Redis
+
+    client = Redis.from_url(redis_url)
+    await client.flushdb()
+    try:
+        yield redis_url
+    finally:
+        await client.flushdb()
+        await client.aclose()
+
+
 @pytest.fixture
 def workos(monkeypatch: pytest.MonkeyPatch) -> WorkOSHarness:
     return build_harness(monkeypatch, COOKIE_PASSWORD)
