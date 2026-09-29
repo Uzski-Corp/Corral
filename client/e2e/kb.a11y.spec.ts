@@ -1,17 +1,12 @@
-import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { audit, WIDTHS } from "./axe";
 
 /**
- * axe (WCAG 2.1 A/AA, no skipped rules) on the M2 knowledge base and its main review states
+ * axe (WCAG 2.1 A/AA, no skipped rules) on the M2 knowledge base and its main review states, at 1440 and 390
  * (HANDOFF-ENG.md §10). Runs in the "review" project: a NEXT_PUBLIC_DESIGN_REVIEW=1 server, because
  * `?state=` is off in production builds and there is no knowledge base API yet (ENG-65/66).
  * ENG-79 owns the rest (live upload, the remaining states, visual baselines).
  */
-async function audit(page: Page) {
-  const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
-  return r.violations.map((v) => `${v.id} (${v.impact}): ${v.nodes.length} node(s), e.g. ${v.nodes[0]?.target.join(" ")}`);
-}
-
 const kb = (state?: string) => `/app?view=knowledge${state ? `&state=${state}` : ""}`;
 
 const CASES: [state: string | undefined, ready: (page: Page) => Promise<void>][] = [
@@ -25,10 +20,15 @@ const CASES: [state: string | undefined, ready: (page: Page) => Promise<void>][]
   ["conflict", (p) => expect(p.getByText(/\$39 per sensor per month/).first()).toBeVisible()],
 ];
 
-for (const [state, ready] of CASES) {
-  test(`knowledge base ${state ?? "(live)"} has no axe violations`, async ({ page }) => {
-    await page.goto(kb(state));
-    await ready(page);
-    expect(await audit(page)).toEqual([]);
+for (const { name, viewport } of WIDTHS) {
+  test.describe(`at ${name}`, () => {
+    test.use({ viewport, reducedMotion: "reduce" });
+    for (const [state, ready] of CASES) {
+      test(`knowledge base ${state ?? "(live)"} has no axe violations`, async ({ page }) => {
+        await page.goto(kb(state));
+        await ready(page);
+        expect(await audit(page)).toEqual([]);
+      });
+    }
   });
 }

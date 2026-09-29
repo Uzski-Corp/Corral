@@ -3,7 +3,7 @@ import { expect, signInWithGoogle, test } from "./fixtures";
 /**
  * Visual regression against Bau's M1 screens as built (the code is the design, HANDOFF-ENG.md).
  * Baselines live in e2e/__screenshots__. They are platform-specific: regenerate with
- * `pnpm test:e2e --update-snapshots` on the CI image when that lands (ENG-89).
+ * `pnpm test:e2e:update` (scripts/update-visual-baselines.sh: the Playwright Docker image, CI=1) until CI runs e2e (ENG-89).
  *
  * SKIPPED LOCALLY: the local Chromium was reinstalled on Sep 30 and every baseline now differs by ~2%
  * of pixels, including screens nobody changed, so local runs can't tell a regression from the new
