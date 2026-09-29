@@ -18,4 +18,11 @@ describe("OnboardingScreen", () => {
     expect(document.cookie).toContain("corral_onboarded=1");
     expect(router.push).toHaveBeenCalledWith("/app");
   });
+
+  it("loads the preview's range image eagerly at high priority (it is the page's LCP)", () => {
+    const { container } = render(<OnboardingScreen initialStep={1} />);
+    const img = container.querySelector(".s-know__img");
+    expect(img).toHaveAttribute("loading", "eager");
+    expect(img).toHaveAttribute("fetchpriority", "high");
+  });
 });

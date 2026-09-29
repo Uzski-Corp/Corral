@@ -236,7 +236,7 @@ function Preview({ name, slug, tz, product, pitch, read, site, boxes, invites, s
   );
   return (
     <aside className="s-know c-card" aria-label="What Corral knows so far">
-      <div className="s-know__band"><Image src="/corral/or/range-wide.jpg" alt="" fill sizes="360px" className="s-know__img" /><span className="s-know__tile"><WorkspaceTile letter={(name[0] || "C").toUpperCase()} size={36} /></span></div>
+      <div className="s-know__band"><Image src="/corral/or/range-wide.jpg" alt="" fill sizes="360px" loading="eager" fetchPriority="high" className="s-know__img" /><span className="s-know__tile"><WorkspaceTile letter={(name[0] || "C").toUpperCase()} size={36} /></span></div>
       <div className="s-know__body">
         <div><span className="c-strong" style={{ fontSize: 16 }}>{name || "Your workspace"}</span><br /><span className="c-mono">corral.app/{slug}{tz ? ` · ${tz}` : ""}</span></div>
         {row("Product", <><span className="c-strong">{product}</span>{pitch && <span className="s-know__pitch">{pitch}</span>}</>, !!product)}
