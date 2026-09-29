@@ -31,7 +31,7 @@ describe("signInView", () => {
     expect(signInView({}, true).initial).toBe("default");
   });
 
-  it.each(["code-verifying", "code-wrong", "code-expired", "code-resent", "resend-limited", "change-email"])("reaches the code state ?state=%s in review", (s) => {
+  it.each(["code-verifying", "code-wrong", "code-expired", "code-resent", "resend-limited", "verify-limited", "code-failed", "change-email"])("reaches the code state ?state=%s in review", (s) => {
     expect(REVIEW_STATES).toContain(s);
     expect(signInView({ state: s }, true).initial).toBe(s);
     expect(signInView({ state: s }, false).initial).toBe("default");

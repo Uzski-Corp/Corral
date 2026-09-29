@@ -15,13 +15,16 @@ import { CodeInput, type CodeInputHandle } from "./CodeInput";
 
 /**
  * error = the sign-in didn't finish (callback error) · cancelled = backed out at Google · unavailable = the auth provider is down.
- * Code screen (ENG-80): sent · code-verifying · code-wrong · code-expired · code-resent · resend-limited; change-email = back on
- * the form after "Use a different email".
+ * Code screen (ENG-80): sent · code-verifying · code-wrong · code-expired · code-resent · resend-limited · verify-limited (429 on
+ * verify: locked, countdown) · code-failed (verify refused for another reason: send a new code); change-email = back on the form
+ * after "Use a different email".
  */
 export type SignInState = "default" | "sent" | "error" | "invalid" | "sending" | "cancelled" | "unavailable"
-  | "code-verifying" | "code-wrong" | "code-expired" | "code-resent" | "resend-limited" | "change-email";
-export const CODE_SCREEN_STATES: SignInState[] = ["sent", "code-verifying", "code-wrong", "code-expired", "code-resent", "resend-limited"];
-type Check = "idle" | "verifying" | "wrong" | "expired" | "network";
+  | "code-verifying" | "code-wrong" | "code-expired" | "code-resent" | "resend-limited" | "verify-limited" | "code-failed" | "change-email";
+export const CODE_SCREEN_STATES: SignInState[] = ["sent", "code-verifying", "code-wrong", "code-expired", "code-resent", "resend-limited", "verify-limited", "code-failed"];
+type Check = "idle" | "verifying" | "wrong" | "expired" | "network" | "limited" | "failed";
+/** Review sample for verify-limited: the countdown Bau's copy shows. */
+const REVIEW_VERIFY_WAIT = 42;
 type Notice = null | "resent" | "limited" | "send-failed";
 const SAMPLE = "tomas@coldtrace.io";
 const EMAIL = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
@@ -53,13 +56,19 @@ export function SignIn({ initial = "default", actions }: { initial?: SignInState
   // "Use a different email": the address the last code went to.
   const [prevEmail, setPrevEmail] = useState<string | null>(initial === "change-email" && !actions ? SAMPLE : null);
   // Code screen
-  const [code, setCode] = useState(initial === "code-verifying" ? "482913" : initial === "code-wrong" ? "482193" : initial === "code-expired" ? "639204" : "");
-  const [check, setCheck] = useState<Check>(initial === "code-verifying" ? "verifying" : initial === "code-wrong" ? "wrong" : initial === "code-expired" ? "expired" : "idle");
+  const [code, setCode] = useState(initial === "code-verifying" || initial === "code-failed" ? "482913" : initial === "code-wrong" || initial === "verify-limited" ? "482193" : initial === "code-expired" ? "639204" : "");
+  const [check, setCheck] = useState<Check>(initial === "code-verifying" ? "verifying" : initial === "code-wrong" ? "wrong" : initial === "code-expired" ? "expired"
+    : initial === "verify-limited" ? "limited" : initial === "code-failed" ? "failed" : "idle");
+  // Seconds until verifying is allowed again after a 429 on verify (Retry-After).
+  const [verifyWait, setVerifyWait] = useState(initial === "verify-limited" ? REVIEW_VERIFY_WAIT : 0);
   const [notice, setNotice] = useState<Notice>(initial === "code-resent" ? "resent" : initial === "resend-limited" ? "limited" : null);
   const [wait, setWait] = useState(initial === "resend-limited" ? 41 : initial === "sent" || initial === "code-resent" ? RESEND_COOLDOWN_SECONDS : 0);
   const [resending, setResending] = useState(false);
   const sends = useRef<number[]>([]); // review only: mirrors the 3-a-minute limit
   const codeRef = useRef<CodeInputHandle>(null);
+  // Focus the code field once the render that re-enables it has committed (a disabled input can’t take focus).
+  const [focusAsk, setFocusAsk] = useState<{ select: boolean } | null>(null);
+  useEffect(() => { if (focusAsk) codeRef.current?.focus(focusAsk.select); }, [focusAsk]);
   const router = useRouter();
   const ids = useId();
   const startGoogle = () => { setGoogle(true); if (actions) actions.startGoogle(); else setTimeout(() => router.push("/onboarding"), 700); };
@@ -84,6 +93,17 @@ export function SignIn({ initial = "default", actions }: { initial?: SignInState
     }, 1000);
     return () => clearTimeout(t);
   }, [state, wait]);
+
+  // Verify rate limit: the field stays locked with its digits until Retry-After runs out, then unlocks and takes focus.
+  useEffect(() => {
+    if (check !== "limited") return;
+    const t = setTimeout(() => {
+      if (verifyWait > 1) { setVerifyWait(verifyWait - 1); return; }
+      setVerifyWait(0); setCheck("idle");
+      setFocusAsk({ select: true });
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [check, verifyWait]);
 
   /** Review only: the same 3-a-minute limit WorkOS applies, so resend-limited can be reached by hand. */
   const simulateSend = useCallback((): CodeSendResult => {
@@ -119,19 +139,25 @@ export function SignIn({ initial = "default", actions }: { initial?: SignInState
   };
 
   const verify = async (c: string) => {
-    if (!isCompleteCode(c) || check === "verifying") return;
+    if (!isCompleteCode(c) || check === "verifying" || check === "limited") return;
     setCheck("verifying"); setNotice((n) => (n === "resent" ? null : n));
     const r = actions?.verifyCode ? await actions.verifyCode(email.trim(), c) : await new Promise<CodeVerifyResult>((res) => setTimeout(() => res(reviewVerify(c)), 900));
     if (r.ok) { if (!actions?.verifyCode) router.push("/onboarding"); return; }
+    if (r.reason === "rate-limited") { setCheck("limited"); setVerifyWait(r.retryAfter); return; }
     setCheck(r.reason);
-    if (r.reason !== "expired") setTimeout(() => codeRef.current?.focus(true), 0);
+    if (r.reason === "wrong" || r.reason === "network") setFocusAsk({ select: true });
   };
 
   const resendNow = async () => {
     setResending(true);
     const r = await send(email.trim());
     setResending(false);
-    if (r.ok) { setCode(""); setCheck("idle"); setNotice("resent"); setWait(RESEND_COOLDOWN_SECONDS); setTimeout(() => codeRef.current?.focus(), 0); return; }
+    if (r.ok) {
+      setNotice("resent"); setWait(RESEND_COOLDOWN_SECONDS);
+      // A verify lock outlives a resend: the new code can be entered once the countdown ends.
+      if (check === "limited") return;
+      setCode(""); setCheck("idle"); setFocusAsk({ select: false }); return;
+    }
     if (r.reason === "rate-limited") { setNotice("limited"); setWait(r.retryAfter); return; }
     setNotice("send-failed");
   };
@@ -143,8 +169,12 @@ export function SignIn({ initial = "default", actions }: { initial?: SignInState
   const codeMsg = check === "wrong" ? "That code isn’t right. Check the newest email from Corral and try again."
     : check === "expired" ? `That code has expired. Codes last ${CODE_TTL_MINUTES} minutes.`
     : check === "network" ? "Couldn’t check the code. Check your connection and try again."
+    : check === "failed" ? "We couldn’t sign you in with that code. Send a new code and try again."
     : undefined;
-  const bad = check === "wrong" || check === "expired" || check === "network";
+  const bad = check === "wrong" || check === "expired" || check === "network" || check === "failed";
+  const limited = check === "limited";
+  // Expired and failed codes are dead: the field locks and the primary becomes "Send a new code".
+  const dead = check === "expired" || check === "failed";
 
   return (
     <div className="s-auth c-app">
@@ -176,20 +206,22 @@ export function SignIn({ initial = "default", actions }: { initial?: SignInState
               <form className="s-code__form" noValidate onSubmit={(e) => { e.preventDefault(); void verify(code); }}>
                 <div className="s-code__top"><label htmlFor={`${ids}-code`}>Sign-in code</label>{check === "verifying" && <span className="s-code__busy" role="status"><Spinner size={12} />Checking…</span>}</div>
                 <CodeInput ref={codeRef} id={`${ids}-code`} value={code} onChange={(v) => { setCode(v); if (check === "wrong" || check === "network") setCheck("idle"); }}
-                  onComplete={(v) => void verify(v)} invalid={bad} disabled={check === "expired"} busy={check === "verifying"}
-                  describedBy={`${ids}-code-m`} autoFocus={!actions || initial === "sent"} />
-                <span id={`${ids}-code-m`} className={cx("c-field__hint", bad && "is-error")} role={bad ? "alert" : undefined}>
-                  {bad ? <><Icon name="alert" size={12} />{codeMsg}</> : "From login@corral.app. Paste it whole, or type it."}</span>
-                {check === "expired"
+                  onComplete={(v) => void verify(v)} invalid={bad} disabled={dead} busy={check === "verifying"} locked={limited}
+                  describedBy={`${ids}-code-m`} autoFocus />
+                <span id={`${ids}-code-m`} className={cx("c-field__hint", bad && "is-error", limited && "is-caution")} role={bad ? "alert" : limited ? "status" : undefined}>
+                  {bad ? <><Icon name="alert" size={12} />{codeMsg}</>
+                    : limited ? <><Icon name="clock" size={12} />Too many tries for now. You can try again in {formatCountdown(verifyWait)}.</>
+                    : "From Corral. Paste it whole, or type it."}</span>
+                {dead
                   ? <Button variant="primary" size="lg" className="s-auth__wide" onClick={() => void resendNow()} disabled={resending}>{resending ? <><Spinner />Sending…</> : "Send a new code"}</Button>
-                  : <Button type="submit" variant="primary" size="lg" className="s-auth__wide" disabled={!isCompleteCode(code) || check === "verifying"}>{check === "verifying" ? <><Spinner />Checking code…</> : "Continue"}</Button>}
+                  : <Button type="submit" variant="primary" size="lg" className="s-auth__wide" disabled={!isCompleteCode(code) || check === "verifying" || limited}>{check === "verifying" ? <><Spinner />Checking code…</> : "Continue"}</Button>}
               </form>
               <div className="s-auth__row s-auth__row--quiet">
                 <a className="c-btn" href="https://mail.google.com" target="_blank" rel="noreferrer"><GoogleG size={14} />Open Gmail</a>
                 <a className="c-btn" href="https://outlook.office.com/mail" target="_blank" rel="noreferrer"><Icon name="mail" />Open Outlook</a>
               </div>
               <div className="s-auth__hr" />
-              {check !== "expired" && <p className="s-auth__small" aria-live="polite">Nothing after a minute? Check spam, or {resending
+              {!dead && <p className="s-auth__small" aria-live="polite">Nothing after a minute? Check spam, or {resending
                 ? <span className="c-strong">sending…</span>
                 : wait > 0 ? <span>send a new code in <span className="c-strong c-num">{formatCountdown(wait)}</span></span>
                 : <button type="button" className="s-link" onClick={() => void resend()}>send a new code</button>}.</p>}

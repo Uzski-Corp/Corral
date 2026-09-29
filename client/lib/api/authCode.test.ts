@@ -66,12 +66,23 @@ describe("toCodeVerifyResult", () => {
     ["a malformed code (422)", httpErr(422), "wrong"],
     ["code_expired", httpErr(400, { code: "code_expired" }), "expired"],
     ["too_many_attempts", httpErr(400, { code: "too_many_attempts" }), "expired"],
-    ["auth_failed", httpErr(400, { code: "auth_failed" }), "network"],
-    ["a 429", httpErr(429, { code: "rate_limited", retryAfter: "5" }), "network"],
+    ["auth_failed", httpErr(400, { code: "auth_failed" }), "failed"],
+    ["an unknown 400", httpErr(400, { code: "something_new" }), "failed"],
+    ["a 401", { kind: "unauthorized", op: "x", status: 401, message: "m" }, "failed"],
+    ["a 403 (untrusted origin)", { kind: "forbidden", op: "x", status: 403, message: "m" }, "failed"],
+    ["a 500", httpErr(500), "network"],
     ["a 503", { kind: "unavailable", op: "x", status: 503, message: "m" }, "network"],
+    ["a timeout", { kind: "timeout", op: "x", timeoutMs: 1, message: "m" }, "network"],
     ["no answer", { kind: "network", op: "x", message: "m" }, "network"],
   ])("maps %s", (_name, e, reason) => {
     expect(toCodeVerifyResult(err(e))).toEqual({ ok: false, reason });
+  });
+
+  it.each<[string, ApiError, number]>([
+    ["a 429 with seconds", httpErr(429, { code: "rate_limited", retryAfter: "5" }), 5],
+    ["a 429 without Retry-After (60s)", httpErr(429, { code: "rate_limited" }), 60],
+  ])("maps %s to rate-limited", (_name, e, retryAfter) => {
+    expect(toCodeVerifyResult(err(e))).toEqual({ ok: false, reason: "rate-limited", retryAfter });
   });
 
   it("maps success", () => expect(toCodeVerifyResult(ok({ redirectTo: "http://x.test" }))).toEqual({ ok: true }));
@@ -127,6 +138,17 @@ describe("authApi.verifyCode (MSW)", () => {
     expect(toCodeVerifyResult(await api.verifyCode(EMAIL, "000000"))).toEqual({ ok: false, reason: "expired" });
     server.use(http.post(VERIFY, () => codeError("auth_unavailable", 503)));
     expect(toCodeVerifyResult(await api.verifyCode(EMAIL, GOOD_CODE))).toEqual({ ok: false, reason: "network" });
+    server.use(http.post(VERIFY, () => codeError("auth_failed")));
+    expect(toCodeVerifyResult(await api.verifyCode(EMAIL, GOOD_CODE))).toEqual({ ok: false, reason: "failed" });
+    server.use(http.post(VERIFY, () => HttpResponse.error()));
+    expect(toCodeVerifyResult(await api.verifyCode(EMAIL, GOOD_CODE))).toEqual({ ok: false, reason: "network" });
+  });
+
+  it("reads Retry-After on a verify 429, falling back to 60s", async () => {
+    server.use(http.post(VERIFY, () => rateLimited("42")));
+    expect(toCodeVerifyResult(await api.verifyCode(EMAIL, GOOD_CODE))).toEqual({ ok: false, reason: "rate-limited", retryAfter: 42 });
+    server.use(http.post(VERIFY, () => rateLimited(null)));
+    expect(toCodeVerifyResult(await api.verifyCode(EMAIL, GOOD_CODE))).toEqual({ ok: false, reason: "rate-limited", retryAfter: 60 });
   });
 
   it("treats a success without a usable redirect as no answer", async () => {

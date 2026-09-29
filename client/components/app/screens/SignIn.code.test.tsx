@@ -83,6 +83,111 @@ describe("SignIn · six-digit code (ENG-80)", () => {
     const user = await toCodeScreen(a);
     await user.type(codeBox(), "482193");
     expect(await screen.findByRole("alert")).toHaveTextContent("Couldn’t check the code");
+    expect(screen.getByRole("alert")).not.toHaveTextContent("couldn’t sign you in");
+    expect(codeBox()).toBeEnabled();
+  });
+
+  it("code-failed: locks the field and makes the primary 'Send a new code'", async () => {
+    const a = actions({ ok: false, reason: "failed" });
+    const user = await toCodeScreen(a);
+    await user.type(codeBox(), "482193");
+    expect(await screen.findByRole("alert")).toHaveTextContent("We couldn’t sign you in with that code. Send a new code and try again.");
+    expect(screen.getByRole("alert")).not.toHaveTextContent("Couldn’t check");
+    expect(codeBox()).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Continue" })).toBeNull();
+    expect(screen.queryByText(/Nothing after a minute/)).toBeNull();
+    a.verifyCode.mockResolvedValueOnce({ ok: true });
+    await user.click(screen.getByRole("button", { name: "Send a new code" }));
+    expect(await screen.findByText("New code sent")).toBeInTheDocument();
+    expect(codeBox()).toBeEnabled();
+    expect(codeBox()).toHaveValue("");
+    await waitFor(() => expect(codeBox()).toHaveFocus());
+    expect(a.sendCode).toHaveBeenCalledTimes(2);
+  });
+
+  it("verify-limited: locks the field with the digits, counts down Retry-After, then unlocks and focuses", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const a = actions({ ok: false, reason: "rate-limited", retryAfter: 3 });
+      await toCodeScreen(a);
+      fireEvent.change(codeBox(), { target: { value: "482193" } });
+      const msg = (await screen.findByText(/Too many tries for now/)).closest(".c-field__hint") as HTMLElement;
+      expect(msg).toHaveAttribute("role", "status");
+      expect(msg).toHaveTextContent("Too many tries for now. You can try again in 0:03.");
+      expect(msg).toHaveClass("is-caution");
+      expect(msg).not.toHaveClass("is-error");
+      expect(codeBox()).toHaveValue("482193");
+      expect(codeBox()).toHaveAttribute("readonly");
+      expect(codeBox()).not.toHaveAttribute("aria-invalid");
+      expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+      fireEvent.change(codeBox(), { target: { value: "48219" } });
+      expect(codeBox()).toHaveValue("482193");
+      expect(a.verifyCode).toHaveBeenCalledTimes(1);
+      await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+      expect(msg).toHaveTextContent("0:02");
+      for (let i = 0; i < 3; i++) await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+      expect(screen.queryByText(/Too many tries/)).toBeNull();
+      expect(screen.getByText("From Corral. Paste it whole, or type it.")).toBeInTheDocument();
+      expect(codeBox()).not.toHaveAttribute("readonly");
+      expect(codeBox()).toHaveFocus();
+      expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled();
+    } finally { vi.useRealTimers(); }
+  });
+
+  it("verify-limited: resend stays available under its own limit and keeps the lock", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const a = actions({ ok: false, reason: "rate-limited", retryAfter: 60 });
+      await toCodeScreen(a);
+      fireEvent.change(codeBox(), { target: { value: "482193" } });
+      await screen.findByText(/Too many tries for now/);
+      expect(screen.getByText(/send a new code in/)).toBeInTheDocument();
+      for (let i = 0; i < 21; i++) await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+      fireEvent.click(screen.getByRole("button", { name: "send a new code" }));
+      expect(await screen.findByText("New code sent")).toBeInTheDocument();
+      expect(a.sendCode).toHaveBeenCalledTimes(2);
+      expect(screen.getByText(/Too many tries for now/)).toHaveTextContent("0:3");
+      expect(codeBox()).toHaveAttribute("readonly");
+    } finally { vi.useRealTimers(); }
+  });
+
+  it("focuses the code field after the first send, after a resend and after changing the email", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const a = actions();
+      await toCodeScreen(a);
+      await waitFor(() => expect(codeBox()).toHaveFocus());
+      screen.getByRole("button", { name: "Use a different email" }).focus();
+      for (let i = 0; i < 21; i++) await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+      fireEvent.click(screen.getByRole("button", { name: "send a new code" }));
+      await screen.findByText("New code sent");
+      await waitFor(() => expect(codeBox()).toHaveFocus());
+      fireEvent.click(screen.getByRole("button", { name: "Use a different email" }));
+      const email = screen.getByRole("textbox", { name: "Work email" });
+      fireEvent.change(email, { target: { value: "otieno@kilima.co.ke" } });
+      fireEvent.click(screen.getByRole("button", { name: "Email me a code" }));
+      await screen.findByRole("heading", { name: "Check your email" });
+      await waitFor(() => expect(codeBox()).toHaveFocus());
+      expect(a.sendCode).toHaveBeenLastCalledWith("otieno@kilima.co.ke");
+    } finally { vi.useRealTimers(); }
+  });
+
+  it("keeps a wrong code selected so typing replaces it", async () => {
+    const a = actions({ ok: false, reason: "wrong" });
+    const user = await toCodeScreen(a);
+    await user.type(codeBox(), "482193");
+    await screen.findByRole("alert");
+    await waitFor(() => expect(codeBox()).toHaveFocus());
+    const box = codeBox() as HTMLInputElement;
+    expect([box.selectionStart, box.selectionEnd]).toEqual([0, 6]);
+  });
+
+  it("names Corral, not an address, in the hint, and shows no sender address anywhere", async () => {
+    await toCodeScreen(actions());
+    expect(screen.getByText("From Corral. Paste it whole, or type it.")).toBeInTheDocument();
+    const text = document.body.textContent ?? "";
+    expect(text).not.toMatch(/@corral\.app|workos/i);
+    expect(text.replace("wanjiru@kilima.co.ke", "")).not.toContain("@");
   });
 
   it("waits out the soft cooldown before resend, then resends", async () => {
@@ -125,10 +230,26 @@ describe("SignIn · six-digit code (ENG-80)", () => {
   it.each<[SignInState, RegExp]>([
     ["code-wrong", /That code isn’t right/], ["code-expired", /That code has expired/], ["code-resent", /New code sent/],
     ["resend-limited", /Too many codes asked for/], ["code-verifying", /Checking code/],
+    ["verify-limited", /Too many tries for now\. You can try again in 0:42\./], ["code-failed", /We couldn’t sign you in with that code/],
   ])("review state %s renders its screen", (state, text) => {
     render(<SignIn initial={state} />);
     expect(screen.getByRole("heading", { name: "Check your email" })).toBeInTheDocument();
     expect(document.body.textContent).toMatch(text);
+  });
+
+  it("review verify-limited: locked digits, Continue disabled, caution tone", () => {
+    render(<SignIn initial="verify-limited" />);
+    expect(codeBox()).toHaveValue("482193");
+    expect(codeBox()).toHaveAttribute("readonly");
+    expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+    expect(screen.getByRole("status")).toHaveClass("is-caution");
+  });
+
+  it("review code-failed: locked field, primary is 'Send a new code'", () => {
+    render(<SignIn initial="code-failed" />);
+    expect(codeBox()).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Send a new code" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Continue" })).toBeNull();
   });
 
   it("review flow: 123456 signs in, anything else is wrong", async () => {

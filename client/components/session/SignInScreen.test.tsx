@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 import { describe, expect, it, vi } from "vitest";
-import { API, GOOD_CODE, rateLimited, server, testConfig } from "@/test/msw";
+import { API, GOOD_CODE, codeError, rateLimited, server, testConfig } from "@/test/msw";
 import { router } from "@/test/router";
 import { authApiFor, type AuthApi } from "@/lib/api";
 import { resetConfigCache } from "@/lib/config";
@@ -104,6 +104,31 @@ describe("SignInScreen (live)", () => {
     expect(verified).toEqual({ email: "wanjiru@kilima.co.ke", code: GOOD_CODE });
     expect(document.cookie).toContain("corral_return_to=%2Fapp%3Fview%3Dcompanies");
     expect(screen.getByRole("button", { name: /Checking code/ })).toBeDisabled();
+  });
+
+  it("locks the code field with a countdown on a verify 429, and keeps the digits", async () => {
+    const user = userEvent.setup();
+    server.use(http.post(VERIFY, () => rateLimited("42")));
+    mount();
+    await user.type(screen.getByRole("textbox", { name: "Work email" }), "wanjiru@kilima.co.ke");
+    await user.click(screen.getByRole("button", { name: "Email me a code" }));
+    await user.type(await screen.findByLabelText("Sign-in code"), "482193");
+    expect(await screen.findByText(/Too many tries for now/)).toHaveTextContent(/You can try again in 0:4[12]\./);
+    expect(screen.getByLabelText("Sign-in code")).toHaveValue("482193");
+    expect(screen.getByLabelText("Sign-in code")).toHaveAttribute("readonly");
+    expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+  });
+
+  it("offers a new code when the API refuses the code (auth_failed)", async () => {
+    const user = userEvent.setup();
+    server.use(http.post(VERIFY, () => codeError("auth_failed")));
+    mount();
+    await user.type(screen.getByRole("textbox", { name: "Work email" }), "wanjiru@kilima.co.ke");
+    await user.click(screen.getByRole("button", { name: "Email me a code" }));
+    await user.type(await screen.findByLabelText("Sign-in code"), "482193");
+    expect(await screen.findByRole("alert")).toHaveTextContent("We couldn’t sign you in with that code. Send a new code and try again.");
+    expect(screen.getByLabelText("Sign-in code")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Send a new code" })).toBeInTheDocument();
   });
 
   it("shows the limited banner with the server's Retry-After on a first-send 429", async () => {

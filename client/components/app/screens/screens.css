@@ -158,7 +158,7 @@
 .s-code.is-focus .s-code__cell.is-sel { background: var(--color-action-subtle); box-shadow: inset 0 0 0 1.5px var(--color-action); }
 .s-code.is-invalid .s-code__cell { box-shadow: inset 0 0 0 1px var(--color-negative-600); }
 .s-code.is-invalid .s-code__cell.is-caret, .s-code.is-invalid.is-focus .s-code__cell.is-sel { box-shadow: inset 0 0 0 1.5px var(--color-negative-600), 0 0 0 3px rgb(190 18 60 / .14); background: var(--color-negative-50); }
-.s-code.is-busy .s-code__cell { background: var(--color-surface-muted); box-shadow: inset 0 0 0 1px var(--color-border); color: var(--color-text-secondary); }
+.s-code.is-busy .s-code__cell, .s-code.is-locked .s-code__cell { background: var(--color-surface-muted); box-shadow: inset 0 0 0 1px var(--color-border); color: var(--color-text-secondary); }
 .s-code.is-disabled .s-code__cell { background: var(--color-surface-muted); box-shadow: inset 0 0 0 1px var(--color-border); color: var(--color-text-quaternary); text-decoration: line-through; text-decoration-color: rgb(95 95 95 / .45); }
 .s-auth__row--quiet .c-btn { flex: 1; justify-content: center; }
 @media (prefers-reduced-motion: reduce) { .s-code__cell.is-caret:empty::after { animation: none; } }

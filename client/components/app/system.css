@@ -76,6 +76,8 @@ button.c-menu__item { border: 0; background: transparent; font: inherit; letter-
 .c-field__hint { line-height: var(--text-meta--line-height); }
 .c-field__hint.is-error { color: var(--color-negative-600); display: flex; align-items: flex-start; gap: 5px; }
 .c-field__hint.is-error svg { margin-top: 2px; flex-shrink: 0; }
+.c-field__hint.is-caution { color: var(--color-caution-600); display: flex; align-items: flex-start; gap: 5px; }
+.c-field__hint.is-caution svg { margin-top: 2px; flex-shrink: 0; }
 .c-input--live { cursor: text; }
 .c-input--live input, .c-input--live textarea { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; padding: 0;
   font: 400 var(--text-content)/20px var(--font-sans); letter-spacing: var(--tracking-ui); color: var(--color-text); }

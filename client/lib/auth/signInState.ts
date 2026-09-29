@@ -3,7 +3,7 @@
  *
  * Real failures arrive from the API callback as `?error=<code>`. Bau's review states arrive as
  * `?state=sent|error|invalid|cancelled|unavailable` and the code states (`code-verifying|code-wrong|code-expired|
- * code-resent|resend-limited|change-email`, ENG-80), honoured outside production (and in the review build).
+ * code-resent|resend-limited|verify-limited|code-failed|change-email`, ENG-80), honoured outside production (and in the review build).
  */
 import type { SignInState } from "@/components/app/screens/SignIn";
 
@@ -13,7 +13,7 @@ export type CallbackError = (typeof CALLBACK_ERRORS)[number];
 
 export const REVIEW_STATES: SignInState[] = [
   "sent", "error", "invalid", "cancelled", "unavailable",
-  "code-verifying", "code-wrong", "code-expired", "code-resent", "resend-limited", "change-email",
+  "code-verifying", "code-wrong", "code-expired", "code-resent", "resend-limited", "verify-limited", "code-failed", "change-email",
 ];
 
 /**

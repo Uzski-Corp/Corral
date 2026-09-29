@@ -81,6 +81,11 @@ test.describe("email code sign-in", () => {
     await expect(page).toHaveURL(`${WEB}/sign-in`);
     await expect(page.getByText(/six-digit code to/)).toContainText("wanjiru@kilima.co.ke");
     await expect(page.getByText(/send a new code in/)).toContainText(/0:(20|19)/);
+    await expect(codeField(page)).toBeFocused();
+    await expect(page.getByText("From Corral. Paste it whole, or type it.")).toBeVisible();
+    const text = await page.locator("body").innerText();
+    expect(text).not.toMatch(/@corral\.app|workos/i);
+    expect(text.replaceAll("wanjiru@kilima.co.ke", "")).not.toContain("@");
     const calls = await mockApi.calls();
     expect(calls).toContain("POST /api/v1/auth/code/send");
     expect(calls).not.toContain("GET /api/v1/auth/login");
@@ -94,7 +99,69 @@ test.describe("email code sign-in", () => {
     await expect(page.getByRole("alert").filter({ hasText: "That code isn’t right" })).toBeVisible();
     await expect(codeField(page)).toHaveAttribute("aria-invalid", "true");
     await expect(codeField(page)).toHaveValue("000000");
+    await expect(codeField(page)).toBeFocused();
+    expect(await codeField(page).evaluate((el: HTMLInputElement) => [el.selectionStart, el.selectionEnd])).toEqual([0, 6]);
     expect(await mockApi.calls()).toContain("POST /api/v1/auth/code/verify");
+  });
+
+  test("a verify 429 locks the field with its digits and counts down, then unlocks and focuses", async ({ page, mockApi }) => {
+    void mockApi;
+    await page.clock.install();
+    await page.goto("/sign-in");
+    await requestCode(page);
+    await codeField(page).fill("222222");
+    const msg = page.getByRole("status").filter({ hasText: "Too many tries for now." });
+    await expect(msg).toHaveText(/You can try again in 0:(42|41)\./);
+    await expect(msg).toHaveClass(/is-caution/);
+    await expect(codeField(page)).toHaveValue("222222");
+    await expect(codeField(page)).toHaveAttribute("readonly", "");
+    await expect(page.getByRole("button", { name: "Continue" })).toBeDisabled();
+    // Resend runs on its own limit: available after its 20s cooldown while verify is still locked.
+    await page.clock.runFor(21_000);
+    await page.getByRole("button", { name: "send a new code" }).click();
+    await expect(page.getByText("New code sent")).toBeVisible();
+    await expect(msg).toHaveText(/0:(2\d)/);
+    await expect(codeField(page)).toHaveAttribute("readonly", "");
+    // Tick a second at a time so each countdown render lands before the next timer.
+    for (let i = 0; i < 25 && (await page.getByText(/Too many tries/).count()) > 0; i++) await page.clock.runFor(1_000);
+    await expect(page.getByText(/Too many tries/)).toHaveCount(0);
+    await expect(codeField(page)).not.toHaveAttribute("readonly");
+    await expect(codeField(page)).toBeFocused();
+    await expect(page.getByRole("button", { name: "Continue" })).toBeEnabled();
+  });
+
+  test("a refused code (auth_failed) locks the field and Send a new code starts over", async ({ page, mockApi }) => {
+    await page.goto("/sign-in");
+    await requestCode(page);
+    await codeField(page).fill("333333");
+    await expect(page.getByRole("alert").filter({ hasText: "sign you in" })).toHaveText("We couldn’t sign you in with that code. Send a new code and try again.");
+    await expect(codeField(page)).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Continue" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Send a new code" }).click();
+    await expect(page.getByText("New code sent")).toBeVisible();
+    await expect(codeField(page)).toHaveValue("");
+    await expect(codeField(page)).toBeFocused();
+    expect((await mockApi.calls()).filter((c) => c === "POST /api/v1/auth/code/send")).toHaveLength(2);
+  });
+
+  test("only a 5xx says Couldn’t check the code, and the field stays open", async ({ page, mockApi }) => {
+    void mockApi;
+    await page.goto("/sign-in");
+    await requestCode(page);
+    await codeField(page).fill("555555");
+    await expect(page.getByRole("alert").filter({ hasText: "check the code" })).toContainText("Couldn’t check the code. Check your connection and try again.");
+    await expect(codeField(page)).toBeEnabled();
+    await expect(codeField(page)).toBeFocused();
+  });
+
+  test("changing the email sends to the new address and focuses the code field", async ({ page, mockApi }) => {
+    void mockApi;
+    await page.goto("/sign-in");
+    await requestCode(page);
+    await page.getByRole("button", { name: "Use a different email" }).click();
+    await requestCode(page, "otieno@kilima.co.ke");
+    await expect(page.getByText(/six-digit code to/)).toContainText("otieno@kilima.co.ke");
+    await expect(codeField(page)).toBeFocused();
   });
 
   test("an expired code locks the field and Send a new code resends", async ({ page, mockApi }) => {
@@ -114,8 +181,10 @@ test.describe("email code sign-in", () => {
     await requestCode(page);
     await expect(page.getByRole("button", { name: "send a new code" })).toHaveCount(0);
     await page.clock.runFor(21_000);
+    await page.getByRole("button", { name: "Use a different email" }).focus();
     await page.getByRole("button", { name: "send a new code" }).click();
     await expect(page.getByText("New code sent")).toBeVisible();
+    await expect(codeField(page)).toBeFocused();
     await expect(page.getByText(/send a new code in/)).toContainText(/0:(20|19)/);
     expect((await mockApi.calls()).filter((c) => c === "POST /api/v1/auth/code/send")).toHaveLength(2);
   });

@@ -23,8 +23,11 @@ export function formatCountdown(seconds: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
-/** What verifying a code can come back with. `network` = no answer (offline, 5xx, timeout). */
-export type CodeVerifyResult = { ok: true } | { ok: false; reason: "wrong" | "expired" | "network" };
+/**
+ * What verifying a code can come back with. `network` = no answer (offline, 5xx, timeout) · `failed` = the API refused the
+ * sign-in for another reason (send a new code) · `rate-limited` = too many tries, `retryAfter` seconds from 429 Retry-After.
+ */
+export type CodeVerifyResult = { ok: true } | { ok: false; reason: "wrong" | "expired" | "failed" | "network" } | { ok: false; reason: "rate-limited"; retryAfter: number };
 /** What sending (or resending) a code can come back with. `retryAfter` in seconds, from 429 Retry-After. */
 export type CodeSendResult = { ok: true } | { ok: false; reason: "rate-limited"; retryAfter: number } | { ok: false; reason: "network" };
 

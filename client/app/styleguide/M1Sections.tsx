@@ -269,7 +269,7 @@ export function SessionErrorDemo() {
 }
 
 /* ------------------------------------------------------------ ENG-80 · sign-in code */
-function CodeCell({ label, value = "", invalid, disabled, busy, hint, error }: { label: string; value?: string; invalid?: boolean; disabled?: boolean; busy?: boolean; hint?: ReactNode; error?: ReactNode }) {
+function CodeCell({ label, value = "", invalid, disabled, busy, locked, hint, error, caution }: { label: string; value?: string; invalid?: boolean; disabled?: boolean; busy?: boolean; locked?: boolean; hint?: ReactNode; error?: ReactNode; caution?: ReactNode }) {
   const id = useId();
   const [v, setV] = useState(value);
   return (
@@ -277,8 +277,9 @@ function CodeCell({ label, value = "", invalid, disabled, busy, hint, error }: {
       <Label>{label}</Label>
       <div className="s-code__form">
         <div className="s-code__top"><label htmlFor={id}>Sign-in code</label>{busy && <span className="s-code__busy"><Spinner size={12} />Checking…</span>}</div>
-        <CodeInput id={id} value={v} onChange={setV} invalid={invalid} disabled={disabled} busy={busy} describedBy={`${id}-m`} />
-        <span id={`${id}-m`} className={invalid ? "c-field__hint is-error" : "c-field__hint"}>{error ? <><Icon name="alert" size={12} />{error}</> : hint ?? "From login@corral.app. Paste it whole, or type it."}</span>
+        <CodeInput id={id} value={v} onChange={setV} invalid={invalid} disabled={disabled} busy={busy} locked={locked} describedBy={`${id}-m`} />
+        <span id={`${id}-m`} className={invalid ? "c-field__hint is-error" : caution ? "c-field__hint is-caution" : "c-field__hint"}>{error ? <><Icon name="alert" size={12} />{error}</>
+          : caution ? <><Icon name="clock" size={12} />{caution}</> : hint ?? "From Corral. Paste it whole, or type it."}</span>
       </div>
     </div>
   );
@@ -287,7 +288,8 @@ function CodeCell({ label, value = "", invalid, disabled, busy, hint, error }: {
 const CODE_URLS: [string, string][] = [
   ["sent", "code entry, resend cooldown 0:20"], ["code-verifying", "sixth digit landed, checking"], ["code-wrong", "inline error, digits kept, selected"],
   ["code-expired", "field locked, primary becomes Send a new code"], ["code-resent", "success banner, field cleared"],
-  ["resend-limited", "3 a minute, countdown from Retry-After"], ["change-email", "form, old address selected, note"],
+  ["resend-limited", "3 a minute, countdown from Retry-After"], ["verify-limited", "too many tries, field locked with its digits, countdown"],
+  ["code-failed", "verify refused, field locked, primary becomes Send a new code"], ["change-email", "form, old address selected, note"],
 ];
 
 export function CodeStatesDemo() {
@@ -299,6 +301,8 @@ export function CodeStatesDemo() {
         <CodeCell label="verifying · read-only" value="482913" busy />
         <CodeCell label="wrong · kept, retry" value="482193" invalid error="That code isn’t right. Check the newest email from Corral and try again." />
         <CodeCell label="expired · locked" value="639204" invalid disabled error="That code has expired. Codes last 10 minutes." />
+        <CodeCell label="too many tries · locked, countdown" value="482193" locked caution={<>Too many tries for now. You can try again in <span className="c-num">0:42</span>.</>} />
+        <CodeCell label="failed · locked, send a new code" value="482913" invalid disabled error="We couldn’t sign you in with that code. Send a new code and try again." />
         <div className="sg-code c-app"><Label>banners on the code screen</Label>
           <Banner tone="success" title="New code sent">Use the code in the newest email. It expires in 10 minutes.</Banner>
           <Banner tone="caution" icon="clock" title="Too many codes asked for">You can ask for 3 codes a minute. The last code we sent still works, or send another in <span className="c-strong c-num">0:41</span>.</Banner>
