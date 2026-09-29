@@ -4,7 +4,14 @@ import { expect, signInWithGoogle, test } from "./fixtures";
  * Visual regression against Bau's M1 screens as built (the code is the design, HANDOFF-ENG.md).
  * Baselines live in e2e/__screenshots__. They are platform-specific: regenerate with
  * `pnpm test:e2e --update-snapshots` on the CI image when that lands (ENG-89).
+ *
+ * SKIPPED LOCALLY: the local Chromium was reinstalled on Sep 30 and every baseline now differs by ~2%
+ * of pixels, including screens nobody changed, so local runs can't tell a regression from the new
+ * browser. Follow-up (ENG-89): regenerate the baselines on the CI image and drop this skip.
+ * They still run when CI is set.
  */
+test.skip(!process.env.CI, "Visual baselines need regenerating on the CI image (ENG-89); local Chromium changed.");
+
 test("sign-in", async ({ page }) => {
   await page.goto("/sign-in");
   await expect(page.getByRole("heading", { name: "Sign in to Corral" })).toBeVisible();
