@@ -1,5 +1,7 @@
 """Every non-public route must reject anonymous callers."""
 
+import re
+
 import pytest
 from httpx import AsyncClient
 
@@ -31,7 +33,7 @@ def test_there_are_protected_routes() -> None:
 
 @pytest.mark.parametrize(("method", "path"), protected_routes())
 async def test_anonymous_request_is_rejected(client: AsyncClient, method: str, path: str) -> None:
-    concrete = path.replace("{", "").replace("}", "")
+    concrete = re.sub(r"\{[^}]+\}", "00000000-0000-0000-0000-000000000000", path)
     res = await client.request(method, concrete)
     assert res.status_code == 401, f"{method} {path} is reachable without auth"
 
