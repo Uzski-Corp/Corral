@@ -1,0 +1,37 @@
+/* Fenceline marketing layer — scoped tokens on top of the app @theme.
+   Ink on paper, serif for the brand's voice, engraved open land.
+   Product fragments inside stay in the Open Range app language (white windows, one blue action). */
+.theme-fenceline {
+  --mk-page: #F2F1ED;        /* paper */
+  --mk-page-alt: #EAE8E1;
+  --mk-surface: #FBFAF7;     /* vellum */
+  --mk-ink: #1F1B18;
+  --mk-ink-hover: #3A342E;
+  --mk-copy: #4A443D;        /* sepia 600 */
+  --mk-copy-muted: #7A7369;  /* sepia 500 */
+  --mk-copy-faint: #A39C92;  /* sepia 400 */
+  --mk-rule: #DDD7CC;
+  --mk-rule-soft: #E7E2D9;
+  --mk-press: #16130F;       /* the one dark band */
+  --mk-press-ink: #EDE8DF;
+  --mk-press-muted: rgb(237 232 223 / 0.6);
+
+  --mk-font-display: var(--font-newsreader), ui-serif, Georgia, serif;
+  --mk-font-body: var(--font-sans);
+
+  --mk-text-folio: clamp(50px, 5.9vw, 86px);
+  --mk-text-display: clamp(38px, 4.6vw, 64px);
+  --mk-text-headline: clamp(30px, 3.2vw, 44px);
+  --mk-text-lede: clamp(24px, 2.6vw, 36px);
+  --mk-text-caption: 15px;
+  --mk-text-body: 16.5px;
+  --mk-tracking-display: -0.025em;
+
+  --mk-cta-bg: var(--mk-ink);
+  --mk-cta-fg: #FBFAF7;
+  --mk-radius-mat: 3px;      /* plates are printed, nearly square */
+  --mk-shadow-window: 0 30px 70px rgb(31 27 24 / 0.18), 0 0 0 1px rgb(31 27 24 / 0.08);
+  --mk-section: clamp(104px, 12vw, 176px);
+  --mk-gutter: clamp(20px, 3vw, 40px);
+  --mk-container: 1240px;
+}

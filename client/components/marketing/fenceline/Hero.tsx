@@ -1,0 +1,42 @@
+import Link from "next/link";
+import Image from "next/image";
+import { FitBar, Mark, SegmentWindow } from "@/components/app";
+
+const STACK = ["wanjiru", "kamau", "amara", "grace", "reza"];
+
+export function FencelineHero() {
+  return (
+    <header className="fl-hero">
+      <div className="fl-hero__left">
+        <nav className="fl-nav" aria-label="Main">
+          <Link className="fl-logo" href="/fenceline"><Mark size={22} /><span>Corral</span></Link>
+          <div className="fl-nav__links"><a href="#plates">Product</a><a href="#ledger">How it works</a><a href="#people">People</a><a href="#pricing">Pricing</a></div>
+        </nav>
+        <div className="fl-hero__copy">
+          <div className="fl-folio"><b>Corral</b><span>Outbound for teams who sell one thing well</span></div>
+          <h1>Gather the few<br />who <em>fit</em>.</h1>
+          <p>Corral reads every company’s website against what you sell, finds the person who decides, and writes to them the way you would.</p>
+          <div className="fl-hero__ctas"><a className="fl-btn" href="#">Start with one product</a><a className="fl-link" href="#plates">Read a sample segment →</a></div>
+        </div>
+        <div className="fl-faces">
+          <div className="fl-faces__stack">{STACK.map((a) => <span key={a}><Image className="fl-bg" src={`/corral/en/av-${a}.jpg`} alt="" fill sizes="34px" /></span>)}</div>
+          <p>People who replied to Corral users this week, shown with their permission. <span className="fl-note-inline">(Sample people.)</span></p>
+        </div>
+      </div>
+      <div className="fl-hero__plate">
+        <Image className="fl-bg" src="/corral/en/land-plate.jpg" alt="Engraving of open farmland near Kiambu, Kenya" fill priority sizes="(max-width: 1080px) 100vw, 50vw" />
+        <span className="fl-cap"><b>Pl. I</b>Open land near Kiambu, at first light.</span>
+      </div>
+      <div className="fl-hero__app c-app" aria-hidden="false"><SegmentWindow sidebar={false} limit={4} /></div>
+    </header>
+  );
+}
+
+export function Lede() {
+  return (
+    <section className="fl-lede-sec fl-wrap" aria-label="What Corral does">
+      <div className="fl-folio"><b>§ 1</b><span>In one sentence</span></div>
+      <p className="fl-lede-sec__big">Corral read 212 companies for ColdTrace Sensors on Tuesday, kept the 48 that fit <span className="c-app"><FitBar value={94} /></span> and found the one person in each who decides. <span className="dim">Twelve wrote back. Three are on the calendar.</span></p>
+    </section>
+  );
+}

@@ -1,0 +1,98 @@
+@import "tailwindcss";
+@import "../components/app/app.css";
+
+/* ============================================================
+   Corral — base layer: Open Range app tokens (Tailwind v4).
+   Every product surface, on every route, uses these.
+   Marketing layers (open-range / fenceline) are scoped classes on top,
+   see components/marketing/{open-range,fenceline}/theme.css.
+   Font variables come from next/font in app/layout.tsx.
+   ============================================================ */
+
+@theme static {
+  /* Surfaces */
+  --color-canvas: #FFFFFF;          /* window / page surface */
+  --color-surface-muted: #FAFAFA;   /* sidebar, rail, quoted mail */
+  --color-surface-sunken: #F5F5F4;  /* filter chips, hover, selected nav */
+  --color-surface-selected: #F5F8FE;/* selected table row */
+  --color-surface-inverse: #1C1C1C;
+
+  /* Lines */
+  --color-border: #E7E7E5;
+  --color-border-subtle: #F0F0EE;
+  --color-border-strong: #D4D4D1;
+
+  /* Text */
+  --color-text: #1C1C1C;            /* names, titles, values */
+  --color-text-body: #292929;       /* message bodies */
+  --color-text-secondary: #5D5D5D;  /* meta that still matters */
+  --color-text-tertiary: #7F7F7F;   /* labels, columns, receipts */
+  --color-text-quaternary: #A1A1A1; /* timings, placeholders, disabled */
+  --color-text-inverse: #FFFFFF;
+
+  /* The one action colour (pulled from the Open Range sky) */
+  --color-action: #1F5FD6;
+  --color-action-hover: #1A51B8;
+  --color-action-subtle: #EEF3FC;
+  --color-action-ring: rgb(31 95 214 / 0.28);
+  /* Second CTA: near-black */
+  --color-action-2: #1C1C1C;
+  --color-action-2-hover: #333333;
+
+  /* Signature: fit bar */
+  --color-fit-on: #1F5FD6;
+  --color-fit-low: #B3B3B0;         /* score < 80 */
+  --color-fit-off: #E7E7E5;
+
+  /* Status triples: 50 fill / 200 border / 600 text */
+  --color-positive-50: #ECFDF5; --color-positive-200: #A7F3D0; --color-positive-600: #059669;
+  --color-caution-50: #FFFBEB;  --color-caution-200: #FDE68A;  --color-caution-600: #C26A05;
+  --color-negative-50: #FFF1F2; --color-negative-200: #FECDD3; --color-negative-600: #E11D48;
+  --color-neutral-50: #F5F5F4;  --color-neutral-200: #E7E5E4;  --color-neutral-600: #57534E;
+  --color-info-50: #EFF6FF;     --color-info-200: #DBEAFE;     --color-info-600: #2563EB;
+  --color-referral-50: #F5F3FF; --color-referral-200: #DDD6FE; --color-referral-600: #7C3AED;
+
+  /* Type */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --text-meta: 12px;    --text-meta--line-height: 16px;
+  --text-label: 13px;   --text-label--line-height: 18px;
+  --text-content: 14px; --text-content--line-height: 20px;
+  --text-lead: 16px;    --text-lead--line-height: 24px;
+  --text-title: 18px;   --text-title--line-height: 24px;
+  --text-heading: 24px; --text-heading--line-height: 30px;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --tracking-ui: -0.15px;
+  --tracking-heading: -0.4px;
+
+  /* Sizes (Tailwind spacing namespace, so h-row / h-tag etc. exist) */
+  --spacing: 4px;
+  --spacing-row: 40px;
+  --spacing-row-compact: 36px;
+  --spacing-nav: 28px;
+  --spacing-tag: 22px;
+  --spacing-chip: 24px;
+  --spacing-btn: 32px;
+  --spacing-btn-sm: 28px;
+  --spacing-toolbar: 52px;
+  --spacing-sidebar: 220px;
+  --spacing-rail: 300px;
+
+  /* Radius */
+  --radius-check: 4px;
+  --radius-tag: 6px;
+  --radius-input: 7px;
+  --radius-button: 8px;
+  --radius-card: 12px;
+  --radius-window: 14px;
+
+  /* Elevation (only for things that float) */
+  --shadow-window: 0 40px 100px rgb(24 36 60 / 0.24), 0 0 0 1px rgb(0 0 0 / 0.05);
+  --shadow-pop: 0 14px 36px rgb(24 36 60 / 0.16), 0 0 0 1px rgb(0 0 0 / 0.05);
+  --shadow-button: inset 0 0 0 1px rgb(0 0 0 / 0.10), 0 1px 1px rgb(0 0 0 / 0.06);
+}
+
+
+html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+body { background: var(--color-canvas); color: var(--color-text); font-family: var(--font-sans); }

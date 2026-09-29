@@ -1,0 +1,37 @@
+/* Open Range marketing layer — scoped tokens on top of the app @theme.
+   Same --mk-* contract as the Fenceline layer, different values. */
+.theme-open-range {
+  --mk-page: #FFFFFF;
+  --mk-page-alt: #F6F6F4;
+  --mk-ink: #141414;
+  --mk-copy: #3A3A3A;
+  --mk-copy-muted: #6B6B6B;
+  --mk-rule: #E7E7E5;
+
+  /* Image world: daylight open land (flat fallbacks behind photos) */
+  --mk-sky: #8FA9C8;
+  --mk-sky-deep: #3C5878;
+  --mk-dune: #C9B98F;
+  --mk-dusk: #2A201B;
+  --mk-dusk-ink: #F3E9DE;
+  --mk-dusk-muted: rgb(243 233 222 / 0.78);
+
+  --mk-font-display: var(--font-inter-tight), var(--font-sans);
+  --mk-font-body: var(--font-sans);
+
+  --mk-text-display-xl: clamp(44px, 5.6vw, 80px);
+  --mk-text-display: clamp(34px, 4vw, 56px);
+  --mk-text-headline: clamp(28px, 3vw, 40px);
+  --mk-text-subhead: clamp(18px, 1.6vw, 22px);
+  --mk-text-body: 17px;
+  --mk-text-caption: 13px;
+  --mk-tracking-display: -0.04em;
+  --mk-tracking-headline: -0.03em;
+
+  --mk-cta-bg: var(--color-action);
+  --mk-cta-fg: #FFFFFF;
+  --mk-radius-plate: 20px;
+  --mk-section: clamp(96px, 11vw, 160px);
+  --mk-gutter: clamp(20px, 3vw, 40px);
+  --mk-container: 1240px;
+}
