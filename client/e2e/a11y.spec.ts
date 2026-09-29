@@ -19,7 +19,7 @@ test("sign-in has no axe violations", async ({ page }) => {
 
 test("sign-in failure states have no axe violations", async ({ page }) => {
   await page.goto("/sign-in?error=auth_failed");
-  await expect(page.getByText("That link has expired")).toBeVisible();
+  await expect(page.getByText("That sign-in didn’t finish")).toBeVisible();
   expect(await audit(page)).toEqual([]);
   await page.goto("/sign-in?error=provider_error");
   await expect(page.getByRole("button", { name: "Try Google again" })).toBeVisible();
