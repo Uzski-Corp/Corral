@@ -1,5 +1,5 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { API, LOGOUT_URL, ME_BODY, server, testConfig, unauthorized } from "@/test/msw";
@@ -11,10 +11,13 @@ const ME = `${API}/api/v1/auth/me`;
 const REFRESH = `${API}/api/v1/auth/refresh`;
 const LOGOUT = `${API}/api/v1/auth/logout`;
 
+// The probe is updated in a layout effect, which runs in the same commit as the DOM update.
+// (A passive useEffect runs later, so a waitFor that matched the new text could still read the
+// previous value here: that was the 1-in-4 flake in "confirms the session with /me".)
 const probe: { current: SessionValue | null } = { current: null };
 function Probe() {
   const s = useSession();
-  useEffect(() => { probe.current = s; });
+  useLayoutEffect(() => { probe.current = s; });
   return <div data-testid="status">{s?.status}:{s?.account?.name ?? "-"}:{s?.error?.kind ?? "-"}</div>;
 }
 const nav = () => ({ assign: vi.fn<(url: string) => void>(), replace: vi.fn<(url: string) => void>() }) satisfies Navigator;
