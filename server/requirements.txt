@@ -1,0 +1,23 @@
+# Corral API. Python 3.12
+fastapi==0.141.1
+uvicorn[standard]==0.54.0
+pydantic==2.13.5
+pydantic-settings==2.15.0
+email-validator==2.3.0
+python-multipart==0.0.32
+
+# Database
+sqlalchemy[asyncio]==2.1.1
+asyncpg==0.31.0
+alembic==1.20.0
+
+# HTTP + integrations
+httpx==0.28.1
+workos==10.5.0
+
+# Background jobs
+arq==0.28.0
+redis==5.3.1  # arq requires redis<6
+
+# Logging
+structlog==26.1.0
