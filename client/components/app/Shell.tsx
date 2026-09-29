@@ -3,7 +3,8 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Icon, type IconName } from "./icons";
 import { Avatar, Kbd, cx } from "./primitives";
-import { DropdownMenu, Tooltip } from "./Overlays";
+import { DropdownMenu, Tooltip, type MenuEntry } from "./Overlays";
+import { Skeleton } from "./States";
 
 export type ViewId = "unibox" | "companies" | "contacts" | "segments" | "sequences" | "products" | "knowledge" | "settings";
 export const APP_NAV: { id: ViewId; label: string; icon: IconName; count?: string; keys: string }[] = [
@@ -18,26 +19,41 @@ export const APP_NAV: { id: ViewId; label: string; icon: IconName; count?: strin
 ];
 export const SAVED_SEGMENTS: [string, number][] = [["F&B · East Africa", 48], ["Logistics · Fit > 70", 31], ["Replied, no meeting", 7]];
 
+/**
+ * The signed-in person and workspace. `undefined` renders Bau's sample person (styleguide and
+ * design review); "loading" renders skeletons while the session is confirmed.
+ */
+export type ShellAccountProp = { name: string; email: string; role: string; avatarUrl: string | null; workspace: string } | "loading" | undefined;
+
 /* ------------------------------------------------------------ Workspace switcher */
 export const WorkspaceTile = ({ letter = "C", size = 20, tone = "ink" }: { letter?: string; size?: number; tone?: "ink" | "blue" | "sand" }) =>
   <span className={cx("c-wstile", `c-wstile--${tone}`)} style={{ width: size, height: size, fontSize: size * 0.55 }} aria-hidden="true">{letter}</span>;
 
-export function WorkspaceSwitcher({ collapsed, defaultOpen }: { collapsed?: boolean; defaultOpen?: boolean }) {
+const initial = (s: string) => (s.trim()[0] ?? "C").toUpperCase();
+
+export function WorkspaceSwitcher({ collapsed, defaultOpen, account, onSignOut }: { collapsed?: boolean; defaultOpen?: boolean; account?: ShellAccountProp; onSignOut?: () => void }) {
   const router = useRouter();
+  const signOut = onSignOut ?? (() => router.push("/sign-in"));
+  const live = typeof account === "object";
+  const name = live ? account.workspace : account === "loading" ? "" : "ColdTrace";
+  const tile = <WorkspaceTile letter={live ? initial(account.workspace) : undefined} />;
+  // Other workspaces and member counts are sample data; the API has no workspace list yet.
+  const workspaces: MenuEntry[] = live
+    ? [{ label: account.workspace, lead: tile, checked: true }]
+    : [{ label: "ColdTrace", lead: <WorkspaceTile />, meta: "3 members", checked: true }, { label: "Pwani Fresh pilot", lead: <WorkspaceTile letter="P" tone="sand" />, meta: "Guest" }];
   return (
     <DropdownMenu label="Workspaces" width={248} defaultOpen={defaultOpen} items={[
-      { heading: "tomas@coldtrace.io" },
-      { label: "ColdTrace", lead: <WorkspaceTile />, meta: "3 members", checked: true },
-      { label: "Pwani Fresh pilot", lead: <WorkspaceTile letter="P" tone="sand" />, meta: "Guest" },
+      ...(account === "loading" ? [] : [{ heading: live ? account.email : "tomas@coldtrace.io" }]),
+      ...workspaces,
       "separator",
       { label: "Workspace settings", icon: "gear", kbd: "G ," },
       { label: "Invite teammates", icon: "users", onSelect: () => router.push("/onboarding?step=5") },
       { label: "Create a workspace", icon: "plus", onSelect: () => router.push("/onboarding") },
       "separator",
-      { label: "Sign out", icon: "logout", onSelect: () => router.push("/sign-in") },
+      { label: "Sign out", icon: "logout", onSelect: signOut },
     ]} trigger={(p) => (
       <button type="button" className={cx("c-ws", collapsed && "is-collapsed")} aria-label="Switch workspace" {...p}>
-        <WorkspaceTile /><span className="c-ws__name">ColdTrace</span><Icon name="down" size={12} />
+        {account === "loading" ? <Skeleton w={20} h={20} r={5} /> : tile}<span className="c-ws__name">{account === "loading" ? <Skeleton w={72} /> : name}</span><Icon name="down" size={12} />
       </button>
     )} />
   );
@@ -55,15 +71,27 @@ function NavRow({ icon, label, count, active, collapsed, onClick, kbd, dot }: { 
   return collapsed ? <Tooltip label={label} kbd={kbd} side="right">{b}</Tooltip> : b;
 }
 
-export function SideNav({ active, onNavigate, collapsed, onSearch, segment, onSegment }: {
+function AccountAvatar({ account }: { account: ShellAccountProp }) {
+  if (account === undefined) return <Avatar id="tomas" size={24} />;
+  if (account === "loading") return <Skeleton w={24} h={24} r={12} />;
+  // Same box and class as the sample avatar. No picture: nothing, until Bau designs a fallback.
+  // eslint-disable-next-line @next/next/no-img-element
+  return account.avatarUrl ? <img className="c-av c-av--24" src={account.avatarUrl} alt="" width={24} height={24} referrerPolicy="no-referrer" /> : null;
+}
+
+export function SideNav({ active, onNavigate, collapsed, onSearch, segment, onSegment, account, onSignOut }: {
   active: ViewId; onNavigate?: (v: ViewId) => void; collapsed?: boolean; onSearch?: () => void; segment?: string; onSegment?: (s: string) => void;
+  account?: ShellAccountProp; onSignOut?: () => void;
 }) {
   const router = useRouter();
+  const signOut = onSignOut ?? (() => router.push("/sign-in"));
   const top = APP_NAV.filter((n) => n.id !== "settings");
   const settings = APP_NAV.find((n) => n.id === "settings")!;
+  const live = typeof account === "object";
+  const heading = live ? `${account.name} · ${account.role}` : account === "loading" ? null : "Tomás Ibarra · Owner";
   return (
     <nav className={cx("c-side c-side--app", collapsed && "is-collapsed")} aria-label="Primary">
-      <div className="c-side__head"><WorkspaceSwitcher collapsed={collapsed} /></div>
+      <div className="c-side__head"><WorkspaceSwitcher collapsed={collapsed} account={account} onSignOut={signOut} /></div>
       <NavRow icon="search" label="Search" kbd="⌘K" collapsed={collapsed} onClick={onSearch} />
       <div className="c-side__gap" />
       {top.map((n) => <NavRow key={n.id} icon={n.icon} label={n.label} count={n.count} dot={collapsed && !!n.count} active={active === n.id && !(n.id === "segments" && segment)} collapsed={collapsed} onClick={() => onNavigate?.(n.id)} />)}
@@ -84,20 +112,25 @@ export function SideNav({ active, onNavigate, collapsed, onSearch, segment, onSe
       )}
       <NavRow icon={settings.icon} label={settings.label} active={active === "settings"} collapsed={collapsed} onClick={() => onNavigate?.("settings")} />
       <DropdownMenu side="top" width={232} label="Account" items={[
-        { heading: "Tomás Ibarra · Owner" },
+        ...(heading ? [{ heading }] : []),
         { label: "Profile", icon: "user" },
         { label: "Keyboard shortcuts", icon: "bolt", kbd: "?" },
         { label: "Help and docs", icon: "help" },
         "separator",
-        { label: "Sign out", icon: "logout", onSelect: () => router.push("/sign-in") },
+        { label: "Sign out", icon: "logout", onSelect: signOut },
       ]} trigger={(p) => (
         <button type="button" className={cx("c-me", collapsed && "is-collapsed")} aria-label="Account" {...p}>
-          <Avatar id="tomas" size={24} /><span className="c-me__txt"><span className="c-strong">Tomás Ibarra</span><span>tomas@coldtrace.io</span></span>
+          <AccountAvatar account={account} />
+          <span className="c-me__txt">
+            {account === "loading" ? <><Skeleton w={96} /><Skeleton w={120} /></>
+              : <><span className="c-strong">{live ? account.name : "Tomás Ibarra"}</span><span>{live ? account.email : "tomas@coldtrace.io"}</span></>}
+          </span>
         </button>
       )} />
     </nav>
   );
 }
+
 
 /* ------------------------------------------------------------ Top bar */
 export function TopBar({ crumbs, actions, onToggleSide, onMenu, onSearch, collapsed }: {
@@ -122,10 +155,11 @@ export function TopBar({ crumbs, actions, onToggleSide, onMenu, onSearch, collap
 /* ------------------------------------------------------------ Shell
    Full app frame. Collapses to a 56px icon rail ([), and below 768px of its own width
    (container query) becomes a top bar + drawer. frame="viewport" fills the window. */
-export function AppShell({ active, onNavigate, crumbs, actions, children, collapsed: ctl, onCollapsedChange, defaultCollapsed = false, defaultDrawer = false, onSearch, frame = "viewport", segment, onSegment, hotkeys = true, className }: {
+export function AppShell({ active, onNavigate, crumbs, actions, children, collapsed: ctl, onCollapsedChange, defaultCollapsed = false, defaultDrawer = false, onSearch, frame = "viewport", segment, onSegment, hotkeys = true, className, account, onSignOut }: {
   active: ViewId; onNavigate?: (v: ViewId) => void; crumbs: ReactNode[]; actions?: ReactNode; children: ReactNode;
   collapsed?: boolean; onCollapsedChange?: (v: boolean) => void; defaultCollapsed?: boolean; defaultDrawer?: boolean; onSearch?: () => void;
   frame?: "viewport" | "contained"; segment?: string; onSegment?: (s: string) => void; hotkeys?: boolean; className?: string;
+  /** Signed-in person; omit for the sample person. */ account?: ShellAccountProp; /** Replaces the default "go to /sign-in". */ onSignOut?: () => void;
 }) {
   const [own, setOwn] = useState(defaultCollapsed);
   const collapsed = ctl ?? own;
@@ -146,7 +180,7 @@ export function AppShell({ active, onNavigate, crumbs, actions, children, collap
     <div className={cx("c-shellbox", frame === "viewport" && "c-shellbox--viewport", className)}>
       <div className={cx("c-shell c-app", collapsed && "is-collapsed", drawer && "is-drawer")}>
         <div className="c-shell__side">
-          <SideNav active={active} onNavigate={go} collapsed={collapsed && !drawer} onSearch={() => { setDrawer(false); onSearch?.(); }} segment={segment} onSegment={(s) => { onSegment?.(s); setDrawer(false); }} />
+          <SideNav active={active} onNavigate={go} collapsed={collapsed && !drawer} onSearch={() => { setDrawer(false); onSearch?.(); }} segment={segment} onSegment={(s) => { onSegment?.(s); setDrawer(false); }} account={account} onSignOut={onSignOut} />
         </div>
         {drawer && <div className="c-shell__scrim" onClick={() => setDrawer(false)} aria-hidden="true" />}
         <div className="c-shell__main">

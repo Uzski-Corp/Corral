@@ -3,6 +3,7 @@ import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type R
 import { Icon, type IconName } from "./icons";
 import { Kbd, cx } from "./primitives";
 import { Skeleton } from "./States";
+import { useFocusTrap } from "./useFocusTrap";
 
 export type Command = {
   id: string; label: string; group: string; keywords?: string; icon?: IconName; lead?: ReactNode; sub?: ReactNode; meta?: ReactNode; kbd?: string;
@@ -34,9 +35,17 @@ export function CommandPalette({ open, onClose, commands, recent, entities, fall
   const [active, setActive] = useState(0);
   const input = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const id = useId();
+  useFocusTrap(panelRef, open && !inline);
 
-  useEffect(() => { if (open && !inline) input.current?.focus(); }, [open, inline]);
+  // Focus the search on open; give focus back to whatever opened the palette on close.
+  useEffect(() => {
+    if (!open || inline) return;
+    const prev = document.activeElement as HTMLElement | null;
+    input.current?.focus();
+    return () => { prev?.focus?.(); };
+  }, [open, inline]);
   useEffect(() => { const t = setTimeout(() => setSettled(q), q.trim() ? latency : 0); return () => clearTimeout(t); }, [q, latency]);
 
   const query = q.trim();
@@ -83,7 +92,7 @@ export function CommandPalette({ open, onClose, commands, recent, entities, fall
   };
 
   const panel = (
-    <div className={cx("c-cmd", !inline && "c-pop-in")} role="dialog" aria-modal={!inline} aria-label="Command menu" onKeyDown={onKey}>
+    <div ref={panelRef} className={cx("c-cmd", !inline && "c-pop-in")} role="dialog" aria-modal={!inline} aria-label="Command menu" onKeyDown={onKey}>
       <div className="c-cmd__search">
         <Icon name="search" />
         <input ref={input} value={q} onChange={(e) => { setQ(e.target.value); setActive(0); }} placeholder="Search companies, people, or type a command"

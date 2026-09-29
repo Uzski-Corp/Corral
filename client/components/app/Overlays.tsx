@@ -3,6 +3,7 @@ import { useCallback, useEffect, useId, useRef, useState, type CSSProperties, ty
 import { Icon, type IconName } from "./icons";
 import { Kbd, cx } from "./primitives";
 import { useDismiss } from "./useDismiss";
+import { useFocusTrap } from "./useFocusTrap";
 
 /* ------------------------------------------------------------------ Dialog
    Modal for one decision. Title 16/24 Medium, body 14/20, footer right-aligned:
@@ -14,6 +15,7 @@ export function Dialog({ open, onClose, title, description, children, footer, wi
 }) {
   const id = useId();
   const box = useRef<HTMLDivElement>(null);
+  useFocusTrap(box, open && !inline);
   useEffect(() => {
     if (!open || inline) return;
     const prev = document.activeElement as HTMLElement | null;

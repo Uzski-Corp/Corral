@@ -14,13 +14,26 @@ export type SignInState = "default" | "sent" | "error" | "invalid" | "sending";
 const EMAIL = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
 const PERSONAL = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com"];
 
-export function SignIn({ initial = "default" }: { initial?: SignInState }) {
+/**
+ * Real sign-in. Without it the screen runs Bau's simulated flow (timers), for review.
+ * Both start the WorkOS AuthKit redirect; the page is about to unload when they return.
+ */
+export type SignInActions = { startGoogle: () => void; startEmail: (email: string) => void };
+
+export function SignIn({ initial = "default", actions }: { initial?: SignInState; actions?: SignInActions }) {
   const [state, setState] = useState<SignInState>(initial);
-  const [email, setEmail] = useState(initial === "error" || initial === "sent" ? "tomas@coldtrace.io" : initial === "invalid" ? "tomas@coldtrace" : "");
+  // Review states prefill the sample address; a real sign-in never guesses someone's email.
+  const [email, setEmail] = useState(actions ? "" : initial === "error" || initial === "sent" ? "tomas@coldtrace.io" : initial === "invalid" ? "tomas@coldtrace" : "");
   const [expired, setExpired] = useState(initial === "error");
   const [left, setLeft] = useState(42);
   const [google, setGoogle] = useState(false);
   const router = useRouter();
+  // Back from AuthKit restores this page from the bfcache with its spinners still running.
+  useEffect(() => {
+    const reset = (e: PageTransitionEvent) => { if (e.persisted) { setGoogle(false); setState((s) => (s === "sending" ? "default" : s)); } };
+    window.addEventListener("pageshow", reset);
+    return () => window.removeEventListener("pageshow", reset);
+  }, []);
   useEffect(() => {
     if (state !== "sent" || left <= 0) return;
     const t = setTimeout(() => setLeft((s) => s - 1), 1000);
@@ -32,6 +45,7 @@ export function SignIn({ initial = "default" }: { initial?: SignInState }) {
     e.preventDefault();
     if (!EMAIL.test(email.trim())) { setState("invalid"); return; }
     setState("sending");
+    if (actions) { actions.startEmail(email.trim()); return; }
     setTimeout(() => { setState("sent"); setExpired(false); setLeft(42); }, 700);
   };
 
@@ -61,7 +75,7 @@ export function SignIn({ initial = "default" }: { initial?: SignInState }) {
               <h1>Sign in to Corral</h1>
               <p className="s-auth__lede">Use your work email. We send a link instead of asking for a password.</p>
               {expired && <Banner tone="error" title="That link has expired">Sign-in links work once and last 15 minutes. Send yourself a new one below.</Banner>}
-              <Button size="lg" className="s-auth__wide" disabled={google} onClick={() => { setGoogle(true); setTimeout(() => router.push("/onboarding"), 700); }}>{google ? <Spinner /> : <GoogleG />}{google ? "Opening Google…" : "Continue with Google"}</Button>
+              <Button size="lg" className="s-auth__wide" disabled={google} onClick={() => { setGoogle(true); if (actions) actions.startGoogle(); else setTimeout(() => router.push("/onboarding"), 700); }}>{google ? <Spinner /> : <GoogleG />}{google ? "Opening Google…" : "Continue with Google"}</Button>
               <div className="s-auth__or"><span>or</span></div>
               <FormField label="Work email"
                 error={state === "invalid" ? `That doesn’t look like a full address. Try something like tomas@coldtrace.io.` : undefined}

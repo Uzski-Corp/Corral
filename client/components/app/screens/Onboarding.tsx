@@ -23,11 +23,16 @@ export const STEPS = [
 const PAGES: [string, string][] = [["coldtrace.io", "home"], ["/product", "4 sensor models"], ["/pricing", "3 plans"], ["/customers", "2 case studies"], ["/blog", "11 posts"], ["/docs/alerts", "alerting rules"], ["/about", "team of 14, Nairobi"]];
 const PAINS = ["Spoilage from doors left open", "No alert until the morning check", "Paper temperature logs for audits", "Insurance claims without evidence"];
 
-export type OnboardingProps = { initialStep?: number; skipped?: number[]; crawl?: "idle" | "done"; connected?: boolean };
+export type OnboardingProps = {
+  initialStep?: number; skipped?: number[]; crawl?: "idle" | "done"; connected?: boolean;
+  /** Called just before leaving for /app ("Save and exit" or "Open Corral"). */
+  onExit?: () => void;
+};
 export function Onboarding(p: OnboardingProps) { return <ToastProvider><Flow {...p} /></ToastProvider>; }
 
-function Flow({ initialStep = 1, skipped: sk0 = [], crawl: crawl0 = "idle", connected = false }: OnboardingProps) {
+function Flow({ initialStep = 1, skipped: sk0 = [], crawl: crawl0 = "idle", connected = false, onExit }: OnboardingProps) {
   const router = useRouter();
+  const exit = () => { onExit?.(); router.push("/app"); };
   const toast = useToast();
   const [step, setStep] = useState(initialStep);
   const [done, setDone] = useState<number[]>(() => Array.from({ length: initialStep - 1 }, (_, i) => i + 1).filter((n) => !sk0.includes(n)));
@@ -178,7 +183,7 @@ function Flow({ initialStep = 1, skipped: sk0 = [], crawl: crawl0 = "idle", conn
         <header className="s-onb__top">
           <span className="c-muted">{step <= 5 ? `Step ${step} of 5` : "All set"}</span>
           <span style={{ flex: 1 }} />
-          <Button variant="quiet" onClick={() => router.push("/app")}>Save and exit</Button>
+          <Button variant="quiet" onClick={exit}>Save and exit</Button>
         </header>
         {step <= 5 ? (
           <div className="s-onb__stage">
@@ -213,7 +218,7 @@ function Flow({ initialStep = 1, skipped: sk0 = [], crawl: crawl0 = "idle", conn
                     {sk && <Button onClick={() => setStep(s.n)}>{s.n === 4 ? "Connect" : "Finish"}</Button>}</div>;
                 })}
               </div>
-              <footer className="s-onb__foot"><span style={{ flex: 1 }} /><Button size="lg" variant="primary" onClick={() => router.push("/app")}>Open Corral<Icon name="arrow" /></Button></footer>
+              <footer className="s-onb__foot"><span style={{ flex: 1 }} /><Button size="lg" variant="primary" onClick={exit}>Open Corral<Icon name="arrow" /></Button></footer>
             </div>
             <Preview name={name} slug={slug} tz={tzLabel} product={product} pitch={pitch} read={read} site={site} boxes={boxes} invites={done.includes(5) ? invites.length : 0} skipped={skipped} />
           </div>

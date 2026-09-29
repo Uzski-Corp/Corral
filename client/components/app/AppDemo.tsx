@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { LEADS, THREADS, type Thread } from "./data";
 import { Avatar, Button, FitBar, Kbd, Logo, Receipt, Receipts, Tag } from "./primitives";
 import { Icon } from "./icons";
-import { AppShell, APP_NAV, SAVED_SEGMENTS, type ViewId } from "./Shell";
+import { AppShell, APP_NAV, SAVED_SEGMENTS, type ShellAccountProp, type ViewId } from "./Shell";
 import { ContextRail, ReadingPane, ThreadList } from "./Unibox";
 import { SegmentTable } from "./SegmentTable";
 import { FilterBar } from "./Filters";
@@ -135,12 +135,22 @@ export function EnrollDialog({ open, onClose, count: n, includesReplied, onConfi
 }
 
 /* ------------------------------------------------------------ host */
-export type AppDemoProps = { initialView?: ViewId; cmdk?: boolean; collapsed?: boolean; drawer?: boolean; dialog?: boolean; frame?: "viewport" | "contained"; hotkeys?: boolean; className?: string };
+export type AppDemoProps = {
+  initialView?: ViewId; cmdk?: boolean; collapsed?: boolean; drawer?: boolean; dialog?: boolean; frame?: "viewport" | "contained"; hotkeys?: boolean; className?: string;
+  /** Signed-in person for the account menu and workspace switcher; omit for the sample person. */
+  account?: ShellAccountProp;
+  /** Ends the session. Resolves `{ ok: false }` when it could not, and the shell shows an error toast. */
+  onSignOut?: () => Promise<{ ok: boolean }>;
+};
 export function AppDemo(p: AppDemoProps) { return <ToastProvider><Demo {...p} /></ToastProvider>; }
 
-function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, drawer = false, dialog = false, frame = "viewport", hotkeys = true, className }: AppDemoProps) {
+function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, drawer = false, dialog = false, frame = "viewport", hotkeys = true, className, account, onSignOut }: AppDemoProps) {
   const router = useRouter();
   const toast = useToast();
+  const signOut = useCallback(() => {
+    if (!onSignOut) { router.push("/sign-in"); return; }
+    void onSignOut().then((r) => { if (!r.ok) toast({ tone: "error", children: "Couldn’t sign out. Check your connection and try again." }); });
+  }, [onSignOut, router, toast]);
   const [view, setView] = useState<ViewId>(initialView);
   const [segment, setSegment] = useState<string | undefined>(initialView === "segments" ? SAVED_SEGMENTS[0][0] : undefined);
   const [collapsed, setCollapsed] = useState(c0);
@@ -169,14 +179,14 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
       if (t) { setView("unibox"); setTab("needs"); setActive(t.id); setPane("read"); } else { setView("companies"); setSelected(new Set([id])); } },
     act: (id, label) => {
       if (id === "sidebar") setCollapsed((c) => !c);
-      else if (id === "signout") router.push("/sign-in");
+      else if (id === "signout") signOut();
       else if (id === "invite") router.push("/onboarding?step=5");
       else if (id === "mailbox") router.push("/onboarding?step=4");
       else if (id === "product") router.push("/onboarding?step=2");
       else if (id === "segment") { setView("companies"); toast({ icon: "layers", children: "Filters ready. Press S to save them as a segment." }); }
       else toast({ icon: id === "find" ? "globe" : "mail", children: label, meta: id === "find" ? "results land in Companies" : "sample action" });
     },
-  }), [go, router, toast]);
+  }), [go, router, toast, signOut]);
 
   // Global keys: ⌘K, G-sequences, J/K/E in the Unibox
   const gAt = useRef(0);
@@ -205,8 +215,9 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
   }, [hotkeys, palette, enroll, view, tab, threads, active, go, archive]);
 
   const label = APP_NAV.find((n) => n.id === view)!.label;
-  const crumbs = view === "unibox" ? ["ColdTrace", "Unibox", TABS.find((x) => x.id === tab)!.label]
-    : segment ? ["ColdTrace", "Segments", segment] : ["ColdTrace", label];
+  const ws = typeof account === "object" ? account.workspace : "ColdTrace";
+  const crumbs = view === "unibox" ? [ws, "Unibox", TABS.find((x) => x.id === tab)!.label]
+    : segment ? [ws, "Segments", segment] : [ws, label];
   const table = view === "companies" || view === "segments";
   const n = selected.size;
   const actions = view === "unibox" ? <>
@@ -221,7 +232,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
   return (
     <>
       <AppShell frame={frame} className={className} active={view} onNavigate={go} crumbs={crumbs} actions={actions} collapsed={collapsed} onCollapsedChange={setCollapsed}
-        onSearch={() => setPalette(true)} segment={segment} onSegment={(s) => { setView("segments"); setSegment(s); }} defaultDrawer={drawer} hotkeys={hotkeys}>
+        onSearch={() => setPalette(true)} segment={segment} onSegment={(s) => { setView("segments"); setSegment(s); }} defaultDrawer={drawer} hotkeys={hotkeys} account={account} onSignOut={signOut}>
         {view === "unibox" && <UniboxView threads={threads} active={active} setActive={setActive} tab={tab} setTab={setTab} pane={pane} setPane={setPane} />}
         {table && <CompaniesView selected={selected} toggle={toggle} segment={segment} />}
         {view === "contacts" && <ContactsView />}

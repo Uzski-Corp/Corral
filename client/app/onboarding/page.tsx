@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Onboarding } from "@/components/app/screens/Onboarding";
+import { OnboardingScreen } from "@/components/session/OnboardingScreen";
 
 export const metadata: Metadata = { title: "Set up your workspace · Corral" };
 
@@ -9,5 +9,5 @@ export default async function OnboardingPage({ searchParams }: PageProps<"/onboa
   const one = (k: string) => { const v = q[k]; return Array.isArray(v) ? v[0] : v; };
   const step = Math.min(6, Math.max(1, Number(one("step")) || 1));
   const skipped = (one("skipped") ?? "").split(",").map(Number).filter((n) => n >= 3 && n <= 5 && n < step);
-  return <Onboarding key={`${step}-${skipped.join()}`} initialStep={step} skipped={skipped} crawl={one("crawl") === "done" ? "done" : "idle"} connected={one("mailbox") === "1"} />;
+  return <OnboardingScreen key={`${step}-${skipped.join()}`} initialStep={step} skipped={skipped} crawl={one("crawl") === "done" ? "done" : "idle"} connected={one("mailbox") === "1"} />;
 }
