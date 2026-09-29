@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import { isValidElement, type CSSProperties, type ReactNode } from "react";
 import { Icon, type IconName } from "./icons";
 import { cx } from "./primitives";
 
@@ -41,11 +41,15 @@ export const Spinner = ({ size = 14 }: { size?: number }) => <span className="c-
 
 /* Empty state: says what this place is for, then the one way to fill it.
    art="range" drops a small crop of the Open Range image world into the UI (brand inside product). */
+/** A list or block can't sit inside <p> (invalid HTML, and a hydration mismatch); it gets a div styled like the <p>. */
+const BLOCKS = new Set(["ul", "ol", "div", "dl", "table", "form", "details"]);
+const isBlock = (n: ReactNode) => isValidElement(n) && typeof n.type === "string" && BLOCKS.has(n.type);
+
 export function EmptyState({ icon, title, children, actions, art, compact }: { icon?: IconName; title: ReactNode; children?: ReactNode; actions?: ReactNode; art?: "range" | "grass"; compact?: boolean }) {
   return (
     <div className={cx("c-empty", compact && "c-empty--compact")}>
       {art ? <span className={cx("c-empty__art", `c-empty__art--${art}`)} aria-hidden="true" /> : icon && <span className="c-empty__ic"><Icon name={icon} size={16} /></span>}
-      <div className="c-empty__txt"><p className="c-strong">{title}</p>{children && <p>{children}</p>}</div>
+      <div className="c-empty__txt"><p className="c-strong">{title}</p>{children && (isBlock(children) ? <div className="c-empty__more">{children}</div> : <p>{children}</p>)}</div>
       {actions && <div className="c-actions">{actions}</div>}
     </div>
   );
@@ -56,7 +60,7 @@ export function ErrorState({ title, children, detail, actions }: { title: ReactN
   return (
     <div className="c-empty c-empty--error" role="alert">
       <span className="c-empty__ic"><Icon name="alert" size={16} /></span>
-      <div className="c-empty__txt"><p className="c-strong">{title}</p>{children && <p>{children}</p>}</div>
+      <div className="c-empty__txt"><p className="c-strong">{title}</p>{children && (isBlock(children) ? <div className="c-empty__more">{children}</div> : <p>{children}</p>)}</div>
       {actions && <div className="c-actions">{actions}</div>}
       {detail && <span className="c-mono">{detail}</span>}
     </div>

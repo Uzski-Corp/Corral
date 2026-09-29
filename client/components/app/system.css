@@ -149,7 +149,7 @@ button.c-toggle { border: 0; padding: 0; cursor: pointer; transition: background
 .c-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px; padding: 56px 24px; }
 .c-empty--compact { padding: 28px 20px; gap: 12px; }
 .c-empty__txt { display: flex; flex-direction: column; gap: 4px; max-width: 380px; }
-.c-empty__txt p { margin: 0; line-height: 20px; color: var(--color-text-tertiary); }
+.c-empty__txt p, .c-empty__more { margin: 0; line-height: 20px; color: var(--color-text-tertiary); }
 .c-empty__txt p.c-strong { font-size: var(--text-content); color: var(--color-text); }
 .c-empty__ic { width: 32px; height: 32px; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; background: var(--color-surface-sunken); color: var(--color-text-tertiary); }
 .c-empty--error .c-empty__ic { background: var(--color-negative-50); color: var(--color-negative-600); }
