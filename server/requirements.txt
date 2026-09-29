@@ -21,3 +21,7 @@ redis==5.3.1  # arq requires redis<6
 
 # Logging
 structlog==26.1.0
+
+# Used directly (session sealing / JWT errors); pinned to what workos resolves
+cryptography==50.0.1
+pyjwt==2.15.1

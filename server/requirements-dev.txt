@@ -1,3 +1,7 @@
 pytest==9.1.1
 pytest-asyncio==1.4.0
+pytest-cov==7.1.0
 ruff==0.16.9
+mypy==2.3.1
+# Disposable Postgres for integration tests (skipped when Docker is unavailable)
+testcontainers[postgres]==4.15.0
