@@ -1,6 +1,7 @@
 // A stand-in for the Corral API auth endpoints (PR #2), so e2e runs without WorkOS or Postgres.
 // It mirrors the real contract: cookie names, 303 redirects, status codes and JSON shapes.
-// Control: POST /__mock/scenario {"deny": true} makes the next AuthKit round trip fail;
+// Control: POST /__mock/scenario {"deny": true} makes the next AuthKit round trip fail, {"down": true}
+// makes /me answer 503 (API unreachable);
 // GET /__mock/calls lists requests seen; POST /__mock/reset clears both.
 import http from "node:http";
 
@@ -14,7 +15,7 @@ const ME = {
   role: "owner",
 };
 
-let scenario = { deny: false };
+let scenario = { deny: false, down: false };
 let calls = [];
 let n = 0;
 
@@ -46,7 +47,7 @@ const server = http.createServer((req, res) => {
   if (path === "/__mock/scenario" && req.method === "POST") {
     let body = ""; req.on("data", (c) => (body += c)); req.on("end", () => { scenario = { ...scenario, ...JSON.parse(body || "{}") }; json(res, 200, scenario); }); return;
   }
-  if (path === "/__mock/reset" && req.method === "POST") { scenario = { deny: false }; calls = []; return json(res, 200, {}); }
+  if (path === "/__mock/reset" && req.method === "POST") { scenario = { deny: false, down: false }; calls = []; return json(res, 200, {}); }
   if (path === "/__mock/calls") return json(res, 200, calls);
 
   if (path === "/api/v1/auth/login" && req.method === "GET") {
@@ -67,6 +68,7 @@ const server = http.createServer((req, res) => {
     return redirect(res, FRONTEND, [`wos_session=sealed-${n}; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax`, clearState]);
   }
   if (path === "/api/v1/auth/me" && req.method === "GET") {
+    if (scenario.down) return json(res, 503, { detail: "Service Unavailable" });
     return signedIn(req) ? json(res, 200, ME) : json(res, 401, { detail: "Session invalid or expired" }, { "Set-Cookie": clearSession });
   }
   if (path === "/api/v1/auth/refresh" && req.method === "POST") {

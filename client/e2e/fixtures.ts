@@ -4,7 +4,7 @@ export const API = `http://localhost:${process.env.E2E_API_PORT ?? 8787}`;
 export const WEB = `http://localhost:${process.env.E2E_WEB_PORT ?? 3100}`;
 
 type Fixtures = {
-  mockApi: { deny(): Promise<void>; calls(): Promise<string[]> };
+  mockApi: { deny(): Promise<void>; down(): Promise<void>; calls(): Promise<string[]> };
   onboarded: () => Promise<void>;
 };
 
@@ -13,6 +13,7 @@ export const test = base.extend<Fixtures>({
     await request.post(`${API}/__mock/reset`);
     await provide({
       deny: async () => { await request.post(`${API}/__mock/scenario`, { data: { deny: true } }); },
+      down: async () => { await request.post(`${API}/__mock/scenario`, { data: { down: true } }); },
       calls: async () => (await request.get(`${API}/__mock/calls`)).json(),
     });
   },
