@@ -30,6 +30,27 @@ class Settings(BaseSettings):
     db_statement_timeout_ms: int = Field(default=15_000, ge=0)
 
     redis_url: str = "redis://localhost:6379/0"
+    redis_timeout_s: float = Field(default=2.0, gt=0, le=30)
+
+    # HTTP: requests exceeding this are answered with 504 (and their work cancelled).
+    request_timeout_s: float = Field(default=30.0, gt=0, le=300)
+    readiness_timeout_s: float = Field(default=2.0, gt=0, le=30)
+
+    # Background worker (arq)
+    worker_max_jobs: int = Field(default=10, ge=1, le=1000)
+    worker_job_timeout_s: int = Field(default=300, ge=1)
+    worker_max_tries: int = Field(default=5, ge=1, le=50)
+    worker_shutdown_grace_s: int = Field(default=20, ge=0, le=300)
+
+    # Observability
+    otel_enabled: bool = False
+    otel_service_name: str = "corral-api"
+    # e.g. http://localhost:4318/v1/traces; unset falls back to OTEL_EXPORTER_OTLP_* env vars
+    otel_exporter_otlp_endpoint: str | None = None
+    otel_sample_ratio: float = Field(default=1.0, ge=0.0, le=1.0)
+    metrics_enabled: bool = True
+    # When set, GET /metrics requires "Authorization: Bearer <token>".
+    metrics_token: SecretStr = SecretStr("")
     cors_origins: list[str] = ["http://localhost:3000"]
 
     workos_api_key: SecretStr = SecretStr("")

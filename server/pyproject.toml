@@ -2,7 +2,11 @@
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
-filterwarnings = ["error::sqlalchemy.exc.SADeprecationWarning"]
+filterwarnings = [
+    "error::sqlalchemy.exc.SADeprecationWarning",
+    # arq 0.28 calls redis' deprecated close(); harmless, fixed upstream.
+    "ignore:Call to deprecated close:DeprecationWarning:arq.worker",
+]
 
 [tool.ruff]
 line-length = 100
