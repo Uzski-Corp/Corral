@@ -4,6 +4,8 @@ Bau's M1 design (`docs/design/HANDOFF-ENG.md`) wired to the Corral API's WorkOS 
 
 ## Run it
 
+Node 22 (`.nvmrc`, `engines` in `package.json`): `nvm use` in this folder.
+
 ```bash
 pnpm install
 pnpm dev:review   # design review: no auth, sample person, every review state (?view=, ?step=, ?state=, …)
