@@ -5,12 +5,19 @@ import { defineConfig, devices } from "@playwright/test";
  * Corral API auth contract (PR #2). Both run on localhost so the API's cookie reaches the app,
  * as it does in dev with the real server.
  *
+ * The "review" project (e2e/kb.*.spec.ts) runs against a second server with NEXT_PUBLIC_DESIGN_REVIEW=1,
+ * because `?state=` review states are off in production builds. It is `next dev`, whose output lives in
+ * .next/dev, so it doesn't clash with the production build in .next.
+ *
  * PLAYWRIGHT_CHANNEL=chrome uses the system Chrome instead of Playwright's bundled Chromium.
  */
 const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? 3100);
 const API_PORT = Number(process.env.E2E_API_PORT ?? 8787);
+const REVIEW_PORT = Number(process.env.E2E_REVIEW_PORT ?? 3101);
 const WEB = `http://localhost:${WEB_PORT}`;
 const API = `http://localhost:${API_PORT}`;
+const REVIEW = `http://localhost:${REVIEW_PORT}`;
+const REVIEW_SPECS = /kb\.[\w-]+\.spec\.ts$/;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -28,6 +35,10 @@ export default defineConfig({
     viewport: { width: 1440, height: 900 },
     channel: process.env.PLAYWRIGHT_CHANNEL || undefined,
   },
+  projects: [
+    { name: "app", testIgnore: REVIEW_SPECS },
+    { name: "review", testMatch: REVIEW_SPECS, use: { baseURL: REVIEW } },
+  ],
   webServer: [
     {
       command: "node e2e/mock-api.mjs",
@@ -42,6 +53,14 @@ export default defineConfig({
       url: `${WEB}/sign-in`,
       env: { NEXT_PUBLIC_API_URL: API, NEXT_TELEMETRY_DISABLED: "1" },
       timeout: 300_000,
+      reuseExistingServer: !process.env.CI,
+      gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
+    },
+    {
+      command: `exec ./node_modules/.bin/next dev -p ${REVIEW_PORT}`,
+      url: `${REVIEW}/app?view=knowledge`,
+      env: { NEXT_PUBLIC_DESIGN_REVIEW: "1", NEXT_TELEMETRY_DISABLED: "1" },
+      timeout: 180_000,
       reuseExistingServer: !process.env.CI,
       gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
     },
