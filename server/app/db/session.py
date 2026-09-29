@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.core.config import Settings
+from app.db.tenancy import enforce_app_role
 
 
 class Database:
@@ -57,7 +58,13 @@ def get_database(request: Request) -> Database:
 
 
 async def get_db(request: Request) -> AsyncIterator[AsyncSession]:
-    """One transaction per request: commit on success, roll back on any exception."""
+    """One transaction per request: commit on success, roll back on any exception.
+
+    The transaction runs as the unprivileged ``corral_app`` role so row-level security
+    applies; the auth dependency then pins ``app.current_org`` for the caller.
+    """
     database = get_database(request)
-    async with database.sessionmaker() as session, session.begin():
-        yield session
+    async with database.sessionmaker() as session:
+        enforce_app_role(session)
+        async with session.begin():
+            yield session

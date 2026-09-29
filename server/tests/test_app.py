@@ -6,16 +6,18 @@ import pytest
 import structlog
 from fastapi import HTTPException
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from app.auth.deps import DbDep
+from app.auth.provisioning import WorkOSProfile, provision_identity
 from app.auth.session import SessionManager
 from app.core.config import Settings
 from app.core.logging import configure_logging
 from app.db.session import Database
+from app.db.tenancy import apply_tenant_context
 from app.main import create_app
-from app.models.identity import User
+from app.models.domain import Lead
 from tests.conftest import make_settings
 
 
@@ -103,10 +105,13 @@ async def test_database_ping_fails_for_unreachable_server() -> None:
 async def test_request_transaction_commits_or_rolls_back(
     migrated_database: str, db_engine: AsyncEngine
 ) -> None:
+    async with AsyncSession(db_engine) as s, s.begin():
+        ident = await provision_identity(s, WorkOSProfile(workos_user_id="u1", email="a@b.co"))
     app = create_app(make_settings(database_url=migrated_database))
 
-    async def create(db: DbDep, fail: bool = False) -> dict[str, bool]:
-        db.add(User(workos_user_id=f"u-{fail}", email="x@example.com"))
+    async def create(db: DbDep, email: str, fail: bool = False) -> dict[str, bool]:
+        await apply_tenant_context(db, org_id=ident.org_id, user_id=ident.user_id)
+        db.add(Lead(org_id=ident.org_id, email=email))
         await db.flush()
         if fail:
             raise HTTPException(400, "nope")
@@ -115,9 +120,33 @@ async def test_request_transaction_commits_or_rolls_back(
     app.add_api_route("/create", create, methods=["POST"])
     async with app.router.lifespan_context(app):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as c:
-            assert (await c.post("/create")).status_code == 200
-            assert (await c.post("/create", params={"fail": True})).status_code == 400
+            assert (await c.post("/create", params={"email": "kept@x.io"})).status_code == 200
+            res = await c.post("/create", params={"email": "gone@x.io", "fail": True})
+            assert res.status_code == 400
     async with AsyncSession(db_engine) as s:
-        ids = (await s.execute(select(User.workos_user_id))).scalars().all()
-        assert ids == ["u-False"]
-        assert (await s.execute(select(func.count()).select_from(User))).scalar_one() == 1
+        emails = (await s.execute(select(Lead.email))).scalars().all()
+        assert emails == ["kept@x.io"]
+        assert (await s.execute(select(func.count()).select_from(Lead))).scalar_one() == 1
+
+
+async def test_request_transaction_runs_as_app_role(
+    migrated_database: str, db_engine: AsyncEngine
+) -> None:
+    app = create_app(make_settings(database_url=migrated_database))
+
+    async def whoami(db: DbDep) -> dict[str, object]:
+        row = (
+            await db.execute(
+                text(
+                    "SELECT current_user, r.rolbypassrls, r.rolsuper "
+                    "FROM pg_roles r WHERE r.rolname = current_user"
+                )
+            )
+        ).one()
+        return {"role": row[0], "bypass": row[1], "super": row[2]}
+
+    app.add_api_route("/whoami", whoami)
+    async with app.router.lifespan_context(app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as c:
+            body = (await c.get("/whoami")).json()
+    assert body == {"role": "corral_app", "bypass": False, "super": False}

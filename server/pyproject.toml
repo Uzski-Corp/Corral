@@ -13,6 +13,8 @@ select = ["E", "F", "I", "UP", "B", "S", "ASYNC", "SIM", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "S105", "S106", "S107", "SIM117"]
+# Migrations interpolate module constants into DDL only; never user input.
+"migrations/versions/**" = ["S608"]
 
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = ["fastapi.Depends", "fastapi.Cookie", "fastapi.Query"]

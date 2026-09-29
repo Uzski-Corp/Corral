@@ -8,14 +8,18 @@ Database tests need Postgres. Resolution order:
 
 import asyncio
 import os
+import secrets
 from collections.abc import AsyncIterator, Iterator
+from pathlib import Path
 from typing import Any
 
 import pytest
+from alembic import command
+from alembic.config import Config
 from cryptography.fernet import Fernet
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import text
+from sqlalchemy import make_url, text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -67,26 +71,58 @@ def database_url() -> Iterator[str]:
         yield pg.get_connection_url()
 
 
-async def _reset_schema(url: str) -> None:
-    from app.db.base import Base
-    from app.models import Membership  # noqa: F401  (register models)
+SERVER_DIR = Path(__file__).resolve().parent.parent
 
+
+def alembic_config(url: str) -> Config:
+    cfg = Config(str(SERVER_DIR / "alembic.ini"))
+    cfg.set_main_option("script_location", str(SERVER_DIR / "migrations"))
+    cfg.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
+    return cfg
+
+
+async def _drop_schema(url: str) -> None:
     engine = create_async_engine(url, poolclass=NullPool)
     async with engine.begin() as conn:
         await conn.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
         await conn.execute(text("CREATE SCHEMA public"))
-        await conn.run_sync(Base.metadata.create_all)
     await engine.dispose()
+
+
+def reset_database(url: str) -> None:
+    """Empty the public schema and apply every migration (the real deploy path)."""
+    asyncio.run(_drop_schema(url))
+    command.upgrade(alembic_config(url), "head")
+
+
+async def _admin_execute(url: str, sql: str) -> None:
+    engine = create_async_engine(url, poolclass=NullPool, isolation_level="AUTOCOMMIT")
+    async with engine.connect() as conn:
+        await conn.execute(text(sql))
+    await engine.dispose()
+
+
+@pytest.fixture
+def scratch_database_url(database_url: str) -> Iterator[str]:
+    """A brand-new, empty database on the same server (for migration up/down tests)."""
+    name = f"corral_scratch_{secrets.token_hex(4)}"
+    base = make_url(database_url)
+    asyncio.run(_admin_execute(database_url, f'CREATE DATABASE "{name}"'))
+    try:
+        yield base.set(database=name).render_as_string(hide_password=False)
+    finally:
+        asyncio.run(_admin_execute(database_url, f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)'))
 
 
 @pytest.fixture(scope="session")
 def migrated_database(database_url: str) -> str:
-    asyncio.run(_reset_schema(database_url))
+    reset_database(database_url)
     return database_url
 
 
 async def _truncate_all(engine: AsyncEngine) -> None:
     from app.db.base import Base
+    from app.models import Membership  # noqa: F401  (register models)
 
     tables = ", ".join(t.name for t in Base.metadata.sorted_tables)
     async with engine.begin() as conn:

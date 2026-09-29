@@ -9,7 +9,6 @@ from typing import Annotated
 
 import structlog
 from fastapi import Depends, HTTPException, Request, Response, status
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.session import (
@@ -21,7 +20,8 @@ from app.auth.session import (
 from app.core.config import Settings
 from app.core.errors import Unauthenticated
 from app.db.session import get_db
-from app.models.identity import Membership, Organization, User
+from app.db.tenancy import apply_tenant_context, resolve_membership
+from app.models.identity import Organization, User
 
 log = structlog.get_logger(__name__)
 
@@ -95,28 +95,25 @@ class AuthContext:
 
 
 async def load_auth_context(db: AsyncSession, resolved: ResolvedSession) -> AuthContext | None:
-    """Map WorkOS session claims to local rows. ``None`` means no local access."""
+    """Map WorkOS session claims to local rows and pin the transaction to that tenant.
+
+    ``None`` means the caller has no local membership for the org in their session.
+    """
     claims = resolved.claims
-    user = (
-        await db.execute(select(User).where(User.workos_user_id == claims.workos_user_id))
-    ).scalar_one_or_none()
-    if user is None:
+    membership = await resolve_membership(
+        db,
+        workos_user_id=claims.workos_user_id,
+        workos_organization_id=claims.workos_organization_id,
+    )
+    if membership is None:
         return None
-    if claims.workos_organization_id:
-        org_filter = Organization.workos_organization_id == claims.workos_organization_id
-    else:
-        org_filter = Organization.personal_owner_user_id == user.id
-    row = (
-        await db.execute(
-            select(Organization, Membership.role)
-            .join(Membership, Membership.org_id == Organization.id)
-            .where(org_filter, Membership.user_id == user.id)
-        )
-    ).one_or_none()
-    if row is None:
+    await apply_tenant_context(db, org_id=membership.org_id, user_id=membership.user_id)
+    # Both reads now pass through row-level security for the pinned tenant.
+    user = await db.get(User, membership.user_id)
+    org = await db.get(Organization, membership.org_id)
+    if user is None or org is None:  # pragma: no cover - guarded by FK + RLS invariants
         return None
-    org, role = row
-    return AuthContext(user=user, org=org, role=role, session_id=claims.session_id)
+    return AuthContext(user=user, org=org, role=membership.role, session_id=claims.session_id)
 
 
 async def get_auth_context(resolved: ResolvedSessionDep, db: DbDep) -> AuthContext:
