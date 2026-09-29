@@ -30,3 +30,14 @@ test("onboarding and app shell", async ({ page, mockApi }) => {
   await page.evaluate(() => document.fonts.ready);
   await expect(page).toHaveScreenshot("app-unibox.png");
 });
+
+test("companies table", async ({ page, mockApi, onboarded }) => {
+  void mockApi;
+  await onboarded();
+  await page.goto("/sign-in?next=%2Fapp%3Fview%3Dcompanies");
+  await signInWithGoogle(page);
+  await expect(page.getByRole("table", { name: /^Segment:/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Account" })).toContainText("Wanjiru Mwangi");
+  await page.evaluate(() => document.fonts.ready);
+  await expect(page).toHaveScreenshot("app-companies.png");
+});
