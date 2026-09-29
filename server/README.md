@@ -74,8 +74,9 @@ Operational requirements:
   labelled by route template (never raw paths) to keep cardinality bounded.
 - Tracing: set `OTEL_ENABLED=true` and `OTEL_EXPORTER_OTLP_ENDPOINT`; FastAPI and SQLAlchemy
   spans are exported over OTLP/HTTP.
-- Shutdown: when the lifespan exits (SIGTERM) `/readyz` flips to 503 first, then the queue
-  pool, telemetry and DB are closed in that order.
+- Shutdown: when the lifespan exits (SIGTERM) `/readyz` flips to 503 first, then the WorkOS
+  client, queue pool and DB are closed, and telemetry is flushed last. The worker stops
+  taking jobs on SIGTERM and waits up to `WORKER_SHUTDOWN_GRACE_S` for running ones.
 
 ## Tests
 
