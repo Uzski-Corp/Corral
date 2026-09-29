@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { CALLBACK_ERRORS, signInView } from "./signInState";
+import { CALLBACK_ERRORS, screenForError, signInView } from "./signInState";
 
 describe("signInView", () => {
   it.each(CALLBACK_ERRORS)("shows the designed failure screen for ?error=%s", (code) => {
-    expect(signInView({ error: code }, false)).toEqual({ initial: "error", callbackError: code });
+    expect(signInView({ error: code }, false)).toEqual({ initial: screenForError(code), callbackError: code });
+  });
+
+  it("gives cancel and provider-down their own screens", () => {
+    expect(signInView({ error: "provider_error" }, false).initial).toBe("cancelled");
+    expect(signInView({ error: "auth_unavailable" }, false).initial).toBe("unavailable");
+    expect(signInView({ error: "invalid_state" }, false).initial).toBe("error");
+    expect(signInView({ error: "auth_failed" }, false).initial).toBe("error");
   });
 
   it("maps unknown error codes to the same screen", () => {
@@ -17,6 +24,8 @@ describe("signInView", () => {
   it("honours review states only when allowed", () => {
     expect(signInView({ state: "sent" }, true)).toEqual({ initial: "sent", callbackError: null });
     expect(signInView({ state: "invalid" }, true).initial).toBe("invalid");
+    expect(signInView({ state: "cancelled" }, true).initial).toBe("cancelled");
+    expect(signInView({ state: "unavailable" }, true).initial).toBe("unavailable");
     expect(signInView({ state: "sent" }, false).initial).toBe("default");
     expect(signInView({ state: "bogus" }, true).initial).toBe("default");
     expect(signInView({}, true).initial).toBe("default");

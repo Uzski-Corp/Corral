@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./styleguide.css";
 import Link from "next/link";
-import { CmdkDemo, FormDemo, OverlayDemo, ShellDemo, StatesDemo, TabsToastDemo } from "./M1Sections";
+import { AccountStatesDemo, CmdkDemo, ContrastDemo, FormDemo, OverlayDemo, SessionErrorDemo, ShellDemo, StatesDemo, TabsToastDemo } from "./M1Sections";
 import {
   Avatar, Button, ContextRail, Field, FilterBar, FitBar, Input, LEADS, Logo, MeetingCard, PersonCard, Receipt, Receipts,
   ReadingPane, ReplyCard, SegmentTable, SegmentWindow, Segmented, Tag, THREADS, ThreadList, Toast, Toggle, Mark,
@@ -34,7 +34,7 @@ export default function Styleguide() {
         <h1>The product, in use.</h1>
         <p>Every component below is the live React component from <code>components/app</code>, shown where it actually lives. Tokens come from the Tailwind v4 <code>@theme</code> in <code>app/globals.css</code>. Both marketing sites embed these same components; only the page around them changes.</p>
         <nav className="sg-routes" aria-label="M1 screens"><span className="sg-faint">M1 screens</span>
-          <Link href="/app">/app</Link><Link href="/app?cmdk=1">/app?cmdk=1</Link><Link href="/sign-in">/sign-in</Link><Link href="/onboarding">/onboarding</Link>
+          <Link href="/app">/app</Link><Link href="/app?cmdk=1">/app?cmdk=1</Link><Link href="/app?state=api-down">/app?state=api-down</Link><Link href="/sign-in">/sign-in</Link><Link href="/sign-in?state=cancelled">?state=cancelled</Link><Link href="/sign-in?state=unavailable">?state=unavailable</Link><Link href="/onboarding">/onboarding</Link>
           <span className="sg-faint">Handoff: <code>round3/tokens/HANDOFF-ENG.md</code></span></nav>
         <ul className="sg-rules">
           <li><b>One action colour.</b> Blue <code>--color-action</code> for the one thing to do next; near-black <code>--color-action-2</code> for the second.</li>
@@ -145,7 +145,22 @@ export default function Styleguide() {
         <StatesDemo />
       </Part>
 
-      <Part n="15" title="Things that float" tokens={["--shadow-pop", "--radius-window 14", "--color-surface-inverse"]}
+      <Part wide n="16" title="Contrast, controls and links (WCAG AA)" tokens={["--color-text-secondary #4F4F4F", "--color-text-tertiary #5F5F5F", "--color-text-quaternary #6A6A6A", "--color-text-disabled #A1A1A1 (new)", "--color-border-control #8F8F8C (new)", "positive/caution/negative-600 darkened"]}
+        notes={<><p>Every text grey now passes 4.5:1 on the darkest surface it sits on (active nav, #EBEBE9). The ladder keeps three visible steps, so quiet stays quiet; hierarchy leans a little more on size and weight.</p><p style={{ marginTop: 8 }}>#A1A1A1 survives only as <code>text-disabled</code>. Status tags keep their fills; only the 600 text darkened where it failed.</p></>}>
+        <ContrastDemo />
+      </Part>
+
+      <Part n="17" title="Account row states" tokens={["Monogram: neutral-200 fill / neutral-600 initials (6.08:1)", "Skeleton 24 circle · 96×10 · 120×8", "c-me 44px row"]}
+        notes={<p>No picture means initials on the neutral tint, never a blank. Pictures that fail to load fall back to the same monogram. While <code>/me</code> loads, the row uses the Skeleton primitive at the real text sizes; if the check fails it stops shimmering and says so.</p>}>
+        <AccountStatesDemo />
+      </Part>
+
+      <Part wide n="18" title="Session check failed (API down)" tokens={["full shell, body replaced", "caution-50 / 200 / 600 icon", "--text-title 18 headline", "auto-retry 30s"]}
+        notes={<p>When <code>GET /me</code> can’t reach the API, the shell keeps its frame and the body says what happened, that nothing is lost, and how to retry. Reachable at <code>/app?state=api-down</code>.</p>}>
+        <SessionErrorDemo />
+      </Part>
+
+      <Part n="19" title="Things that float" tokens={["--shadow-pop", "--radius-window 14", "--color-surface-inverse"]}
         notes={<p>Only moments float: a booked meeting, a reply worth seeing, a toast. Faces are film-graded photos in circles, one treatment for everyone.</p>}>
         <div className="sg-float">
           <MeetingCard />

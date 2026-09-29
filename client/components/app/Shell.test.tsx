@@ -36,15 +36,23 @@ describe("WorkspaceSwitcher", () => {
 });
 
 describe("SideNav account", () => {
-  it("renders the signed-in person without a sample avatar", async () => {
+  it("renders the signed-in person with an initials monogram when there is no picture", async () => {
     render(<SideNav active="unibox" account={acct} />);
     const me = screen.getByRole("button", { name: "Account" });
     expect(within(me).getByText("Amina Otieno")).toBeInTheDocument();
     expect(me.querySelector("img")).toBeNull();
+    expect(me.querySelector(".c-mono-av")).toHaveTextContent("AO");
     await userEvent.click(me);
     expect(screen.getByText("Amina Otieno · Admin")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("menuitem", { name: /Sign out/ }));
     expect(router.push).toHaveBeenCalledWith("/sign-in");
+  });
+
+  it("shows a static not-connected row when the session check failed", () => {
+    render(<SideNav active="unibox" account="unavailable" />);
+    const me = screen.getByRole("button", { name: "Account" });
+    expect(within(me).getByText("Not connected")).toBeInTheDocument();
+    expect(me.querySelector(".c-skel")).toBeNull();
   });
 
   it("drops the account heading while loading", async () => {

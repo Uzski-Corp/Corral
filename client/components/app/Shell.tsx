@@ -1,8 +1,8 @@
 "use client";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ComponentPropsWithoutRef, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Icon, type IconName } from "./icons";
-import { Avatar, Kbd, cx } from "./primitives";
+import { Avatar, Kbd, Monogram, cx } from "./primitives";
 import { DropdownMenu, Tooltip, type MenuEntry } from "./Overlays";
 import { Skeleton } from "./States";
 
@@ -21,12 +21,13 @@ export const SAVED_SEGMENTS: [string, number][] = [["F&B · East Africa", 48], [
 
 /**
  * The signed-in person and workspace. `undefined` renders Bau's sample person (styleguide and
- * design review); "loading" renders skeletons while the session is confirmed.
+ * design review); "loading" renders skeletons while the session is confirmed; "unavailable" is the
+ * static row shown when the session check failed (API down), next to <SessionUnavailable>.
  */
-export type ShellAccountProp = { name: string; email: string; role: string; avatarUrl: string | null; workspace: string } | "loading" | undefined;
+export type ShellAccountProp = { name: string; email: string; role: string; avatarUrl: string | null; workspace: string } | "loading" | "unavailable" | undefined;
 
 /* ------------------------------------------------------------ Workspace switcher */
-export const WorkspaceTile = ({ letter = "C", size = 20, tone = "ink" }: { letter?: string; size?: number; tone?: "ink" | "blue" | "sand" }) =>
+export const WorkspaceTile = ({ letter = "C", size = 20, tone = "ink" }: { letter?: string; size?: number; tone?: "ink" | "blue" | "sand" | "muted" }) =>
   <span className={cx("c-wstile", `c-wstile--${tone}`)} style={{ width: size, height: size, fontSize: size * 0.55 }} aria-hidden="true">{letter}</span>;
 
 const initial = (s: string) => (s.trim()[0] ?? "C").toUpperCase();
@@ -35,15 +36,15 @@ export function WorkspaceSwitcher({ collapsed, defaultOpen, account, onSignOut }
   const router = useRouter();
   const signOut = onSignOut ?? (() => router.push("/sign-in"));
   const live = typeof account === "object";
-  const name = live ? account.workspace : account === "loading" ? "" : "ColdTrace";
-  const tile = <WorkspaceTile letter={live ? initial(account.workspace) : undefined} />;
+  const name = live ? account.workspace : account === "loading" ? "" : account === "unavailable" ? "Workspace" : "ColdTrace";
+  const tile = <WorkspaceTile letter={live ? initial(account.workspace) : account === "unavailable" ? "" : undefined} tone={account === "unavailable" ? "muted" : "ink"} />;
   // Other workspaces and member counts are sample data; the API has no workspace list yet.
   const workspaces: MenuEntry[] = live
     ? [{ label: account.workspace, lead: tile, checked: true }]
     : [{ label: "ColdTrace", lead: <WorkspaceTile />, meta: "3 members", checked: true }, { label: "Pwani Fresh pilot", lead: <WorkspaceTile letter="P" tone="sand" />, meta: "Guest" }];
   return (
     <DropdownMenu label="Workspaces" width={248} defaultOpen={defaultOpen} items={[
-      ...(account === "loading" ? [] : [{ heading: live ? account.email : "tomas@coldtrace.io" }]),
+      ...(account === "loading" || account === "unavailable" ? [] : [{ heading: live ? account.email : "tomas@coldtrace.io" }]),
       ...workspaces,
       "separator",
       { label: "Workspace settings", icon: "gear", kbd: "G ," },
@@ -52,7 +53,7 @@ export function WorkspaceSwitcher({ collapsed, defaultOpen, account, onSignOut }
       "separator",
       { label: "Sign out", icon: "logout", onSelect: signOut },
     ]} trigger={(p) => (
-      <button type="button" className={cx("c-ws", collapsed && "is-collapsed")} aria-label="Switch workspace" {...p}>
+      <button type="button" className={cx("c-ws", collapsed && "is-collapsed")} aria-label="Switch workspace" aria-busy={account === "loading" || undefined} {...p}>
         {account === "loading" ? <Skeleton w={20} h={20} r={5} /> : tile}<span className="c-ws__name">{account === "loading" ? <Skeleton w={72} /> : name}</span><Icon name="down" size={12} />
       </button>
     )} />
@@ -72,11 +73,31 @@ function NavRow({ icon, label, count, active, collapsed, onClick, kbd, dot }: { 
 }
 
 function AccountAvatar({ account }: { account: ShellAccountProp }) {
+  const [broken, setBroken] = useState<string | null>(null);
   if (account === undefined) return <Avatar id="tomas" size={24} />;
   if (account === "loading") return <Skeleton w={24} h={24} r={12} />;
-  // Same box and class as the sample avatar. No picture: nothing, until Bau designs a fallback.
+  if (account === "unavailable") return <span className="c-av c-av--24 c-mono-av c-mono-av--off" aria-hidden="true"><Icon name="alert" size={12} /></span>;
+  // No picture, or it failed to load: initials on the neutral tint (M1 follow-up 5a).
+  if (!account.avatarUrl || broken === account.avatarUrl) return <Monogram name={account.name} email={account.email} size={24} />;
+  const url = account.avatarUrl;
   // eslint-disable-next-line @next/next/no-img-element
-  return account.avatarUrl ? <img className="c-av c-av--24" src={account.avatarUrl} alt="" width={24} height={24} referrerPolicy="no-referrer" /> : null;
+  return <img className="c-av c-av--24" src={url} alt="" width={24} height={24} referrerPolicy="no-referrer" onError={() => setBroken(url)} />;
+}
+
+/** The account row at the foot of the sidebar: sample person, signed-in person (picture or
+ *  monogram), loading skeleton, or the static "not connected" row. Extra props go on the button. */
+export function AccountRow({ account, collapsed, ...rest }: { account?: ShellAccountProp; collapsed?: boolean } & ComponentPropsWithoutRef<"button">) {
+  const live = typeof account === "object";
+  return (
+    <button type="button" className={cx("c-me", collapsed && "is-collapsed")} aria-label="Account" aria-busy={account === "loading" || undefined} {...rest}>
+      <AccountAvatar account={account} />
+      <span className="c-me__txt">
+        {account === "loading" ? <><Skeleton w={96} h={10} /><Skeleton w={120} h={8} /></>
+          : account === "unavailable" ? <><span className="c-strong">Not connected</span><span>Account details unavailable</span></>
+          : <><span className="c-strong">{live ? account.name : "Tomás Ibarra"}</span><span>{live ? account.email : "tomas@coldtrace.io"}</span></>}
+      </span>
+    </button>
+  );
 }
 
 export function SideNav({ active, onNavigate, collapsed, onSearch, segment, onSegment, account, onSignOut }: {
@@ -88,22 +109,24 @@ export function SideNav({ active, onNavigate, collapsed, onSearch, segment, onSe
   const top = APP_NAV.filter((n) => n.id !== "settings");
   const settings = APP_NAV.find((n) => n.id === "settings")!;
   const live = typeof account === "object";
-  const heading = live ? `${account.name} · ${account.role}` : account === "loading" ? null : "Tomás Ibarra · Owner";
+  // Session check failed: don't show counts or pool numbers we couldn't have fetched.
+  const offline = account === "unavailable";
+  const heading = live ? `${account.name} · ${account.role}` : account === "loading" || account === "unavailable" ? null : "Tomás Ibarra · Owner";
   return (
     <nav className={cx("c-side c-side--app", collapsed && "is-collapsed")} aria-label="Primary">
       <div className="c-side__head"><WorkspaceSwitcher collapsed={collapsed} account={account} onSignOut={signOut} /></div>
       <NavRow icon="search" label="Search" kbd="⌘K" collapsed={collapsed} onClick={onSearch} />
       <div className="c-side__gap" />
-      {top.map((n) => <NavRow key={n.id} icon={n.icon} label={n.label} count={n.count} dot={collapsed && !!n.count} active={active === n.id && !(n.id === "segments" && segment)} collapsed={collapsed} onClick={() => onNavigate?.(n.id)} />)}
+      {top.map((n) => <NavRow key={n.id} icon={n.icon} label={n.label} count={offline ? undefined : n.count} dot={collapsed && !offline && !!n.count} active={active === n.id && !(n.id === "segments" && segment)} collapsed={collapsed} onClick={() => onNavigate?.(n.id)} />)}
       {!collapsed && <>
         <div className="c-side__label">Saved segments</div>
         {SAVED_SEGMENTS.map(([s, n]) => (
           <button type="button" key={s} className={cx("c-nav c-nav--seg", segment === s && active === "segments" && "is-active")} onClick={() => onSegment?.(s)}>
-            <span className="c-nav__ic"><span className="c-nav__hash" />{s}</span><span className="c-count">{n}</span></button>
+            <span className="c-nav__ic"><span className="c-nav__hash" />{s}</span>{!offline && <span className="c-count">{n}</span>}</button>
         ))}
       </>}
       <div style={{ flex: 1 }} />
-      {!collapsed && (
+      {!collapsed && !offline && (
         <div className="c-pool" title="Mailbox pool">
           <div className="c-pool__top"><span className="c-strong">Mailbox pool</span><span className="c-faint">184 / 210 today</span></div>
           <span className="c-pool__bar" aria-hidden="true">{Array.from({ length: 21 }, (_, i) => <i key={i} className={i < 18 ? "on" : undefined} />)}</span>
@@ -119,13 +142,7 @@ export function SideNav({ active, onNavigate, collapsed, onSearch, segment, onSe
         "separator",
         { label: "Sign out", icon: "logout", onSelect: signOut },
       ]} trigger={(p) => (
-        <button type="button" className={cx("c-me", collapsed && "is-collapsed")} aria-label="Account" {...p}>
-          <AccountAvatar account={account} />
-          <span className="c-me__txt">
-            {account === "loading" ? <><Skeleton w={96} /><Skeleton w={120} /></>
-              : <><span className="c-strong">{live ? account.name : "Tomás Ibarra"}</span><span>{live ? account.email : "tomas@coldtrace.io"}</span></>}
-          </span>
-        </button>
+        <AccountRow account={account} collapsed={collapsed} {...p} />
       )} />
     </nav>
   );

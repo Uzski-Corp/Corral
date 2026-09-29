@@ -57,11 +57,13 @@ Checked against Tailwind v4's compiler: every utility below is generated.
 | `--color-border` | `#E7E7E5` | `border-border` · `divide-border` |
 | `--color-border-subtle` | `#F0F0EE` | `border-border-subtle` · `divide-border-subtle` |
 | `--color-border-strong` | `#D4D4D1` | `border-border-strong` · `divide-border-strong` |
+| `--color-border-control` | `#8F8F8C` | `border-border-control` · `ring-border-control` · `bg-border-control` (switch-off track) |
 | `--color-text` | `#1C1C1C` | `text-text` (yes, `text-text`) |
 | `--color-text-body` | `#292929` | `text-text-body` |
-| `--color-text-secondary` | `#5D5D5D` | `text-text-secondary` |
-| `--color-text-tertiary` | `#7F7F7F` | `text-text-tertiary` |
-| `--color-text-quaternary` | `#A1A1A1` | `text-text-quaternary` |
+| `--color-text-secondary` | `#4F4F4F` | `text-text-secondary` |
+| `--color-text-tertiary` | `#5F5F5F` | `text-text-tertiary` |
+| `--color-text-quaternary` | `#6A6A6A` | `text-text-quaternary` |
+| `--color-text-disabled` | `#A1A1A1` | `text-text-disabled` (disabled controls only) |
 | `--color-text-inverse` | `#FFFFFF` | `text-text-inverse` |
 | `--color-scrim` | `rgb(28 28 28 / 0.22)` | `bg-scrim` |
 | `--color-action` | `#1F5FD6` | `bg-action` |
@@ -75,13 +77,13 @@ Checked against Tailwind v4's compiler: every utility below is generated.
 | `--color-fit-off` | `#E7E7E5` | `bg-fit-off` |
 | `--color-positive-50` | `#ECFDF5` | `bg-positive-50` |
 | `--color-positive-200` | `#A7F3D0` | `border-positive-200` · `ring-positive-200` |
-| `--color-positive-600` | `#059669` | `text-positive-600` |
+| `--color-positive-600` | `#047857` | `text-positive-600` |
 | `--color-caution-50` | `#FFFBEB` | `bg-caution-50` |
 | `--color-caution-200` | `#FDE68A` | `border-caution-200` · `ring-caution-200` |
-| `--color-caution-600` | `#C26A05` | `text-caution-600` |
+| `--color-caution-600` | `#A35A04` | `text-caution-600` |
 | `--color-negative-50` | `#FFF1F2` | `bg-negative-50` |
 | `--color-negative-200` | `#FECDD3` | `border-negative-200` · `ring-negative-200` |
-| `--color-negative-600` | `#E11D48` | `text-negative-600` |
+| `--color-negative-600` | `#BE123C` | `text-negative-600` |
 | `--color-neutral-50` | `#F5F5F4` | `bg-neutral-50` |
 | `--color-neutral-200` | `#E7E5E4` | `border-neutral-200` · `ring-neutral-200` |
 | `--color-neutral-600` | `#57534E` | `text-neutral-600` |
@@ -136,7 +138,7 @@ Colour tokens also work with every colour utility (`fill-*`, `stroke-*`, `ring-*
 ### Roles (what each token is for)
 
 - **Surfaces:** `canvas` for windows and main panels. `surface-muted` for the shell frame, sidebar and quoted mail. `surface-sunken` for chips, hover, active thread and skeletons. `surface-selected` for selected rows only. `surface-inverse` for toasts and tooltips only.
-- **Text ladder:** `text` for names, values and titles. `text-body` for message bodies. `text-secondary` for default UI copy. `text-tertiary` for labels, column heads and receipts. `text-quaternary` for timings, placeholders and disabled.
+- **Text ladder:** `text` for names, values and titles. `text-body` for message bodies. `text-secondary` for default UI copy. `text-tertiary` for labels, column heads and receipts. `text-quaternary` for timings, domains and placeholders. `text-disabled` only for disabled controls. Every text grey passes 4.5:1 on the darkest surface it sits on (see §8).
 - **Action:** `action` is the one primary button per surface, focus rings, checked controls and the unread dot. `action-2` (near-black) is the second commitment (onboarding and empty states). Nothing else is blue except the fit bar and the mailbox-pool meter (data).
 - **Status triples:** `*-50` fill, `*-200` inset border, `*-600` text. Use them only through `<Tag>`, `<Banner>`, error text and the error icon.
 - **Elevation:** only floating things have shadows. `shadow-pop` for menus, selects, date pickers and cards. `shadow-dialog` for dialogs and ⌘K. `shadow-window` is marketing only. Panels use a 1px `border` ring, not a shadow.
@@ -149,7 +151,7 @@ Sources: @_heyrico posts [2015453625791979955](https://x.com/_heyrico/status/201
 - Use **Inter at −0.15px everywhere** (`tracking-ui`). Headings use `tracking-heading`. *(Rico: "Letter-spacing: -0.15px".)*
 - Keep type to **12 / 13 / 14 / 16 / 18 / 24** (`text-meta` through `text-heading`). 13 is the base. The biggest thing in the product is 24px. *(Rico: "12px, 13px (base size), 14px, 16px, 18px, and 24px (the biggest)".)*
 - Use **two weights only**: 400 and 500 (`font-normal`, `font-medium`). Semibold appears only in letter logos and workspace tiles. *(Rico: "Only 2 font weights".)*
-- **Build hierarchy with the grey ladder, not size.** Company name and data share one size and differ only in colour. *(Rico: "#292929, #5D5D5D, and #9E9E9E".)*
+- **Build hierarchy with the grey ladder, not size.** Company name and data share one size and differ only in colour. *(Rico: "#292929, #5D5D5D, and #9E9E9E". We keep his three-step idea at AA values: #4F4F4F / #5F5F5F / #6A6A6A, see §8.)*
 - Make **menu and nav rows 28px** (`h-nav`) with #404040 text. Use **40px table rows** (`h-row`, or `h-row-compact` 36 for dense lists), **22px tags** (`h-tag`, 6px radius, 13/18 Medium) and **12px checkboxes** with a 4px radius. *(Rico CRM spec.)*
 - Stick to the radius ladder **4 / 6 / 7 / 8 / 12 / 14**: check, tag, input, button, card, window. *(Rico: "Radius: 7px across most components", "Stick to 8-12px".)*
 - Put **heavy data on grey**: the shell frame is `surface-muted` and the working panel is white inside it. *(Rico: "ALWAYS make sure to have a gray background behind".)*
@@ -180,7 +182,10 @@ Sources: @_heyrico posts [2015453625791979955](https://x.com/_heyrico/status/201
 - `AppShell` (C): `{ active: ViewId; onNavigate?(v); crumbs: ReactNode[]; actions?; children; collapsed?; onCollapsedChange?(b); defaultCollapsed? [false]; defaultDrawer? [false]; onSearch?(); frame? ["viewport" | "contained"]; segment?; onSegment?(s); hotkeys? [true] }`. Under 768px of its own width (container query) it switches to the top bar and drawer. `frame="contained"` fills its parent.
 - `SideNav` (C): `{ active; onNavigate?; collapsed?; onSearch?; segment?; onSegment? }`. Nav comes from `APP_NAV` (`{ id, label, icon, count?, keys }`) and `SAVED_SEGMENTS`.
 - `TopBar` (C): `{ crumbs; actions?; onToggleSide?; onMenu?; onSearch?; collapsed? }`. On mobile only `.c-btn--primary` actions stay visible.
-- `WorkspaceSwitcher` (C): `{ collapsed?; defaultOpen? }`. `WorkspaceTile`: `{ letter? ["C"]; size? [20]; tone? ["ink" | "blue" | "sand"] }`.
+- `WorkspaceSwitcher` (C): `{ collapsed?; defaultOpen?; account?; onSignOut? }`. `WorkspaceTile`: `{ letter? ["C"]; size? [20]; tone? ["ink" | "blue" | "sand" | "muted"] }`.
+- `ShellAccountProp` = `{ name, email, role, avatarUrl, workspace }` | `"loading"` | `"unavailable"` | `undefined` (sample person). `AppShell`, `SideNav`, `WorkspaceSwitcher` and `AppDemo` take `account` and `onSignOut`. `"unavailable"` also hides nav counts and the mailbox pool, since they weren't fetched.
+- `AccountRow` (C): `{ account?; collapsed? }` plus button props. The sidebar foot row, in all five states.
+- `Monogram`: `{ name; email?; size? [20 | 24 | 28 | 36 | 48]; label? }`. Initials on `neutral-200` with `neutral-600` (6.08:1). `initialsOf(name, email?)` → "AO".
 - `Sidebar`: the older static sidebar used inside marketing windows. Don't use it in the app.
 
 ### Command menu
@@ -210,7 +215,8 @@ Sources: @_heyrico posts [2015453625791979955](https://x.com/_heyrico/status/201
 ### States
 - `EmptyState`: `{ title; children?; actions?; icon?; art? ["range" | "grass"]; compact? }`. Say what the place is for, then give one way to fill it.
 - `ErrorState`: `{ title; children?; detail? (mono); actions? }`. Say what failed and whether anything was lost, then offer a retry.
-- `Banner`: `{ tone? ["info" | "error" | "caution" | "success"]; title?; children?; action? }`.
+- `Banner`: `{ tone? ["info" | "error" | "caution" | "success"]; title?; children?; action?; icon? }`.
+- `SessionUnavailable` (C): `{ onRetry?() => Promise<boolean> | boolean; detail? (mono, e.g. "GET /api/v1/auth/me · 503"); checkedAt?; autoRetrySeconds? [30, 0 = off]; statusHref? ["#status"] }`. The body of the full-shell fallback. `AppDemo` takes it as `sessionError`.
 - `Skeleton`: `{ w?; h? [10]; r? [4] }` · `SkeletonTable`: `{ rows? [6]; label? }` · `SkeletonThreads`: `{ rows? [5] }` · `Spinner`: `{ size? [14] }`.
 
 ### Core (round 3, APIs unchanged except where noted)
@@ -227,7 +233,7 @@ Sources: @_heyrico posts [2015453625791979955](https://x.com/_heyrico/status/201
 - `Toast` (new props: `tone`, `action`, `onClose`).
 
 ### Screens
-- `SignIn` (C, `components/app/screens/SignIn.tsx`): `{ initial? ["default" | "sent" | "error" | "invalid"] }`. Wire the magic-link request and Google OAuth where the demo uses timeouts.
+- `SignIn` (C, `components/app/screens/SignIn.tsx`): `{ initial? ["default" | "sent" | "error" | "invalid" | "cancelled" | "unavailable"]; actions? }`. `error` = expired link, `cancelled` = backed out at Google, `unavailable` = auth provider down.
 - `Onboarding` (C, `components/app/screens/Onboarding.tsx`): `{ initialStep?; skipped?; crawl?; connected? }`. Steps 1–2 are required and 3–5 are skippable. Skipped steps show in the rail in caution and on the done screen with a "Finish" action.
 
 ## 6. Layout, responsive, accessibility
@@ -235,7 +241,9 @@ Sources: @_heyrico posts [2015453625791979955](https://x.com/_heyrico/status/201
 - **Shell:** the frame is `surface-muted`. The main panel has an 8px inset, `rounded-card` and a 1px `border` ring. The sidebar is 220 (`w-sidebar`), 56 collapsed (`w-sidebar-collapsed`). The top bar is 52 (`h-toolbar`) and the tab sub-bar is 40.
 - **Unibox:** list 360 (320 under 1000px), a fluid reading pane, and a rail of 300 (`w-rail`, hidden under 1240px). Under 768px the list and reading pane are two screens with a back row.
 - **Breakpoints:** the shell uses **container queries** (`@container shell`), not viewport media queries, so it behaves the same embedded or full screen. Sign-in and onboarding use viewport media queries at 900 and 1180.
-- **Focus:** a 2px `action-ring` outline on `:focus-visible` inside `.c-app`. Inputs use the 1px action border plus a 3px ring. Don't remove focus styles.
+- **Focus:** a solid 2px `action` outline on `:focus-visible` inside `.c-app` (5.73:1; the 28% ring alone was about 1.6:1). Inputs use the 1px action border plus the 3px `action-ring` halo. Don't remove focus styles.
+- **Links:** any `<a>` or `.s-link` inside running text (`p`, `li`, `dd`, field hints, banner and empty-state text) is underlined: 1px at 45% of its colour, full on hover. Use `.c-link` for a link in text anywhere else. Standalone links (nav, footer, buttons) don't need it.
+- **Contrast:** 4.5:1 for text below 24px (18.66px bold), 3:1 for control boundaries and large text, measured on the real surface. axe-core is clean for `color-contrast` and `link-in-text-block` on every M1 route and state.
 - **Roles:** menus use `role=menu`, the palette uses `combobox` + `listbox` with `aria-activedescendant`, tabs use `tablist`, radios use `radiogroup`, dialogs use `aria-modal`, toasts use `aria-live`.
 
 ## 7. What is not final in M1
@@ -244,3 +252,41 @@ Sources: @_heyrico posts [2015453625791979955](https://x.com/_heyrico/status/201
 - Contacts reuses the company table as a stand-in.
 - Search latency, OAuth, magic links, crawling and mailbox connection are simulated with timers.
 - A combobox (Select with search) and multi-select are not designed yet.
+
+## 8. M1 follow-ups (PR #7 design questions, decided Sep 29)
+
+**Contrast (Q1).** The text ladder, status 600s and control borders were changed to pass WCAG 2.1 AA on the real backgrounds (white, #FCFCFC, #FAFAFA, #F5F5F4, #F5F8FE, hover #F0F0EE, active nav #EBEBE9). Hex values and ratios are in `corral-app-open-range.md` under "Contrast rule".
+
+| Token | Old | New | Ratio (old → new) |
+|---|---|---|---|
+| `text-secondary` | #5D5D5D | #4F4F4F | 6.58 → 8.19 on white (kept the ladder's steps) |
+| `text-tertiary` | #7F7F7F | #5F5F5F | 4.00 → 6.39 on white · 5.35 on #EBEBE9 |
+| `text-quaternary` | #A1A1A1 | #6A6A6A | 2.58 → 5.41 on white · 4.53 on #EBEBE9 |
+| `text-disabled` (new) | none | #A1A1A1 | disabled only, exempt |
+| `border-control` (new) | #D4D4D1 | #8F8F8C | 1.49 → 3.24 (checkbox, radio, switch off) |
+| `positive-600` | #059669 | #047857 | 3.58 → 5.21 on #ECFDF5 |
+| `caution-600` | #C26A05 | #A35A04 | 3.78 → 5.04 on #FFFBEB |
+| `negative-600` | #E11D48 | #BE123C | 4.28 → 5.72 on #FFF1F2 |
+| info / referral / neutral 600 | unchanged | | 4.75 / 5.20 / 6.99 on their 50s |
+| focus outline | 28% action-ring | solid `action` | ≈1.6 → 5.73 |
+
+You can drop `color-contrast` and `link-in-text-block` from `KNOWN` in `e2e/a11y.spec.ts`. A local axe-core 4.13 pass over every M1 route and state found none. The Companies table still has a separate `aria-required-children` finding (row/cell roles), which isn't a design question.
+
+**Onboarding help link and inline links (Q2).** Links inside running text are underlined (1px at 45% of their colour, full on hover). The rule sits in `system.css`, so "Book 15 minutes", Terms and Privacy, "send it again" and "open Corral" all get it with no per-link work.
+
+**Sign-in failures (Q3).** Each case has its own screen, all reachable with `?state=` (outside production) and from the callback `?error=` (`lib/auth/signInState.ts#screenForError`):
+- `provider_error` → `cancelled`: an info banner that says "You cancelled at Google. No problem, nothing was shared with Corral…". The Google button reads "Try Google again" and the email form stays.
+- `auth_unavailable` → `unavailable`: a status screen. "Sign-in is down for a moment", a primary **Try again** (restarts the AuthKit hand-off), a **Status page** link, and "Already signed in on this browser? … open Corral" (→ `/app`) as the fallback. Email links go through the same provider, so they aren't offered as a fallback; the screen says so. When an in-app magic-link endpoint exists, add "Email me a link" here.
+- `invalid_request`, `invalid_state`, `auth_failed`, unknown → `error` (the expired-link banner, unchanged).
+- The status URL is `#status` for now. Point it at the real status page.
+
+**Session check failing (Q7).** If `/me` fails with 502/503/504, a timeout or a network error before any session is confirmed, the shell stays up and its body becomes `<SessionUnavailable>`. It shows what failed, says nothing is lost and you're still signed in, and offers **Try again** (calls `session.refresh()`, which re-fetches `/me`), a Status page link, an automatic retry every 30s with a countdown, and the failing request in mono. The account row switches from skeleton to a static "Not connected", and nav counts and the mailbox pool are hidden. A 401 still goes to sign-in. Wired in `components/session/AppScreen.tsx`. Review at `/app?state=api-down`, and on `/styleguide` §18.
+
+**Avatar without a picture (Q5a).** Initials `<Monogram>` on the neutral token tint (`neutral-200` fill, `neutral-600` initials, 6.08:1), same 24px box. It's also used when a picture URL fails to load. Review at `/app?state=no-avatar`.
+
+**Account row while `/me` loads (Q5b).** Kept: it already uses the `Skeleton` primitive. Aligned to the text it replaces: 24 circle, name bar 96×10, email bar 120×8, with 6px between, plus `aria-busy` on the row and switcher. Review at `/app?state=account-loading`.
+
+**Sign-out failure toast (Q6).** Final copy: "Sign-out didn't go through. You're still signed in.", with a **Try again** action that retries the same sign-out. It uses the error tone and stays up 10s. Review at `/app?state=signout-failed`, then Account → Sign out.
+
+**Not decided in this batch:** Q4 (keep the in-app "Check your email" screen vs hand off to AuthKit, and the pending label). The current behaviour is unchanged.
+

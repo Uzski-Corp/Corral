@@ -16,6 +16,7 @@ import { Checkbox, DatePicker, FormField, RadioGroup, Select } from "./Form";
 import { Tabs } from "./Tabs";
 import { EmptyState, SkeletonTable } from "./States";
 import { ToastProvider, useToast } from "./Toaster";
+import { SessionUnavailable, type SessionUnavailableProps } from "./SessionUnavailable";
 
 /** Fixed "today" for the demo so static renders are deterministic. Replace with new Date(). */
 export const DEMO_TODAY = new Date(2026, 8, 29);
@@ -141,15 +142,19 @@ export type AppDemoProps = {
   account?: ShellAccountProp;
   /** Ends the session. Resolves `{ ok: false }` when it could not, and the shell shows an error toast. */
   onSignOut?: () => Promise<{ ok: boolean }>;
+  /** The session check failed (API down): the shell stays up and the body becomes <SessionUnavailable>. */
+  sessionError?: SessionUnavailableProps;
 };
 export function AppDemo(p: AppDemoProps) { return <ToastProvider><Demo {...p} /></ToastProvider>; }
 
-function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, drawer = false, dialog = false, frame = "viewport", hotkeys = true, className, account, onSignOut }: AppDemoProps) {
+function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, drawer = false, dialog = false, frame = "viewport", hotkeys = true, className, account, onSignOut, sessionError }: AppDemoProps) {
   const router = useRouter();
   const toast = useToast();
   const signOut = useCallback(() => {
     if (!onSignOut) { router.push("/sign-in"); return; }
-    void onSignOut().then((r) => { if (!r.ok) toast({ tone: "error", children: "Couldn’t sign out. Check your connection and try again." }); });
+    // M1 follow-up 5c: say what state you're in, then the one thing to do. Stays up 10s.
+    const attempt = () => { void onSignOut().then((r) => { if (!r.ok) toast({ tone: "error", children: "Sign-out didn’t go through. You’re still signed in.", duration: 10000, action: { label: "Try again", onClick: attempt } }); }); };
+    attempt();
   }, [onSignOut, router, toast]);
   const [view, setView] = useState<ViewId>(initialView);
   const [segment, setSegment] = useState<string | undefined>(initialView === "segments" ? SAVED_SEGMENTS[0][0] : undefined);
@@ -215,7 +220,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
   }, [hotkeys, palette, enroll, view, tab, threads, active, go, archive]);
 
   const label = APP_NAV.find((n) => n.id === view)!.label;
-  const ws = typeof account === "object" ? account.workspace : "ColdTrace";
+  const ws = typeof account === "object" ? account.workspace : account === undefined ? "ColdTrace" : "Corral";
   const crumbs = view === "unibox" ? [ws, "Unibox", TABS.find((x) => x.id === tab)!.label]
     : segment ? [ws, "Segments", segment] : [ws, label];
   const table = view === "companies" || view === "segments";
@@ -231,12 +236,14 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
 
   return (
     <>
-      <AppShell frame={frame} className={className} active={view} onNavigate={go} crumbs={crumbs} actions={actions} collapsed={collapsed} onCollapsedChange={setCollapsed}
+      <AppShell frame={frame} className={className} active={view} onNavigate={go} crumbs={sessionError ? [ws, "Not connected"] : crumbs} actions={sessionError ? null : actions} collapsed={collapsed} onCollapsedChange={setCollapsed}
         onSearch={() => setPalette(true)} segment={segment} onSegment={(s) => { setView("segments"); setSegment(s); }} defaultDrawer={drawer} hotkeys={hotkeys} account={account} onSignOut={signOut}>
+        {sessionError ? <SessionUnavailable {...sessionError} /> : <>
         {view === "unibox" && <UniboxView threads={threads} active={active} setActive={setActive} tab={tab} setTab={setTab} pane={pane} setPane={setPane} />}
         {table && <CompaniesView selected={selected} toggle={toggle} segment={segment} />}
         {view === "contacts" && <ContactsView />}
         {!table && view !== "unibox" && view !== "contacts" && <PendingView id={view} onSearch={() => setPalette(true)} />}
+        </>}
       </AppShell>
       {palette && <CommandPalette open onClose={() => setPalette(false)} {...cmds} />}
       <EnrollDialog open={enroll} onClose={() => setEnroll(false)} count={n} includesReplied={selected.has("pwani")} onConfirm={(msg, meta) => toast({ tone: "success", children: msg, meta, action: { label: "Undo", onClick: () => toast({ children: "Enrollment undone" }) } })} />

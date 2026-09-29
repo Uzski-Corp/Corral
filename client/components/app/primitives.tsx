@@ -44,6 +44,27 @@ export function Avatar({ id, size = 20, alt = "" }: { id: string; size?: 20 | 24
   return <img className={cx("c-av", size !== 20 && `c-av--${size}`)} src={`/corral/app/av-${id}.jpg`} alt={alt} width={size} height={size} loading="lazy" />;
 }
 
+/** Initials from a display name ("Tomás Ibarra" -> "TI"), falling back to an email's local part. */
+export function initialsOf(name: string, email?: string): string {
+  const words = name.trim().split(/\s+/).filter((w) => /\p{L}|\p{N}/u.test(w));
+  if (words.length >= 2) return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  const local = (email ?? "").split("@")[0].replace(/[^\p{L}\p{N}]/gu, "");
+  return (local.slice(0, 2) || "?").toUpperCase();
+}
+
+/**
+ * Avatar for people without a picture: initials on the neutral token tint
+ * (neutral-200 fill, neutral-600 initials, 6.08:1). Same box as <Avatar>, so rows never shift.
+ * Also the fallback when a remote picture fails to load.
+ */
+export function Monogram({ name, email, size = 20, label }: { name: string; email?: string; size?: 20 | 24 | 28 | 36 | 48; label?: string }) {
+  return (
+    <span className={cx("c-av c-mono-av", size !== 20 && `c-av--${size}`)} style={{ fontSize: Math.round(size * 0.42) }}
+      role={label ? "img" : undefined} aria-label={label} aria-hidden={label ? undefined : true}>{initialsOf(name, email)}</span>
+  );
+}
+
 export function Logo({ company }: { company: CompanyName }) {
   const [bg, fg, l] = LOGOS[company];
   return <span className="c-logo" style={{ background: bg, color: fg }} aria-hidden="true">{l}</span>;

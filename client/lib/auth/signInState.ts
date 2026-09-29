@@ -2,7 +2,7 @@
  * Which sign-in screen to show, from the URL.
  *
  * Real failures arrive from the API callback as `?error=<code>`. Bau's review states arrive as
- * `?state=sent|error|invalid` and are honoured outside production (and in the review build).
+ * `?state=sent|error|invalid|cancelled|unavailable` and are honoured outside production (and in the review build).
  */
 import type { SignInState } from "@/components/app/screens/SignIn";
 
@@ -10,15 +10,26 @@ import type { SignInState } from "@/components/app/screens/SignIn";
 export const CALLBACK_ERRORS = ["provider_error", "invalid_request", "invalid_state", "auth_failed", "auth_unavailable"] as const;
 export type CallbackError = (typeof CALLBACK_ERRORS)[number];
 
-const REVIEW_STATES: SignInState[] = ["sent", "error", "invalid"];
+const REVIEW_STATES: SignInState[] = ["sent", "error", "invalid", "cancelled", "unavailable"];
+
+/**
+ * Which failure screen each callback code gets (M1 follow-up 3):
+ * provider_error: the person backed out at Google, friendly retry · auth_unavailable: AuthKit is down,
+ * status screen · everything else: the "link expired / try again" banner.
+ */
+export function screenForError(code: CallbackError | "unknown"): SignInState {
+  if (code === "provider_error") return "cancelled";
+  if (code === "auth_unavailable") return "unavailable";
+  return "error";
+}
 
 export type SignInView = { initial: SignInState; callbackError: CallbackError | "unknown" | null };
 
 export function signInView(params: { state?: string; error?: string }, reviewStates: boolean): SignInView {
   if (params.error) {
     const known = (CALLBACK_ERRORS as readonly string[]).includes(params.error);
-    // The design has one failure screen: the "expired link" banner with a way to try again.
-    return { initial: "error", callbackError: known ? (params.error as CallbackError) : "unknown" };
+    const code = known ? (params.error as CallbackError) : "unknown";
+    return { initial: screenForError(code), callbackError: code };
   }
   if (reviewStates) {
     const s = REVIEW_STATES.find((x) => x === params.state);

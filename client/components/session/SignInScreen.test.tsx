@@ -29,7 +29,7 @@ describe("signInActions", () => {
 });
 
 describe("SignInScreen (live)", () => {
-  const mount = (initial: "default" | "error" = "default", next: string | null = null) => {
+  const mount = (initial: "default" | "error" | "cancelled" | "unavailable" = "default", next: string | null = null) => {
     const go = vi.fn();
     render(<SignInScreen initial={initial} next={next} config={testConfig()} go={go} />);
     return go;
@@ -63,6 +63,24 @@ describe("SignInScreen (live)", () => {
     expect(screen.getByText("That link has expired")).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Work email" })).toHaveValue("");
     expect(screen.getByRole("button", { name: "Email me a new link" })).toBeInTheDocument();
+  });
+
+  it("tells someone who cancelled at Google that nothing happened, and retries Google", async () => {
+    const go = mount("cancelled");
+    expect(screen.getByText("You cancelled at Google")).toBeInTheDocument();
+    expect(screen.queryByText("That link has expired")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Try Google again" }));
+    expect(go).toHaveBeenCalledWith(LOGIN);
+  });
+
+  it("shows the provider-down status screen with a retry and the signed-in fallback", async () => {
+    const go = mount("unavailable");
+    expect(screen.getByRole("heading", { name: "Sign-in is down for a moment" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "open Corral" })).toHaveAttribute("href", "/app");
+    expect(screen.getByRole("link", { name: "Status page" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(go).toHaveBeenCalledWith(LOGIN);
+    expect(screen.getByRole("button", { name: /Checking/ })).toBeDisabled();
   });
 
   it("resets its spinners when the page comes back from the bfcache", async () => {

@@ -23,13 +23,16 @@
   --color-border: #E7E7E5;
   --color-border-subtle: #F0F0EE;
   --color-border-strong: #D4D4D1;
+  --color-border-control: #8F8F8C; /* checkbox, radio, switch-off: 3.24:1 on white (WCAG 1.4.11) */
 
   /* Text */
   --color-text: #1C1C1C;            /* names, titles, values */
   --color-text-body: #292929;       /* message bodies */
-  --color-text-secondary: #5D5D5D;  /* meta that still matters */
-  --color-text-tertiary: #7F7F7F;   /* labels, columns, receipts */
-  --color-text-quaternary: #A1A1A1; /* timings, placeholders, disabled */
+  /* AA ladder: every text grey is >= 4.5:1 on the darkest surface it sits on (#EBEBE9, active nav). */
+  --color-text-secondary: #4F4F4F;  /* meta that still matters     8.19:1 on white */
+  --color-text-tertiary: #5F5F5F;   /* labels, columns, receipts   6.39:1 */
+  --color-text-quaternary: #6A6A6A; /* timings, domains, placeholders 5.41:1 (4.53 on #EBEBE9) */
+  --color-text-disabled: #A1A1A1;   /* disabled controls ONLY (WCAG-exempt). Never for readable text */
   --color-text-inverse: #FFFFFF;
 
   /* Scrim behind dialogs, ⌘K and the mobile drawer */
@@ -49,10 +52,10 @@
   --color-fit-low: #B3B3B0;         /* score < 80 */
   --color-fit-off: #E7E7E5;
 
-  /* Status triples: 50 fill / 200 border / 600 text */
-  --color-positive-50: #ECFDF5; --color-positive-200: #A7F3D0; --color-positive-600: #059669;
-  --color-caution-50: #FFFBEB;  --color-caution-200: #FDE68A;  --color-caution-600: #C26A05;
-  --color-negative-50: #FFF1F2; --color-negative-200: #FECDD3; --color-negative-600: #E11D48;
+  /* Status triples: 50 fill / 200 border / 600 text (600 text >= 4.5:1 on its own 50 fill) */
+  --color-positive-50: #ECFDF5; --color-positive-200: #A7F3D0; --color-positive-600: #047857;
+  --color-caution-50: #FFFBEB;  --color-caution-200: #FDE68A;  --color-caution-600: #A35A04;
+  --color-negative-50: #FFF1F2; --color-negative-200: #FECDD3; --color-negative-600: #BE123C;
   --color-neutral-50: #F5F5F4;  --color-neutral-200: #E7E5E4;  --color-neutral-600: #57534E;
   --color-info-50: #EFF6FF;     --color-info-200: #DBEAFE;     --color-info-600: #2563EB;
   --color-referral-50: #F5F3FF; --color-referral-200: #DDD6FE; --color-referral-600: #7C3AED;

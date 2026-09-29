@@ -75,8 +75,8 @@ test.describe("sign-in", () => {
     await page.goto("/sign-in");
     await signInWithGoogle(page);
     await expect(page).toHaveURL(`${WEB}/sign-in?error=provider_error`);
-    await expect(page.getByText("That link has expired")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Email me a new link" })).toBeVisible();
+    await expect(page.getByText("You cancelled at Google")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Try Google again" })).toBeVisible();
   });
 });
 

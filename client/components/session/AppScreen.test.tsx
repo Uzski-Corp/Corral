@@ -2,9 +2,9 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { describe, expect, it, vi } from "vitest";
-import { API, LOGOUT_URL, server, testConfig } from "@/test/msw";
+import { API, LOGOUT_URL, ME_BODY, server, testConfig } from "@/test/msw";
 import { router } from "@/test/router";
-import { AppScreen, shellAccount } from "./AppScreen";
+import { AppScreen, sessionErrorDetail, shellAccount } from "./AppScreen";
 import { SessionProvider, type Navigator, type SessionValue } from "./SessionProvider";
 
 const nav = () => ({ assign: vi.fn(), replace: vi.fn() }) satisfies Navigator;
@@ -22,9 +22,18 @@ describe("shellAccount", () => {
     expect(shellAccount(null)).toBeUndefined();
     expect(shellAccount(s({ status: "review" }))).toBeUndefined();
     expect(shellAccount(s({ status: "loading" }))).toBe("loading");
-    expect(shellAccount(s({ status: "error" }))).toBe("loading");
+    expect(shellAccount(s({ status: "error" }))).toBe("unavailable");
     const a = { name: "A", email: "a@b.co", role: "Owner", avatarUrl: null, workspace: "W" };
     expect(shellAccount(s({ status: "authenticated", account: a }))).toBe(a);
+  });
+});
+
+describe("sessionErrorDetail", () => {
+  it("formats the failed request for the fallback", () => {
+    expect(sessionErrorDetail(null)).toBeUndefined();
+    expect(sessionErrorDetail({ kind: "unavailable", op: "GET /me", status: 503, message: "x" })).toBe("GET /me · 503");
+    expect(sessionErrorDetail({ kind: "timeout", op: "GET /me", timeoutMs: 10000, message: "x" })).toBe("GET /me · timed out after 10s");
+    expect(sessionErrorDetail({ kind: "network", op: "GET /me", message: "x" })).toBe("GET /me · network");
   });
 });
 
@@ -76,8 +85,32 @@ describe("AppScreen", () => {
     await waitFor(() => expect(within(account()).getByText("Wanjiru Mwangi")).toBeInTheDocument());
     await user.click(account());
     await user.click(screen.getByRole("menuitem", { name: /Sign out/ }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Couldn’t sign out. Check your connection and try again.");
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Sign-out didn’t go through. You’re still signed in.");
+    expect(within(alert).getByRole("button", { name: "Try again" })).toBeInTheDocument();
     expect(n.assign).not.toHaveBeenCalled();
+  });
+
+  it("replaces the body with the full-shell fallback when the API is down, and recovers on retry", async () => {
+    let up = false;
+    server.use(http.get(`${API}/api/v1/auth/me`, () => (up ? HttpResponse.json(ME_BODY) : HttpResponse.json({ detail: "down" }, { status: 503 }))));
+    const user = userEvent.setup();
+    live();
+    expect(await screen.findByRole("heading", { name: "Corral can’t reach its servers" })).toBeInTheDocument();
+    expect(screen.getByText("GET /api/v1/auth/me · 503")).toBeInTheDocument();
+    expect(within(account()).getByText("Not connected")).toBeInTheDocument();
+    up = true;
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(within(account()).getByText("Wanjiru Mwangi")).toBeInTheDocument());
+    expect(screen.queryByRole("heading", { name: "Corral can’t reach its servers" })).toBeNull();
+  });
+
+  it("previews the design-review states", async () => {
+    const { unmount } = render(<AppScreen preview="api-down" hotkeys={false} />);
+    expect(screen.getByRole("heading", { name: "Corral can’t reach its servers" })).toBeInTheDocument();
+    unmount();
+    render(<AppScreen preview="no-avatar" hotkeys={false} />);
+    expect(account().querySelector(".c-mono-av")).toHaveTextContent("AO");
   });
 
   it("keeps Bau's sample shell without a session (styleguide)", async () => {

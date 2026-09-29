@@ -17,10 +17,12 @@
 .s-auth__or { display: flex; align-items: center; gap: 12px; font-size: var(--text-meta); color: var(--color-text-quaternary); }
 .s-auth__or::before, .s-auth__or::after { content: ""; flex: 1; height: 1px; background: var(--color-border-subtle); }
 .s-auth__small { margin: 0; font-size: var(--text-meta); line-height: 18px; color: var(--color-text-tertiary); }
-.s-auth__small a { color: var(--color-text-secondary); text-decoration: underline; text-underline-offset: 2px; text-decoration-color: var(--color-border-strong); }
+.s-auth__small a { color: var(--color-text-secondary); text-decoration: underline; text-underline-offset: 2.5px; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); }
 .s-auth__small .s-link { font-size: var(--text-meta); }
 .s-auth__sent .s-auth__icon { width: 40px; height: 40px; border-radius: 20px; display: inline-flex; align-items: center; justify-content: center; background: var(--color-action-subtle); color: var(--color-action); }
 .s-auth__sent > p { margin: -8px 0 0; }
+.s-auth__sent .s-auth__icon--caution { background: var(--color-caution-50); color: var(--color-caution-600); box-shadow: inset 0 0 0 1px var(--color-caution-200); }
+.s-auth__down > p.s-auth__small { margin: 0; }
 .s-auth__row { display: flex; gap: 8px; } .s-auth__row .c-btn { flex: 1; justify-content: center; }
 .s-auth__hr { height: 1px; background: var(--color-border-subtle); }
 .s-auth__foot { display: flex; gap: 16px; font-size: var(--text-meta); color: var(--color-text-quaternary); }
@@ -31,7 +33,7 @@
 .s-auth__card-top { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .s-auth__card-foot { display: flex; align-items: center; gap: 8px; padding-top: 12px; border-top: 1px solid var(--color-border-subtle); white-space: nowrap; }
 .s-auth__line { position: absolute; left: 9%; bottom: 8%; margin: 0; max-width: 12em; font: 500 clamp(28px, 3vw, 44px)/1.04 var(--font-inter-tight); letter-spacing: -0.035em; color: #1C1C1C; }
-.s-auth__credit { position: absolute; right: 16px; bottom: 14px; font-size: 11px; color: rgb(28 28 28 / .55); }
+.s-auth__credit { position: absolute; right: 16px; bottom: 14px; font-size: 11px; color: rgb(28 28 28 / .8); }
 
 @media (max-width: 900px) {
   .s-auth { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
@@ -69,7 +71,7 @@
 .s-step.is-skipped .s-step__t > span { color: var(--color-text-secondary); }
 .s-step.is-skipped .s-step__t em { color: var(--color-caution-600); }
 .s-onb__help { margin: 0; padding: 0 2px; font-size: var(--text-meta); line-height: 18px; color: var(--color-text-tertiary); }
-.s-onb__help a { color: var(--color-text-secondary); }
+.s-onb__help a { color: var(--color-text-secondary); } /* underline comes from the inline-link rule in system.css */
 .s-onb__main { display: flex; flex-direction: column; margin: 8px 8px 8px 0; background: var(--color-canvas); border-radius: var(--radius-card); box-shadow: 0 0 0 1px var(--color-border), 0 1px 2px rgb(0 0 0 / .03); min-width: 0; }
 .s-onb__top { height: var(--spacing-toolbar); display: flex; align-items: center; padding: 0 12px 0 28px; border-bottom: 1px solid var(--color-border-subtle); flex-shrink: 0; }
 .s-onb__stage { flex: 1; display: grid; grid-template-columns: minmax(0, 520px) 340px; gap: 56px; justify-content: center; align-items: start; padding: 64px 40px 56px; }

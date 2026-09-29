@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import {
   AppDemo, Avatar, Banner, Button, Calendar, Checkbox, CommandPalette, DatePicker, DEMO_TODAY, DropdownMenu, EmptyState, EnrollDialog, ErrorState,
   FormField, Icon, Logo, RadioGroup, Segmented, Select, SegmentTable, SkeletonTable, SkeletonThreads, Spinner, Switch, Tabs, TextInput, Textarea,
-  Toast, ToastProvider, Tooltip, WorkspaceSwitcher, buildCommands, useToast,
+  Toast, ToastProvider, Tooltip, WorkspaceSwitcher, buildCommands, useToast, AccountRow, Monogram, Tag,
 } from "@/components/app";
 
 const Label = ({ children }: { children: ReactNode }) => <span className="sg-label">{children}</span>;
@@ -154,6 +154,7 @@ export function TabsToastDemo() {
         <Toast tone="success" action={{ label: "Undo", onClick: noop }} onClose={noop} meta="first send Thu 08:10">Enrolled 3 in Cold-room pilot</Toast>
         <Toast meta="Cal.com" onClose={noop}>Brian Kamau booked Thu 10:30</Toast>
         <Toast tone="error" action={{ label: "Retry", onClick: noop }} onClose={noop}>Couldn’t send to sales@coldtrace.io</Toast>
+        <Toast tone="error" action={{ label: "Try again", onClick: noop }} onClose={noop}>Sign-out didn’t go through. You’re still signed in.</Toast>
         <Label>live · appear bottom-centre, 4s</Label>
         <ToastProvider><ToastButtons /></ToastProvider>
       </div>
@@ -184,6 +185,83 @@ export function StatesDemo() {
         <Banner tone="caution" title="coldtrace.io has no DMARC record" action={<Button>Copy record</Button>}>Add one before sending more than 30 a day.</Banner>
         <Banner tone="error" title="That link has expired">Sign-in links work once and last 15 minutes.</Banner>
         <Banner tone="success" title="Mailbox connected">tomas@coldtrace.io starts warming today.</Banner>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------ M1 follow-ups */
+type Step = { token: string; was: string; now: string; use: string; white: string; worst: string };
+const LADDER: Step[] = [
+  { token: "--color-text-secondary", was: "#5D5D5D", now: "#4F4F4F", use: "meta that still matters", white: "6.58 → 8.19", worst: "6.86 on #EBEBE9" },
+  { token: "--color-text-tertiary", was: "#7F7F7F", now: "#5F5F5F", use: "labels, columns, receipts", white: "4.00 → 6.39", worst: "5.35 on #EBEBE9" },
+  { token: "--color-text-quaternary", was: "#A1A1A1", now: "#6A6A6A", use: "timings, domains, placeholders", white: "2.58 → 5.41", worst: "4.53 on #EBEBE9" },
+  { token: "--color-text-disabled", was: "(new)", now: "#A1A1A1", use: "disabled controls only, exempt", white: "2.58", worst: "never readable text" },
+];
+const TAGS: [string, string, string, string, string][] = [
+  ["positive", "Interested", "#059669", "#047857", "3.58 → 5.21"],
+  ["caution", "Objection", "#C26A05", "#A35A04", "3.78 → 5.04"],
+  ["negative", "Bounced", "#E11D48", "#BE123C", "4.28 → 5.72"],
+  ["info", "Meeting booked", "#2563EB", "#2563EB", "4.75 (kept)"],
+  ["referral", "Referral", "#7C3AED", "#7C3AED", "5.20 (kept)"],
+  ["neutral", "Contacted", "#57534E", "#57534E", "6.99 (kept)"],
+];
+
+export function ContrastDemo() {
+  return (
+    <div className="sg-contrast">
+      <div className="sg-card"><Label>text ladder · 12px sample on white and on active nav (#EBEBE9)</Label>
+        <table className="sg-ctable"><thead><tr><th>Token</th><th>Was</th><th>Now</th><th>On white</th><th>Worst real surface</th><th>Sample</th></tr></thead>
+          <tbody>{LADDER.map((r) => (
+            <tr key={r.token}><td className="c-mono">{r.token}</td><td className="c-mono"><i style={{ background: r.was.startsWith("#") ? r.was : "transparent" }} />{r.was}</td>
+              <td className="c-mono"><i style={{ background: r.now }} />{r.now}</td><td className="c-num">{r.white}</td><td className="c-num">{r.worst}</td>
+              <td>{r.was === "(new)" ? <Button size="sm" disabled>Disabled button</Button> : <><span style={{ color: r.now, fontSize: 12 }}>{r.use}</span><span className="sg-ctable__dark" style={{ color: r.now, fontSize: 12 }}>on #EBEBE9</span></>}</td></tr>))}
+          </tbody></table></div>
+      <div className="sg-card"><Label>status tags · 600 text on its own 50 fill</Label>
+        <table className="sg-ctable"><thead><tr><th>Triple</th><th>Tag</th><th>600 was</th><th>600 now</th><th>Ratio</th></tr></thead>
+          <tbody>{TAGS.map(([k, tag, was, now, r]) => (
+            <tr key={k}><td className="c-mono">{k}</td><td><Tag status={tag as Parameters<typeof Tag>[0]["status"]} /></td><td className="c-mono"><i style={{ background: was }} />{was}</td><td className="c-mono"><i style={{ background: now }} />{now}</td><td className="c-num">{r}</td></tr>))}
+          </tbody></table></div>
+      <div className="sg-card sg-contrast__ui"><Label>controls · 3:1 against the surface (WCAG 1.4.11)</Label>
+        <div className="sg-contrast__row"><Checkbox checked={false} onChange={noop} label="Unchecked" /><Checkbox checked onChange={noop} label="Checked" /></div>
+        <div className="sg-contrast__row"><RadioGroup value="a" onChange={noop} label="Radio" options={[{ value: "a", label: "Selected" }, { value: "b", label: "Not selected" }]} /></div>
+        <div className="sg-contrast__row"><Switch checked={false} onChange={noop} label="Switch off" /><Switch checked onChange={noop} label="Switch on" /></div>
+        <p className="sg-contrast__note"><span className="c-mono">--color-border-control #8F8F8C</span> 3.24:1 on white for checkbox, radio and switch-off. Focus is a solid 2px <span className="c-mono">--color-action</span> outline (5.73:1); the 28% ring stays only as a halo around focused inputs.</p>
+      </div>
+      <div className="sg-card sg-contrast__ui"><Label>inline links · underline, never colour alone</Label>
+        <p className="s-onb__help">Stuck? <a href="#help">Book 15 minutes</a> with us, or press <span className="c-kbd">?</span></p>
+        <p className="s-auth__small">By continuing you agree to the <a href="#terms">Terms</a> and <a href="#privacy">Privacy Policy</a>.</p>
+        <p className="sg-contrast__note">Any <span className="c-mono">&lt;a&gt;</span> or <span className="c-mono">.s-link</span> inside running text gets a 1px underline at 45% of its colour, full on hover. Add <span className="c-mono">.c-link</span> anywhere else a link sits in text. Standalone links (nav, footers, buttons) don’t need it.</p>
+      </div>
+    </div>
+  );
+}
+
+export function AccountStatesDemo() {
+  return (
+    <div className="sg-accounts c-side c-side--app">
+      <div><Label>sample person (review)</Label><AccountRow /></div>
+      <div><Label>signed in, picture</Label><AccountRow account={{ name: "Wanjiru Mwangi", email: "wanjiru@kilima.co.ke", role: "Owner", avatarUrl: "/corral/app/av-wanjiru.jpg", workspace: "Kilima Dairies" }} /></div>
+      <div><Label>signed in, no picture · monogram</Label><AccountRow account={{ name: "Amani Odhiambo", email: "amani@coldtrace.io", role: "Member", avatarUrl: null, workspace: "ColdTrace" }} /></div>
+      <div><Label>/me loading · Skeleton primitive</Label><AccountRow account="loading" /></div>
+      <div><Label>session check failed</Label><AccountRow account="unavailable" /></div>
+      <div><Label>monogram sizes</Label><span className="sg-monos">{([48, 36, 28, 24, 20] as const).map((z, i) => <Monogram key={z} size={z} name={["Amani Odhiambo", "Brian Kamau", "Njeri", "Grace Holloway", "reza@kivu.rw"][i]} email={i === 4 ? "reza@kivu.rw" : undefined} />)}</span></div>
+    </div>
+  );
+}
+
+export function SessionErrorDemo() {
+  return (
+    <div className="sg-shells">
+      <div className="sg-shell sg-shell--full"><AppDemo frame="contained" hotkeys={false} account="unavailable" sessionError={{ checkedAt: "23:14", onRetry: () => new Promise<boolean>((r) => setTimeout(() => r(false), 900)) }} /></div>
+      <div className="sg-shells__row">
+        <div><Label>390px</Label><div className="sg-shell sg-shell--phone"><AppDemo frame="contained" hotkeys={false} account="unavailable" sessionError={{ checkedAt: "23:14", autoRetrySeconds: 0 }} /></div></div>
+        <div className="sg-card"><Label>anatomy</Label><ul className="sg-anatomy">
+          <li>The shell stays: rail, top bar and nav keep the product recognisable. Only the body is replaced.</li>
+          <li>Headline says what failed in plain words. The sentence says nothing is lost and you’re still signed in.</li>
+          <li>One blue <b>Try again</b>. Status page is secondary. Automatic retry every 30s, shown as a countdown.</li>
+          <li>The failing request in mono, last, for support. Account row switches from skeleton to a static “Not connected”.</li>
+          <li>401 never shows this: it goes to sign-in. Only 502/503/504, timeouts and network errors do.</li></ul></div>
       </div>
     </div>
   );

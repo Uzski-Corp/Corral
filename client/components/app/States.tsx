@@ -64,8 +64,8 @@ export function ErrorState({ title, children, detail, actions }: { title: ReactN
 }
 
 /* Banner: inline, full-width message at the top of a form or panel. */
-export function Banner({ tone = "info", title, children, action }: { tone?: "info" | "error" | "caution" | "success"; title?: ReactNode; children?: ReactNode; action?: ReactNode }) {
-  const ic: IconName = tone === "success" ? "check" : tone === "info" ? "mail" : "alert";
+export function Banner({ tone = "info", title, children, action, icon }: { tone?: "info" | "error" | "caution" | "success"; title?: ReactNode; children?: ReactNode; action?: ReactNode; icon?: IconName }) {
+  const ic: IconName = icon ?? (tone === "success" ? "check" : tone === "info" ? "mail" : "alert");
   return (
     <div className={cx("c-banner", `c-banner--${tone}`)} role={tone === "error" ? "alert" : "status"}>
       <Icon name={ic} /><div className="c-banner__txt">{title && <b>{title}</b>}{children && <span>{children}</span>}</div>{action}

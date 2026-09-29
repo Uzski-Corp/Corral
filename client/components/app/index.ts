@@ -17,3 +17,4 @@ export * from "./CommandPalette";
 export * from "./Shell";
 export * from "./AppDemo";
 export * from "./useDismiss";
+export * from "./SessionUnavailable";

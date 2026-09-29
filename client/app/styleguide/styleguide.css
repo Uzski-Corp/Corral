@@ -141,3 +141,21 @@
   .sg-cmdk .c-cmd__foot > span:nth-child(n+3) { display: none; }
   .sg-statecard .c-table { overflow-x: auto; } .sg-statecard .c-table > * { min-width: 700px; }
 }
+
+/* M1 follow-ups */
+.sg-contrast { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.sg-ctable { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.sg-ctable th { text-align: left; font-weight: 500; color: var(--color-text-tertiary); padding: 0 8px 8px 0; font-size: 12px; }
+.sg-ctable td { padding: 7px 8px 7px 0; border-top: 1px solid var(--color-border-subtle); vertical-align: middle; color: var(--color-text-secondary); white-space: nowrap; }
+.sg-ctable td i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; box-shadow: inset 0 0 0 1px rgb(0 0 0 / .08); }
+.sg-ctable__dark { margin-left: 8px; padding: 2px 6px; border-radius: 4px; background: #EBEBE9; }
+.sg-contrast__ui { display: flex; flex-direction: column; gap: 12px; }
+.sg-contrast__row { display: flex; gap: 20px; flex-wrap: wrap; }
+.sg-contrast__note { margin: 0; font-size: 12.5px; line-height: 18px; color: var(--color-text-tertiary); }
+.sg-accounts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; width: 100%; height: auto; padding: 12px; border-radius: 12px; background: var(--color-surface-muted); box-shadow: 0 0 0 1px var(--color-border); }
+.sg-accounts > div { display: flex; flex-direction: column; min-width: 0; }
+.sg-accounts .sg-label { margin-bottom: 6px; }
+.sg-monos { display: flex; align-items: center; gap: 10px; height: 48px; }
+.sg-anatomy { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; line-height: 19px; color: var(--color-text-secondary); }
+@media (max-width: 900px) { .sg-contrast, .sg-accounts { grid-template-columns: minmax(0, 1fr); } .sg-ctable td { white-space: normal; } .sg-contrast .sg-card { overflow-x: auto; } }
+.sg-contrast > .sg-card:nth-child(-n+2) { grid-column: 1 / -1; overflow-x: auto; }
