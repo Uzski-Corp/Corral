@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useRef, useState } from "react";
 import { Avatar, Button, FitBar, Logo, Monogram, Receipt, Receipts, Tag, cx, type Status } from "../primitives";
 import { Icon } from "../icons";
 import { Banner } from "../States";
@@ -8,19 +9,35 @@ import { detailOf, leadById } from "./data";
 import { ProvenanceList, StaleBanner } from "../discovery/Provenance";
 import { enrichBusy, enrichLabel, fitPending } from "@/lib/discovery/run";
 import type { FieldProv, ProvField } from "@/lib/discovery/provenance";
+import { barOf, type FitStatus } from "@/lib/fit/score";
+import { FitReasoning, type FitActions } from "../fit/Reasoning";
 
 /**
  * Lead detail: one company, the person Corral writes to, why it fits, where it is in a sequence, and
  * everything that happened. Opens beside the table (rail 400) or full screen on a phone.
  */
-export function LeadDetail({ lead, onClose, onStatus, onEnroll, onMerge, onKeepBoth, onOpenLead, prov, today, provOpen, onRecheck, rechecking, foundVia, backLabel = "All companies" }: {
+export function LeadDetail({ lead, onClose, onStatus, onEnroll, onMerge, onKeepBoth, onOpenLead, prov, today, provOpen, onRecheck, rechecking, foundVia, backLabel = "All companies", fit, fitActions, fitForm, fitBusy, fitFocus }: {
   lead: Lead; onClose: () => void; onStatus: (id: string, s: Status, field?: "reply" | "email") => void; onEnroll: (id: string) => void;
   onMerge?: (id: string) => void; onKeepBoth?: (id: string) => void; onOpenLead?: (id: string) => void;
   /** M4 provenance: every field with its evidence chain. `today` anchors freshness (the demo's fixed date). */
   prov?: FieldProv[]; today?: Date; provOpen?: ProvField; onRecheck?: (id: string) => void; rechecking?: boolean;
   /** M4: how a discovery run found this company ("Search · … · #3"). */ foundVia?: string; backLabel?: string;
+  /** M5: the fit score and its reasoning. Without it the detail shows the M3 "Why it fits" receipts. */
+  fit?: FitStatus; fitActions?: FitActions; fitForm?: "override" | "disagree"; fitBusy?: boolean;
+  /** Scroll to the reasoning when the detail opens (review state `fit`). */ fitFocus?: boolean;
 }) {
   const d = detailOf(lead);
+  const root = useRef<HTMLElement>(null);
+  const [provFocus, setProvFocus] = useState<{ field: ProvField; n: number } | null>(null);
+  useEffect(() => {
+    if (!provFocus) return;
+    const b = root.current?.querySelector<HTMLButtonElement>(`[data-prov] [aria-controls$="-${provFocus.field}"]`);
+    if (b) { scrollInPane(b, "center"); b.focus({ preventScroll: true }); }
+  }, [provFocus]);
+  const openField = (field: ProvField) => setProvFocus((p) => ({ field, n: (p?.n ?? 0) + 1 }));
+  const focusWhy = () => { const w = root.current?.querySelector<HTMLElement>(".f-why"); if (w) scrollInPane(w, "start"); };
+  const useFit = !!fit && !pendingOf(lead);
+  useEffect(() => { const w = fitFocus && root.current?.querySelector<HTMLElement>(".f-why"); if (w) scrollInPane(w, "start", true); }, [fitFocus]);
   const dup = lead.dupOf ? leadById(lead.dupOf) : undefined;
   const blocked = lead.reply === "Unsubscribed" || lead.reply === "Not interested" || lead.email === "Bounced";
   const e = lead.enrich?.kind;
@@ -31,7 +48,7 @@ export function LeadDetail({ lead, onClose, onStatus, onEnroll, onMerge, onKeepB
     : e === "below-bar" ? `Fit is under ${lead.enrich && "bar" in lead.enrich ? lead.enrich.bar : 70}, so Corral didn't spend credits finding people.`
     : e === "no-people" ? "Corral didn't find a decision-maker with a work email." : null;
   return (
-    <article className="l-detail" aria-label={`${lead.company} details`}>
+    <article ref={root} className="l-detail" aria-label={`${lead.company} details`}>
       <button type="button" className="l-detail__back" onClick={onClose}><Icon name="back" />{backLabel}</button>
       <header className="l-detail__head">
         <Logo company={lead.company} />
@@ -53,8 +70,10 @@ export function LeadDetail({ lead, onClose, onStatus, onEnroll, onMerge, onKeepB
       {prov && today && <StaleBanner list={prov} today={today} person={lead.person} onRecheck={onRecheck && (() => onRecheck(lead.id))} rechecking={rechecking} />}
 
       <dl className="l-facts">
-        <div><dt>Fit</dt><dd>{pending ? <span className="c-scoring"><span>{lead.scoring ? "Scoring" : enrichLabel(lead.enrich)} · reading {lead.domain}</span></span>
-          : e === "unreadable" ? <span className="c-muted">Not scored: couldn&rsquo;t read the site</span> : <FitBar value={lead.fit} size="md" />}</dd></div>
+        <div><dt>Fit</dt><dd>{pending ? <FitBar value={0} size="md" state="scoring" text={`${lead.scoring ? "Scoring" : enrichLabel(lead.enrich)} · reading ${lead.domain}`} />
+          : e === "unreadable" ? <span className="c-muted">Not scored: couldn&rsquo;t read the site</span>
+          : useFit ? <><FitBar {...barOf(fit!)} size="md" /><button type="button" className="c-link k-linkbtn f-why-link" onClick={focusWhy}>Why?</button></>
+          : <FitBar value={lead.fit} size="md" />}</dd></div>
         <div><dt>Status</dt><dd><StatusMenu label={`Status for ${lead.company}`} value={lead.reply} onChange={(s) => onStatus(lead.id, s)} /></dd></div>
         <div><dt>Email</dt><dd><StatusMenu label={`Email status for ${lead.person}`} value={lead.email} options={EMAIL_STATUSES} onChange={(s) => onStatus(lead.id, s, "email")} /></dd></div>
         <div><dt>Size</dt><dd><span>{lead.size ?? "—"}{lead.industry && <span className="c-muted">&nbsp;· {lead.industry}</span>}</span></dd></div>
@@ -62,7 +81,10 @@ export function LeadDetail({ lead, onClose, onStatus, onEnroll, onMerge, onKeepB
         {foundVia && <div><dt>Found via</dt><dd className="l-facts__via">{foundVia}</dd></div>}
       </dl>
 
-      {lead.why.length > 0 && (
+      {useFit && <FitReasoning status={fit!} company={lead.company} domain={lead.domain} today={today ?? new Date()} initialForm={fitForm} busy={fitBusy}
+        {...fitActions} onOpenField={prov && prov.length ? openField : undefined} />}
+
+      {!useFit && lead.why.length > 0 && (
         <section className="l-sec"><h3>Why it fits ColdTrace Sensors</h3>
           <Receipts>{lead.why.map((w) => <Receipt key={w}>{w}</Receipt>)}</Receipts></section>
       )}
@@ -75,8 +97,8 @@ export function LeadDetail({ lead, onClose, onStatus, onEnroll, onMerge, onKeepB
       </section>
 
       {prov && today && prov.length > 0 && (
-        <section className="l-sec"><h3>Where this data came from</h3>
-          <ProvenanceList list={prov} today={today} initialOpen={provOpen} onRecheck={onRecheck && (() => onRecheck(lead.id))} rechecking={rechecking} /></section>
+        <section className="l-sec" data-prov><h3>Where this data came from</h3>
+          <ProvenanceList key={provFocus ? `${provFocus.field}-${provFocus.n}` : "p"} list={prov} today={today} initialOpen={provFocus?.field ?? provOpen} onRecheck={onRecheck && (() => onRecheck(lead.id))} rechecking={rechecking} /></section>
       )}
 
       <section className="l-sec"><h3>Sequence</h3>
@@ -97,4 +119,15 @@ export function LeadDetail({ lead, onClose, onStatus, onEnroll, onMerge, onKeepB
       </footer>
     </article>
   );
+}
+
+const pendingOf = (l: Lead) => !!l.scoring || fitPending(l.enrich) || l.enrich?.kind === "unreadable";
+
+/** Scroll the detail's own scroll area to an element, never the page (scrollIntoView moves every scrollable ancestor). */
+function scrollInPane(el: HTMLElement, at: "start" | "center", instant?: boolean) {
+  let p = el.parentElement;
+  while (p && !/(auto|scroll)/.test(getComputedStyle(p).overflowY)) p = p.parentElement;
+  if (!p) return;
+  const top = el.getBoundingClientRect().top - p.getBoundingClientRect().top + p.scrollTop - (at === "center" ? p.clientHeight / 2 - el.offsetHeight / 2 : 12);
+  p.scrollTo?.({ top: Math.max(0, top), behavior: instant ? "auto" : "smooth" });
 }

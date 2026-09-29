@@ -5,6 +5,7 @@ import { Icon } from "../icons";
 import { EmptyState, ErrorState, Skeleton, SkeletonTable } from "../States";
 import { useToast } from "../Toaster";
 import { LeadDetail } from "../leads/Detail";
+import { scoreFor } from "../fit/data";
 import { advanceRun, type Run } from "@/lib/discovery/run";
 import type { DiscoveryReviewState } from "@/lib/discovery/state";
 import { DEMO_TODAY_M4, provOf, resultsFor, runsFor, type Result } from "./data";
@@ -131,6 +132,7 @@ export function DiscoveryView({ state, setupOpen, onSetupOpenChange, onOpenCompa
         {lead && (
           <div className="d-detail">
             <LeadDetail lead={lead} backLabel="Back to results" foundVia={lead.via} prov={provOf(lead)} today={DEMO_TODAY_M4} provOpen={state === "detail" ? "email" : undefined}
+              fit={{ kind: "scored", score: scoreFor(lead, lead.fit, "2026-09-29") }}
               onClose={() => setDetail(undefined)} onStatus={() => toast({ children: "Status changed", meta: "sample action" })}
               onEnroll={() => toast({ tone: "success", children: `${lead.company} enrolled in Cold-room pilot`, meta: "first email Thursday 08:10" })} />
           </div>

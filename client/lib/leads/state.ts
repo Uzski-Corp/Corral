@@ -24,6 +24,14 @@
  *   import-done      the summary, and "Make a segment from this import"
  *   stale            (M4) contact details older than their freshness window: banner, stale marks, Re-check
  *   provenance       (M4) a lead open with the email's evidence chain expanded
+ *   fit              (M5) a lead open on "Why it scored 94": every check with its evidence
+ *   fit-scoring      (M5) scores being worked out: the bar sweeps, the panel reads pages
+ *   fit-none         (M5) companies not scored yet (queued, or no website)
+ *   fit-low          (M5) a low-confidence score: checks with no evidence, and the ceiling
+ *   fit-changed      (M5) scores that moved since last time, and why
+ *   fit-override     (M5) a fit you set yourself, next to Corral's
+ *   fit-disagree     (M5) you told Corral the score is wrong; it re-reads with your note
+ *   fit-error        (M5) scoring failed; the last score stands
  * /app?view=segments&state=
  *   builder          edit the segment's rules with the live count
  *   builder-empty    rules that match nothing
@@ -34,6 +42,7 @@ export const LEADS_REVIEW_STATES = [
   "loading", "error", "empty", "no-results", "partial", "selected", "select-all", "bulk-confirm", "bulk-running", "status-menu",
   "detail", "duplicate", "import", "import-file-error", "import-map", "import-map-errors", "import-review", "import-running", "import-done",
   "stale", "provenance",
+  "fit", "fit-scoring", "fit-none", "fit-low", "fit-changed", "fit-override", "fit-disagree", "fit-error",
 ] as const;
 export const SEGMENT_REVIEW_STATES = ["builder", "builder-empty", "builder-error", "loading", "error", "selected", "detail"] as const;
 export type LeadsReviewState = (typeof LEADS_REVIEW_STATES)[number] | (typeof SEGMENT_REVIEW_STATES)[number];

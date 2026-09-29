@@ -210,3 +210,17 @@
 .sg-m4-prov { display: grid; grid-template-columns: 380px 380px 400px; gap: 24px; overflow-x: auto; align-items: start; padding-bottom: 8px; }
 @media (max-width: 900px) { .sg-m4-setup, .sg-m4-prov { grid-template-columns: minmax(0, 1fr); } }
 .sg-m4-states .sg-anatomy + .sg-label { display: block; margin-top: 16px; }
+
+/* M5 · fit score (ENG-55) */
+.sg-m5, .sg-m5-bars { display: flex; flex-direction: column; gap: 16px; max-width: 1180px; }
+.sg-m5-bars { display: grid; grid-template-columns: 360px minmax(0, 1fr); align-items: start; }
+.sg-m5-wide { grid-column: 1 / -1; }
+.sg-m5-bar-list { display: flex; flex-direction: column; gap: 10px; margin: 8px 0 0; }
+.sg-m5-bar-list > div { display: grid; grid-template-columns: 116px 1fr; align-items: center; gap: 12px; }
+.sg-m5-bar-list dt { font-size: 12px; color: var(--color-text-tertiary); }
+.sg-m5-bar-list dd { margin: 0; }
+.sg-m5-sizes { display: flex; align-items: center; gap: 24px; margin: 8px 0 20px; }
+.sg-m5-table { overflow-x: auto; margin-top: 8px; }
+.sg-m5-panels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.sg-m5-panel { max-height: 720px; overflow: auto; }
+@media (max-width: 900px) { .sg-m5-bars, .sg-m5-panels { grid-template-columns: minmax(0, 1fr); } }

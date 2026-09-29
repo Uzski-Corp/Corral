@@ -15,11 +15,11 @@ cd client && pnpm install && pnpm dev     # pnpm 12 (see packageManager)
 | `/app` | Shell + Unibox home (live: views, ⌘K, J/K/E, enroll dialog, toasts) | `?cmdk=1` palette open · `?view=companies`, `contacts`, `segments`, … · `?collapsed=1` · `?nav=1` (mobile drawer) · `?dialog=enroll` |
 | `/sign-in` | Email six-digit code (WorkOS Magic Auth) + Google | `?state=sent` (code entry) · `code-verifying` · `code-wrong` · `code-expired` · `code-attempts` · `code-resent` · `resend-limited` · `verify-limited` · `code-failed` · `change-email` · `error` (sign-in didn't finish) · `invalid` · `cancelled` · `unavailable` (see §9) |
 | `/app?view=knowledge` | Knowledge base for one product (live: upload and reading simulators, edit, remove with Undo) | `&state=empty` · `drafting` · `loading` · `error` · `sources` · `source` · `partial` · `failed` · `upload` · `upload-errors` · `dragging` · `tray` · `editing` · `save-error` · `conflict` (see §10) |
-| `/app?view=companies` | Leads: the Companies table with sorting, selection, bulk bar, detail rail, filters as rules, CSV import (live) | `&state=loading` · `error` · `empty` · `no-results` · `partial` · `selected` · `select-all` · `bulk-confirm` · `bulk-running` · `status-menu` · `detail` · `duplicate` · `import` · `import-file-error` · `import-map` · `import-map-errors` · `import-review` · `import-running` · `import-done` (see §11) · M4: `stale` · `provenance` (see §12) |
+| `/app?view=companies` | Leads: the Companies table with sorting, selection, bulk bar, detail rail, filters as rules, CSV import (live) | `&state=loading` · `error` · `empty` · `no-results` · `partial` · `selected` · `select-all` · `bulk-confirm` · `bulk-running` · `status-menu` · `detail` · `duplicate` · `import` · `import-file-error` · `import-map` · `import-map-errors` · `import-review` · `import-running` · `import-done` (see §11) · M4: `stale` · `provenance` (see §12) · M5: `fit` · `fit-scoring` · `fit-none` · `fit-low` · `fit-changed` · `fit-override` · `fit-disagree` · `fit-error` (see §13) |
 | `/app?view=discovery` | Discovery runs: find companies that fit a product, watch them enrich, see where every field came from (live: the running run ticks forward) | `&state=empty` · `loading` · `error` · `new` · `new-error` · `queued` · `running` · `done` · `partial` · `failed` · `rate-limited` · `zero` · `detail` (see §12) |
 | `/app?view=segments` | A saved segment (live rules, same table) and the segment builder | `&state=builder` · `builder-empty` · `builder-error` · `loading` · `error` · `selected` · `detail` (see §11) |
 | `/onboarding` | 5-step workspace setup with progress and skip | `?step=1…6` (6 = done) · `?skipped=3,4,5` · `?crawl=done` · `?mailbox=1` |
-| `/styleguide` | Every component, live, where it is used (sections 01–34; knowledge base is 20–24, leads 25–29, discovery and provenance 30–33) | — |
+| `/styleguide` | Every component, live, where it is used (sections 01–36; knowledge base is 20–24, leads 25–29, discovery and provenance 30–33, fit score 34–35) | — |
 
 Keyboard in `/app`: ⌘K / Ctrl+K palette · `[` collapse sidebar · `G` then `I C D P S Q R K ,` to jump (`D` = Discovery, M4) · `J`/`K` next/previous thread · `E` archive (with Undo toast) · Esc closes the top layer.
 
@@ -590,3 +590,67 @@ Logic (`lib/discovery/`): `STAGES`, `overallPercent`, `currentStage`, `runHeadli
 6. One product per run (as designed), or several?
 7. The ENG-54 Linear attachments link GitHub `Uzski-Corp/camposocial-client` #163/#191, as ENG-53's did. Right repo, or stale links?
 8. Krak's worktree (ENG-80, earlier layering) once lacked the M2 knowledge base and the `pen` icon; worktree HEAD 82b2973 has them. Confirm nothing else from that layer is expected to change.
+
+## 13. Fit score: the bar in every state and why it scored (M5, ENG-55 → build ENG-83)
+
+A fit score is **a short list of weighted checks** (100 points), each measured against one line of the product's knowledge base and backed by **the evidence Corral read**, with a link to that field's M4 provenance chain. The panel reads like a case file: claim, points, finding, the quote, where it came from, and what it was measured against. It is not a chart. The existing Open Range blue `FitBar` (`components/app/primitives.tsx`) is **extended, not replaced**: a plain `value` renders exactly as before (same classes, same `aria-label` "Fit N of 100", no extra markup). Styleguide §34–35 ("Things that float" moves to §36). Logic is pure and tested in `lib/fit/score.ts`; components are in `components/app/fit/` (`Reasoning.tsx`, demo data `data.ts`, CSS `fit.css` with `f-*` classes, imported in `app/globals.css`). Bar state CSS is in `components/app/app.css` (`.c-fit` modifiers).
+
+**Baseline: this batch assumes M4 is applied.** It is built on worktree HEAD f70ca0f, which already contains M4 (682fed6, byte-identical to the M4 batch) and Krak's two follow-ups (020fffb, f70ca0f). It edits M4 files (`SegmentTable`, `Detail`, `Leads`, `Discovery`, `lib/leads/state*`, this document), so on an older tree apply M4 first.
+
+### Routes and states (`/app?view=companies&state=…` outside production)
+| `?state=` | What shows |
+|---|---|
+| `fit` | Kilima Dairies open, scrolled to **Why it scored 94**: "Strong fit. Runs three cold rooms at its Nakuru plant, about 400 tonnes. Lost a night's milk to a compressor failure in March." Then "Scored 2 days ago · read 38 pages of kilima.co.ke · measured against 5 lines of the ColdTrace Sensors knowledge base · high confidence", and six checks (rooms 30/30, pain 25/25, size 12/15 partly, buyer 10/10, region 10/10, alerting 7/10 partly), each with quotes and **Where this came from**. |
+| `fit-scoring` | Tamu Bakeries **Rescoring**: "Reading tamu.ug: 12 of about 38 pages", checks ticking Checked / Checking… / Waiting, "The last score, 86 from Sep 12, stays in use until this finishes." Table rows read **Rescoring** with a sweeping bar. |
+| `fit-none` | Savanna Juice Co. **Not scored yet** ("added 2 min ago and is in line"), **Score it now** / **Set the fit myself**. Table rows read **Queued**; Mara Cold Stores reads **No website** (no Score it now). Unscored rows sort last. |
+| `fit-low` | Zanzibar Spice Cold Rooms, **53, low confidence**: "2 of 6 checks have no evidence (35 of 100 points); Corral could only read one page. Checks without evidence count as zero, so 53 is a floor: it could reach 88 if they hold." Unknown checks say what's missing, with **Tell Corral …** (opens that field). The bar's segments are outlined. |
+| `fit-changed` | Nyota Beverages **84 ↑26**: "Up 26 from 58 on Sep 12. What changed:" three dated reasons (new evidence, a KB edit, a news post). Rift Valley Grain and Mombasa Reefer also carry ↓9 / ↑6. |
+| `fit-override` | Bahari Foods: **Why Corral scored 61** under "You set this to 83" with your note, who and when, **Use Corral's 61**. The table and detail show 83 with a pen. |
+| `fit-disagree` | Rift Valley Grain: "You said this score is wrong" with your note, "The score stays as it is until then", **Rescore now**. Rescoring re-reads with the note: 81 → 63, "Down 18 … Re-read rvgrain.co.ke with your note". |
+| `fit-error` | Kigali Cold Chain **Last score: 85**: "Couldn't score Kigali Cold Chain. The scoring model didn't answer, twice. Nothing changed: the last score, 85 from Sep 12, still stands." `POST /fit/score · 504 · Sep 29, 14:02`, **Try again**; the last score's checks stay below. Table reads **Failed**; a company with no earlier score says it stays out of fit filters. |
+
+The Discovery result detail also uses the panel (scored today, by the run).
+
+### Decisions
+1. **Score = the sum of weighted checks against KB lines** (design weights: runs cold rooms 30, loses stock 25, size 15, reachable ops/quality lead 10, region 10, no live alerting 10). Each check has a verdict (Holds / Partly / Doesn't hold / No evidence), points, a one-line finding, the evidence (quote or fact, source, where, when, `field` for provenance) and the KB line it was measured against. The summary line comes from the band plus the two heaviest findings that hold.
+2. **Missing evidence counts as zero, and is named.** A thin score is a floor; the ceiling (`value + unknown weight`) is shown. Confidence: **low** if unknown checks weigh ≥ 25 points or fewer than 3 pages were read; **medium** if ≥ 10 points or fewer than 8 pages; otherwise high.
+3. **Your override wins** for sorting, filters and segments (`shownValue`). Corral keeps scoring underneath, shows its own number, and **Use Corral's N** clears yours (with Undo on setting). Validation: a whole number 0–100; the note is optional.
+4. **A disagreement is a note, not a number.** Corral re-reads the site with it and rescores; the change is explained like any other ("Re-read … with your note"). The note is kept on the score.
+5. **The last score stays in use while rescoring and after an error.** Nothing silently becomes blank. Never-scored companies are excluded from fit filters and sort last.
+6. **Changes are explained.** A change since the last score shows ↑/↓ on the bar and a dated "What changed" list until the next score.
+7. **Bar states** (`FitBar`): `state="scoring"` (sweep 1.6s, disabled under `prefers-reduced-motion`), `state="none"`, `state="error"` (keeps the last number with an alert mark), `confidence="low"` (outlined segments), `delta`, `by="you"` (pen). Each has a full accessible name ("Fit 84 of 100, up 26 since the last score"); the table uses short visible labels (Scoring / Rescoring / Queued / No website / Not scored / Failed) so the column keeps its width.
+8. **Scoring in the table now uses the bar's scoring state** instead of the M3/M4 skeleton text, for the M3 `scoring` flag and the M4 pending enrichment states (the enrichment word, e.g. "Reading site", becomes the bar's label).
+9. Evidence cites link to the field in **Where this data came from** (M4): it opens that row and focuses it, scrolling only the detail pane.
+10. **Mobile:** the detail is full screen as in M3; banners drop their action under the text; forms stack.
+
+### Component APIs (`import { … } from "@/components/app"`)
+```tsx
+<FitBar value size? state?: "scoring" | "none" | "error" confidence?: "low" delta? by?: "you" text? />   // plain value unchanged
+<FitReasoning status: FitStatus company domain today initialForm?: "override" | "disagree" busy?
+  onRescore? onOverride?(value, note) onClearOverride? onDisagree?(note) onOpenField?(field) onAddField?(field) />
+<SegmentTable … fitOf?(lead) => { value } & FitBarMeta />
+<LeadDetail … fit?: FitStatus fitActions?: FitActions fitForm? fitBusy? fitFocus? />   // without fit, M3/M4 "Why it fits" unchanged
+```
+`FitStatus` = `scored { score }` · `scoring { pages, of, checked, last? }` · `none { why: queued | no-site | new, since? }` · `error { code, at, tries, last? }`. `FitScore { product, value, at, checks, pages, kbLines, history?, override?, disagree? }`.
+Logic (`lib/fit/score.ts`): `scoreOf`, `band`, `BAND_WORD`, `confidence`, `shownValue`, `changeOf`, `ceilingOf`, `summaryLine`, `fitLabel`, `barOf(status, short?)`, `VERDICT_WORD`, `NONE_TEXT`, `NONE_SHORT`, `overrideIssue`. Demo data (`components/app/fit/data.ts`): `KILIMA_FIT`, `scoreFor(lead)`, `fitStatusFor(lead, state)`, `FIT_OPEN`. `LeadsReviewState` gains the 8 `fit*` states (29 total).
+
+### What Krak wires (ENG-83, backend TBD)
+- **Scoring API:** `POST /fit/score` (company, product) → a job; `GET` returns `FitScore` with checks, verdicts, points, findings, evidence (`kind`, `text`, `quote?`, `where`, `at`, `field`) and the KB line (`section`, `title`, `text`) per check, plus pages read and KB lines used. Progress (`pages`, `of`, `checked`) for the scoring state.
+- **History:** keep the previous score and the reasons for a change (new evidence, KB edit, your note), for "What changed" and the ↑/↓.
+- **Override and disagreement storage** per company and product (value, note, who, when); overrides feed sort/filter/segments; a disagreement triggers a rescore with the note as context.
+- **Rescore triggers:** KB edits for that product, new or changed evidence (M4 re-checks), a disagreement, and on demand. Errors keep the last score and store `code`, `at`, `tries`; retry with backoff.
+- **Confidence** can come from the backend; the client rules above are a fallback.
+- Wire into the lead table (`fitOf`) and the lead detail (`fit`, `fitActions`) per ENG-83. Review mode: `?state=fit*` seeds each state.
+
+### Tests
+- Added: `components/app/fit/fit.test.tsx` (12: the plain bar is unchanged, every bar state's name and label, the panel for scored / override / low / changed / disagree / scoring / error / none, override and disagreement validation, provenance links, table short labels, clearing an override and setting one again, rescoring after a disagreement), `lib/fit/score.test.ts` (8), and `lib/leads/state.test.ts` (29 states).
+- Krak's `e2e/leads.a11y.spec.ts` spreads `LEADS_REVIEW_STATES`, so it picks up the 8 `fit*` states automatically.
+- For ENG-83: component tests as above against real data; e2e (open a company → Why? → Where this came from; set and clear an override; disagree → rescore); axe on every `fit*` state; visual baselines at 1440 and 390. **Existing baselines that change:** anything showing a row whose fit is pending (M3 companies `partial` and `duplicate`; M4 discovery `running`, `failed`, `partial`) and the lead detail (the "Why it fits" block becomes the reasoning panel when a score is present).
+
+### Open questions
+1. Check weights per product: fixed in the KB's "Who it's for / Pains" or set per product? The design uses 30/25/15/10/10/10.
+2. Confidence thresholds (25/10 points, 3/8 pages): right?
+3. Do overrides expire (for example after 90 days, like fit freshness in §12) or when the evidence changes a lot?
+4. Should disagreement notes feed the knowledge base (suggest a KB edit), or stay per company?
+5. Does a rescore cost credits? The design shows none.
+6. ENG-55's GitHub link is `Uzski-Corp/camposocial-client` #164, as ENG-53/54 had. Right repo, or stale?

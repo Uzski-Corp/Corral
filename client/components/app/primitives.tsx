@@ -1,6 +1,7 @@
-import type { ReactNode, ButtonHTMLAttributes } from "react";
+import type { ReactNode, ButtonHTMLAttributes, CSSProperties } from "react";
 import { Icon, type IconName } from "./icons";
 import { LOGOS, type CompanyName } from "./data";
+import { fitLabel, type FitBarMeta } from "@/lib/fit/score";
 
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 export { cx };
@@ -29,13 +30,24 @@ export const STATUS = {
 export type Status = keyof typeof STATUS;
 export const Tag = ({ status }: { status: Status }) => <span className={cx("c-tag", STATUS[status])}>{status}</span>;
 
-/* Fit bar — the signature. Ten segments; blue from 80, grey below. */
-export function FitBar({ value, size }: { value: number; size?: "md" | "lg" }) {
-  const on = Math.round(value / 10);
+/* Fit bar — the signature. Ten segments; blue from 80, grey below.
+   M5 (ENG-55) extends it; a plain `value` renders exactly as before:
+   state "scoring" (segments sweep, "Scoring"), "none" (empty, "Not scored yet"), "error" (the last score in grey, or "Couldn't score"),
+   confidence "low" (segments outlined: too little evidence), delta (↑/↓ since the last score), by "you" (your own number, pen mark). */
+export function FitBar({ value, size, state, confidence, delta, by, text }: { value: number; size?: "md" | "lg" } & FitBarMeta) {
+  const plain = !state && !confidence && !delta && !by;
+  const on = state === "scoring" || state === "none" || (state === "error" && !value) ? 0 : Math.round(value / 10);
+  const label = plain ? `Fit ${value} of 100`
+    : state === "error" && value ? `Fit ${value} of 100, the last score; couldn't rescore` : fitLabel({ value, state, confidence, delta, by, text });
   return (
-    <span className={cx("c-fit", value < 80 && "c-fit--low", size && `c-fit--${size}`)} role="img" aria-label={`Fit ${value} of 100`}>
-      <span className="c-fit__bar">{Array.from({ length: 10 }, (_, i) => <i key={i} className={i < on ? "on" : undefined} />)}</span>
-      <span className="c-fit__n">{value}</span>
+    <span className={cx("c-fit", (value < 80 || state) && "c-fit--low", size && `c-fit--${size}`, state && `is-${state}`, confidence === "low" && "is-unsure", by && "is-yours")}
+      role="img" aria-label={label} title={plain ? undefined : label}>
+      <span className="c-fit__bar">{Array.from({ length: 10 }, (_, i) => <i key={i} className={i < on ? "on" : undefined} style={state === "scoring" ? ({ "--i": i } as CSSProperties) : undefined} />)}</span>
+      {state === "scoring" || state === "none" ? <span className="c-fit__t">{text ?? (state === "none" ? "Not scored yet" : "Scoring")}</span>
+        : state === "error" ? <>{value > 0 && <span className="c-fit__n">{value}</span>}<span className="c-fit__t is-err"><Icon name="alert" size={11} />{!value && (text ?? "Couldn't score")}</span></>
+        : <><span className="c-fit__n">{value}</span>
+          {by === "you" && <span className="c-fit__you"><Icon name="pen" size={11} /></span>}
+          {delta ? <span className="c-fit__d">{delta > 0 ? "↑" : "↓"}{Math.abs(delta)}</span> : null}</>}
     </span>
   );
 }

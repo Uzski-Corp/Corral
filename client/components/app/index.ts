@@ -21,3 +21,4 @@ export * from "./SessionUnavailable";
 export * from "./kb";
 export * from "./leads";
 export * from "./discovery";
+export * from "./fit";

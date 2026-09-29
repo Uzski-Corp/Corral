@@ -1,13 +1,13 @@
 "use client";
 import { enrichBusy, enrichLabel, fitPending, type EnrichState } from "@/lib/discovery/run";
 import { formatAge, shortAge } from "@/lib/discovery/provenance";
+import type { FitBarMeta } from "@/lib/fit/score";
 import { useState } from "react";
 import { LEADS, type Lead } from "./data";
 import { Avatar, Button, Check, FitBar, Logo, Monogram, Tag, cx } from "./primitives";
 import { FilterBar } from "./Filters";
 import { Sidebar } from "./Sidebar";
 import { Icon } from "./icons";
-import { Skeleton } from "./States";
 import type { Sort, SortKey } from "@/lib/leads/segment";
 
 const HEADERS: [string, SortKey][] = [["Company", "company"], ["Decision-maker", "person"], ["Fit · ColdTrace", "fit"], ["Email", "email"], ["Reply", "reply"], ["Last touch", "last"]];
@@ -17,9 +17,11 @@ const HEADERS: [string, SortKey][] = [["Company", "company"], ["Decision-maker",
  * `sort` + `onSort` make headers sortable (aria-sort), `allChecked` + `onToggleAll` add the header checkbox,
  * `onOpen` makes rows open the lead detail (`active` marks the open one).
  */
-export function SegmentTable({ leads = LEADS, selected, onToggle, limit, hover, label = "Segment: Food & Beverage, East Africa", sort, onSort, allChecked, onToggleAll, onOpen, active }: {
+export function SegmentTable({ leads = LEADS, selected, onToggle, limit, hover, label = "Segment: Food & Beverage, East Africa", sort, onSort, allChecked, onToggleAll, onOpen, active, fitOf }: {
   leads?: Lead[]; selected: Set<string>; onToggle?: (id: string) => void; limit?: number; hover?: string; label?: string;
   sort?: Sort; onSort?: (key: SortKey) => void; allChecked?: boolean | "mixed"; onToggleAll?: () => void; onOpen?: (id: string) => void; active?: string;
+  /** M5: how each row's fit bar is marked (scoring, not scored, low confidence, changed, yours, error). */
+  fitOf?: (l: Lead) => { value: number } & FitBarMeta;
 }) {
   return (
     <div className={cx("c-table", onOpen && "c-table--open")} role="table" aria-label={label}>
@@ -47,8 +49,8 @@ export function SegmentTable({ leads = LEADS, selected, onToggle, limit, hover, 
               <span className="c-mono">{l.domain}</span>{l.dupOf && <span className="c-dupmark">Duplicate?</span>}</span>
             <span role="cell" className="c-cell">{l.person ? <>{l.avatar ? <Avatar id={l.avatar} /> : <Monogram name={l.person} />}<span className="c-strong">{l.person}</span><span className="c-muted">{l.title}</span></>
               : <EnrichNote e={l.enrich} slot="person" />}</span>
-            <span role="cell">{l.scoring || fitPending(l.enrich) ? <span className="c-scoring"><Skeleton w={40} h={10} r={2} /><span>{l.scoring ? "Scoring" : enrichLabel(l.enrich)}</span></span>
-              : l.enrich?.kind === "unreadable" ? <EnrichNote e={l.enrich} slot="fit" /> : <FitBar value={l.fit} />}</span>
+            <span role="cell">{l.scoring || fitPending(l.enrich) ? <FitBar value={0} state="scoring" text={l.scoring ? "Scoring" : enrichLabel(l.enrich) ?? "Scoring"} />
+              : l.enrich?.kind === "unreadable" ? <EnrichNote e={l.enrich} slot="fit" /> : fitOf ? <FitBar {...fitOf(l)} /> : <FitBar value={l.fit} />}</span>
             <span role="cell">{l.enrich && l.enrich.kind !== "done" && l.enrich.kind !== "stale" ? <EnrichNote e={l.enrich} slot="email" />
               : <span className="c-cell c-cell--tight"><Tag status={l.email} />{l.enrich?.kind === "stale" && <StaleMark days={l.enrich.days} />}</span>}</span>
             <span role="cell"><Tag status={l.reply} /></span>

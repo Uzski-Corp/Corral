@@ -4,6 +4,7 @@ import "./styleguide.css";
 import Link from "next/link";
 import { BuilderDemo, ImportDemo, LeadDetailDemo, LeadStatesDemo, LeadTableDemo, StatusTagsDemo } from "./M3Sections";
 import { DiscoveryShellDemo, EnrichDemo, RunStatesDemo, SetupDemo } from "./M4Sections";
+import { FitBarDemo, FitReasoningDemo } from "./M5Sections";
 import { EditorDemo, KbShellDemo, SourceDetailDemo, SourceListDemo, UploadDemo } from "./M2Sections";
 import { AccountStatesDemo, CodeStatesDemo, CmdkDemo, ContrastDemo, FormDemo, OverlayDemo, SessionErrorDemo, ShellDemo, StatesDemo, TabsToastDemo } from "./M1Sections";
 import {
@@ -239,7 +240,17 @@ export default function Styleguide() {
         <EnrichDemo />
       </Part>
 
-      <Part n="34" title="Things that float" tokens={["--shadow-pop", "--radius-window 14", "--color-surface-inverse"]}
+      <Part wide n="34" title="Fit score · the bar in every state" tokens={["c-fit: 10 segments, --color-action", "scoring: sweep 1.6s, off under reduced motion", "low confidence: outlined segments", "delta ↑↓ tabular · yours: pen, weight 600"]}
+        notes={<p>The same Open Range bar, extended rather than replaced: a plain value renders exactly as before. The bar also says when Corral is scoring, when there&rsquo;s no score yet and why, when a score is thin, when it moved since last time, when the number is yours, and when scoring failed. In the table these read as one short word so the column keeps its width; the full sentence is the bar&rsquo;s accessible name.</p>}>
+        <FitBarDemo />
+      </Part>
+
+      <Part wide n="35" title="Fit score · why it scored" tokens={["checks weighted to 100, against KB lines", "evidence: quote · source · where · when → provenance", "f-banner: info · caution · negative", "floor and ceiling when evidence is missing"]}
+        notes={<p>A score is a short list of checks, each measured against a line of the product&rsquo;s knowledge base and backed by the evidence Corral read, with a link to where that came from. It reads like a case file, not a chart: the claim, the points, the finding, the quote. Missing evidence counts as zero and is named, so a thin score is a floor with its ceiling shown. You can set the fit yourself or tell Corral what&rsquo;s wrong; both are kept and explained.</p>}>
+        <FitReasoningDemo />
+      </Part>
+
+      <Part n="36" title="Things that float" tokens={["--shadow-pop", "--radius-window 14", "--color-surface-inverse"]}
         notes={<p>Only moments float: a booked meeting, a reply worth seeing, a toast. Faces are film-graded photos in circles, one treatment for everyone.</p>}>
         <div className="sg-float">
           <MeetingCard />

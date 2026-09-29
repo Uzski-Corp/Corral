@@ -19,6 +19,9 @@ import { BULK_CONFIRM_AT, describeRule, filterLeads, nextSort, selectedCount, se
 import { guessMapping, parseCsv, type Mapping } from "@/lib/leads/import";
 import type { LeadsReviewState } from "@/lib/leads/state";
 import { DEMO_TODAY_M4, STALE_IDS, STALE_TOTAL, provOf } from "../discovery/data";
+import { FIT_OPEN, fitStatusFor, scoreFor } from "../fit/data";
+import { barOf, shownValue, type FitScore, type FitStatus } from "@/lib/fit/score";
+import { FIELD_LABEL } from "@/lib/discovery/provenance";
 
 const f = (n: number) => n.toLocaleString("en");
 const TABS = [{ id: "all", label: "All", total: TOTAL_COMPANIES }, { id: "fit", label: "Fit 80+", total: FIT_80 }, { id: "seq", label: "In a sequence", total: 38 }, { id: "rep", label: "Replied", total: 9 }];
@@ -61,10 +64,14 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
   const [rows, setRows] = useState<Lead[]>(() => state === "empty" ? [] : state === "partial"
     ? LEAD_ROWS.map((l, i) => (i >= 14 && i < 24 ? { ...l, scoring: true } : l))
     : state === "stale" ? LEAD_ROWS.map((l) => { const d = STALE_IDS.find(([id]) => id === l.id)?.[1]; return d ? { ...l, enrich: { kind: "stale", days: d } } : l; })
+    : state?.startsWith("fit") ? LEAD_ROWS.map((l) => { const st = fitStatusFor(l, state); return st.kind === "scored" ? { ...l, fit: shownValue(st.score) } : st.kind === "none" ? { ...l, fit: 0 } : l; })
     : LEAD_ROWS);
+  // M5: every company's fit status (scored, scoring, not scored, error), seeded from the review state.
+  const [fits, setFits] = useState<Record<string, FitStatus>>(() => Object.fromEntries(LEAD_ROWS.map((l) => [l.id, fitStatusFor(l, state)])));
+  const [rescoring, setRescoring] = useState<string | null>(null);
   const [rechecking, setRechecking] = useState<string | null>(null);
   const [staleCount, setStaleCount] = useState(state === "stale" ? STALE_TOTAL : 0);
-  const [tab, setTab] = useState(state === "select-all" || state === "bulk-confirm" || state === "bulk-running" || state === "partial" || state === "duplicate" ? "all" : "fit");
+  const [tab, setTab] = useState(state === "select-all" || state === "bulk-confirm" || state === "bulk-running" || state === "partial" || state === "duplicate" || FIT_OPEN[state!]?.tab === "all" ? "all" : "fit");
   const [rules, setRules] = useState<Rule[]>(() => seg ? (SEGMENT_RULES[seg] ?? SEGMENT_RULES["F&B · East Africa"])()
     : state === "no-results" ? [{ ...newRule("fit"), value: 90 }, { ...newRule("country"), value: ["Ethiopia"] }] : []);
   const [match, setMatch] = useState<Match>("all");
@@ -79,7 +86,7 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
     ids: new Set(state === "selected" || state === "status-menu" ? ["kilima", "pwani", "savanna"] : []),
     all: state === "select-all" || state === "bulk-confirm" || state === "bulk-running",
   }));
-  const [open, setOpen] = useState<string | undefined>(state === "detail" || state === "provenance" ? "kilima" : state === "duplicate" ? "kilimaltd" : state === "stale" ? "kilima" : undefined);
+  const [open, setOpen] = useState<string | undefined>(state && FIT_OPEN[state] ? FIT_OPEN[state]!.id : state === "detail" || state === "provenance" ? "kilima" : state === "duplicate" ? "kilimaltd" : state === "stale" ? "kilima" : undefined);
   const [confirm, setConfirm] = useState(state === "bulk-confirm");
   const [running, setRunning] = useState<number | null>(state === "bulk-running" ? 38 : null);
   const [seq, setSeq] = useState("pilot");
@@ -115,6 +122,49 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
     const k = (e: KeyboardEvent) => { if (e.key === "Escape" && n > 0 && !confirm && !importOpen && !(e.target instanceof Element && e.target.closest("[role=dialog], [role=menu], [role=listbox]"))) clear(); };
     window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k);
   }, [n, confirm, importOpen, clear]);
+
+  // M5 fit actions. Rescoring takes a moment; your own number wins for sorting and filters until cleared.
+  const putFit = (id: string, st: FitStatus) => {
+    setFits((m) => ({ ...m, [id]: st }));
+    if (st.kind === "scored") setRows((rs) => rs.map((l) => (l.id === id ? { ...l, fit: shownValue(st.score) } : l)));
+  };
+  const scoredOf = (id: string): FitScore | undefined => { const st = fits[id]; return st?.kind === "scored" ? st.score : st && "last" in st ? st.last : undefined; };
+  const rescore = (l: Lead) => {
+    const prev = scoredOf(l.id);
+    setRescoring(l.id);
+    setFits((m) => ({ ...m, [l.id]: { kind: "scoring", pages: 3, of: 30, checked: 1, last: prev } }));
+    setTimeout(() => {
+      setRescoring(null);
+      const base = prev?.value ?? l.fit ?? 70;
+      // A note that says "they don't run cold rooms" moves the rooms check; otherwise the score holds.
+      const value = prev?.disagree ? Math.max(0, base - 18) : base;
+      const next = scoreFor(l, value, "2026-09-29");
+      const why = prev?.disagree ? [`Re-read ${l.domain} with your note: “${prev.disagree.note}”`] : ["Re-read the site; nothing material changed"];
+      putFit(l.id, { kind: "scored", score: { ...next, override: prev?.override, history: prev ? [{ at: prev.at, value: prev.value, why }] : undefined } });
+      toast({ tone: "success", icon: "refresh", children: `${l.company} rescored`, meta: value === base ? `still ${value}` : `${base} → ${value}` });
+    }, 1600);
+  };
+  const fitActions = (l: Lead) => ({
+    onRescore: () => rescore(l),
+    onOverride: (value: number, note: string) => {
+      const s0 = scoredOf(l.id) ?? scoreFor(l);
+      const before = fits[l.id];
+      putFit(l.id, { kind: "scored", score: { ...s0, override: { value, by: "Tomás Ibarra", at: "2026-09-29", note: note || undefined } } });
+      toast({ tone: "success", icon: "pen", children: `Fit for ${l.company} set to ${value}`, meta: `Corral scored ${s0.value}`, action: { label: "Undo", onClick: () => putFit(l.id, before) } });
+    },
+    onClearOverride: () => {
+      const s0 = scoredOf(l.id); if (!s0) return;
+      putFit(l.id, { kind: "scored", score: { ...s0, override: undefined } });
+      toast({ children: `Using Corral's fit for ${l.company}`, meta: String(s0.value) });
+    },
+    onDisagree: (note: string) => {
+      const s0 = scoredOf(l.id) ?? scoreFor(l);
+      putFit(l.id, { kind: "scored", score: { ...s0, disagree: { by: "Tomás Ibarra", at: "2026-09-29", note } } });
+      toast({ tone: "success", children: "Thanks. Corral is re-reading with your note", meta: l.company });
+      setTimeout(() => rescore({ ...l }), 0);
+    },
+    onAddField: (fld: keyof typeof FIELD_LABEL) => toast({ icon: "pen", children: `Add ${FIELD_LABEL[fld].toLowerCase()} for ${l.company}`, meta: "then Corral rescores" }),
+  });
 
   const setStatus = (ids: string[], s: Status, field: "reply" | "email" = "reply") => {
     const before = rows;
@@ -213,7 +263,7 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
           ) : (
             <SegmentTable leads={shown} label={seg ? `Segment: ${seg}` : `Companies: ${TABS.find((t) => t.id === tab)!.label}`} selected={sel.all ? new Set(shown.map((l) => l.id)) : sel.ids}
               onToggle={toggle} onToggleAll={toggleAll} allChecked={sel.all || allOnPage ? true : sel.ids.size ? "mixed" : false}
-              sort={sort} onSort={(k) => setSort(nextSort(sort, k))} onOpen={setOpen} active={open} />
+              sort={sort} onSort={(k) => setSort(nextSort(sort, k))} onOpen={setOpen} active={open} fitOf={(l) => (fits[l.id] ? barOf(fits[l.id], true) : { value: l.fit })} />
           )}
           {shown.length > 0 && shown.length < total && <p className="l-more c-faint">Showing the first {f(shown.length)}. The rest load as you scroll.</p>}
         </div>
@@ -222,6 +272,7 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
           onRecheck={(id) => { setRechecking(id); setTimeout(() => { setRechecking(null); setRows((rs) => rs.map((l) => (l.id === id ? { ...l, enrich: undefined } : l))); setStaleCount((n) => Math.max(0, n - 1));
             toast({ tone: "success", icon: "refresh", children: `${rows.find((l) => l.id === id)?.company} re-checked`, meta: "email still works · 2 credits" }); }, 1200); }} onStatus={(id, s, fld) => setStatus([id], s, fld)} onEnroll={() => onEnroll(1, lead.id === "pwani")}
           onOpenLead={setOpen}
+          fit={fits[lead.id]} fitBusy={rescoring === lead.id} fitFocus={state === "fit"} fitActions={fitActions(lead)}
           onMerge={(id) => { const before = rows; const into = rows.find((l) => l.id === id)!.dupOf!; setRows(rows.filter((l) => l.id !== id)); setOpen(into);
             toast({ tone: "success", children: `Merged into ${rows.find((l) => l.id === into)!.company}`, meta: "added 1 note", action: { label: "Undo", onClick: () => { setRows(before); setOpen(id); } } }); }}
           onKeepBoth={(id) => { setRows(rows.map((l) => (l.id === id ? { ...l, dupOf: undefined } : l))); toast({ children: "Kept both. Corral won't ask about this pair again." }); }} /></div>}
