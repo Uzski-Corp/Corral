@@ -10,7 +10,7 @@ describe("leadsReviewState", () => {
     expect(leadsReviewState("knowledge", "loading", true)).toBeUndefined();
     expect(leadsReviewState("companies", "loading", false)).toBeUndefined();
     expect(leadsReviewState(undefined, undefined, true)).toBeUndefined();
-    expect(LEADS_REVIEW_STATES).toHaveLength(19);
+    expect(LEADS_REVIEW_STATES).toHaveLength(21);
     expect(SEGMENT_REVIEW_STATES).toContain("builder-error");
   });
 });

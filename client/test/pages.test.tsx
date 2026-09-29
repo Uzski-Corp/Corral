@@ -62,6 +62,14 @@ describe("/onboarding and /app pages keep their review params", () => {
     expect(await screen.findByRole("heading", { name: "Bring in the companies you already know" })).toBeInTheDocument();
   });
 
+  it("opens a discovery review state (M4)", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DESIGN_REVIEW", "1");
+    resetConfigCache();
+    const page = await AppPage(params({ view: "discovery", state: "empty" }) as never);
+    render(AppLayout({ children: page, params: Promise.resolve({}) } as never));
+    expect(await screen.findByText("Find companies that fit ColdTrace Sensors")).toBeInTheDocument();
+  });
+
   it("wraps onboarding in the session layout", async () => {
     vi.stubEnv("NEXT_PUBLIC_DESIGN_REVIEW", "1");
     resetConfigCache();

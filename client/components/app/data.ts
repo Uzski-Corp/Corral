@@ -1,4 +1,5 @@
 /* Sample content for the Corral design study. People, companies and numbers are illustrative. */
+import type { EnrichState } from "@/lib/discovery/run";
 import type { Status } from "./primitives";
 
 export const LOGOS = {
@@ -22,6 +23,7 @@ export type Lead = {
   country?: string; size?: string; industry?: string; source?: string;
   /** Corral is still reading the site; fit isn't known yet */ scoring?: boolean;
   /** id of the lead this one probably duplicates */ dupOf?: string;
+  /** M4: where the company is in discovery/enrichment; the table shows it in place of the value it waits for */ enrich?: EnrichState;
 };
 export const LEADS: Lead[] = [
   { id: "kilima", company: "Kilima Dairies", domain: "kilima.co.ke", person: "Wanjiru Mwangi", title: "Head of Supply Chain", avatar: "wanjiru", fit: 94, email: "Verified", reply: "Interested", last: "2h ago", why: ["Read 38 pages of kilima.co.ke", "Matched “3-site pilot” proof", "Replied in 2h"] },

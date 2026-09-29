@@ -18,6 +18,7 @@ import { EXISTING, FIT_80, LEAD_ROWS, TOTAL_COMPANIES, crmExportCsv, tradeShowCs
 import { BULK_CONFIRM_AT, describeRule, filterLeads, nextSort, selectedCount, selectionLabel, sortLeads, type Match, type Rule, type Selection, type Sort } from "@/lib/leads/segment";
 import { guessMapping, parseCsv, type Mapping } from "@/lib/leads/import";
 import type { LeadsReviewState } from "@/lib/leads/state";
+import { DEMO_TODAY_M4, STALE_IDS, STALE_TOTAL, provOf } from "../discovery/data";
 
 const f = (n: number) => n.toLocaleString("en");
 const TABS = [{ id: "all", label: "All", total: TOTAL_COMPANIES }, { id: "fit", label: "Fit 80+", total: FIT_80 }, { id: "seq", label: "In a sequence", total: 38 }, { id: "rep", label: "Replied", total: 9 }];
@@ -58,7 +59,11 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
   const seg = view === "segments" ? segment ?? SAVED_SEGMENTS[0][0] : undefined;
   const [phase, setPhase] = useState<"loading" | "error" | "ready">(state === "loading" ? "loading" : state === "error" ? "error" : "ready");
   const [rows, setRows] = useState<Lead[]>(() => state === "empty" ? [] : state === "partial"
-    ? LEAD_ROWS.map((l, i) => (i >= 14 && i < 24 ? { ...l, scoring: true } : l)) : LEAD_ROWS);
+    ? LEAD_ROWS.map((l, i) => (i >= 14 && i < 24 ? { ...l, scoring: true } : l))
+    : state === "stale" ? LEAD_ROWS.map((l) => { const d = STALE_IDS.find(([id]) => id === l.id)?.[1]; return d ? { ...l, enrich: { kind: "stale", days: d } } : l; })
+    : LEAD_ROWS);
+  const [rechecking, setRechecking] = useState<string | null>(null);
+  const [staleCount, setStaleCount] = useState(state === "stale" ? STALE_TOTAL : 0);
   const [tab, setTab] = useState(state === "select-all" || state === "bulk-confirm" || state === "bulk-running" || state === "partial" || state === "duplicate" ? "all" : "fit");
   const [rules, setRules] = useState<Rule[]>(() => seg ? (SEGMENT_RULES[seg] ?? SEGMENT_RULES["F&B · East Africa"])()
     : state === "no-results" ? [{ ...newRule("fit"), value: 90 }, { ...newRule("country"), value: ["Ethiopia"] }] : []);
@@ -74,7 +79,7 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
     ids: new Set(state === "selected" || state === "status-menu" ? ["kilima", "pwani", "savanna"] : []),
     all: state === "select-all" || state === "bulk-confirm" || state === "bulk-running",
   }));
-  const [open, setOpen] = useState<string | undefined>(state === "detail" ? "kilima" : state === "duplicate" ? "kilimaltd" : undefined);
+  const [open, setOpen] = useState<string | undefined>(state === "detail" || state === "provenance" ? "kilima" : state === "duplicate" ? "kilimaltd" : state === "stale" ? "kilima" : undefined);
   const [confirm, setConfirm] = useState(state === "bulk-confirm");
   const [running, setRunning] = useState<number | null>(state === "bulk-running" ? 38 : null);
   const [seq, setSeq] = useState("pilot");
@@ -186,6 +191,10 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
           onCancel={() => { setDraft(null); onBuilderOpenChange(false); }} />
       )}
 
+      {staleCount > 0 && <div className="l-banner"><Banner tone="caution" icon="clock" title={`Contact details for ${f(staleCount)} companies were last checked over 90 days ago.`}
+        action={<Button onClick={() => { setStaleCount(0); setRows((rs) => rs.map((l) => (l.enrich?.kind === "stale" ? { ...l, enrich: undefined } : l)));
+          toast({ tone: "success", icon: "refresh", children: `Re-checking ${f(staleCount)} companies`, meta: `${f(staleCount * 2)} credits · runs in the background` }); }}>Re-check {f(staleCount)} · {f(staleCount * 2)} credits</Button>}>
+        People change jobs and mailboxes close. Corral re-checks an email before it sends anything, so nothing bounces; re-check now to see what changed first.</Banner></div>}
       {state === "partial" && <div className="l-banner"><Banner tone="info" title="Corral is still scoring 212 of 1,284 companies.">Rows fill in as each website is read, usually within the hour. Scored rows are final; you can select and enroll them now.</Banner></div>}
 
       <div className={cx("l-split", lead && "has-detail")}>
@@ -208,7 +217,10 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
           )}
           {shown.length > 0 && shown.length < total && <p className="l-more c-faint">Showing the first {f(shown.length)}. The rest load as you scroll.</p>}
         </div>
-        {lead && <div className="l-split__detail"><LeadDetail lead={lead} onClose={() => setOpen(undefined)} onStatus={(id, s, fld) => setStatus([id], s, fld)} onEnroll={() => onEnroll(1, lead.id === "pwani")}
+        {lead && <div className="l-split__detail"><LeadDetail lead={lead} onClose={() => setOpen(undefined)}
+          prov={provOf(lead, lead.enrich?.kind === "stale" ? lead.enrich.days : 0)} today={DEMO_TODAY_M4} provOpen={state === "provenance" ? "email" : undefined} rechecking={rechecking === lead.id}
+          onRecheck={(id) => { setRechecking(id); setTimeout(() => { setRechecking(null); setRows((rs) => rs.map((l) => (l.id === id ? { ...l, enrich: undefined } : l))); setStaleCount((n) => Math.max(0, n - 1));
+            toast({ tone: "success", icon: "refresh", children: `${rows.find((l) => l.id === id)?.company} re-checked`, meta: "email still works · 2 credits" }); }, 1200); }} onStatus={(id, s, fld) => setStatus([id], s, fld)} onEnroll={() => onEnroll(1, lead.id === "pwani")}
           onOpenLead={setOpen}
           onMerge={(id) => { const before = rows; const into = rows.find((l) => l.id === id)!.dupOf!; setRows(rows.filter((l) => l.id !== id)); setOpen(into);
             toast({ tone: "success", children: `Merged into ${rows.find((l) => l.id === into)!.company}`, meta: "added 1 note", action: { label: "Undo", onClick: () => { setRows(before); setOpen(id); } } }); }}

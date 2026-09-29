@@ -13,14 +13,15 @@ cd client && pnpm install && pnpm dev     # pnpm 12 (see packageManager)
 | Route | What it is | Review states |
 |---|---|---|
 | `/app` | Shell + Unibox home (live: views, ⌘K, J/K/E, enroll dialog, toasts) | `?cmdk=1` palette open · `?view=companies`, `contacts`, `segments`, … · `?collapsed=1` · `?nav=1` (mobile drawer) · `?dialog=enroll` |
-| `/sign-in` | Email six-digit code (WorkOS Magic Auth) + Google | `?state=sent` (code entry) · `code-verifying` · `code-wrong` · `code-expired` · `code-resent` · `resend-limited` · `change-email` · `error` (sign-in didn't finish) · `invalid` · `cancelled` · `unavailable` (see §9) |
+| `/sign-in` | Email six-digit code (WorkOS Magic Auth) + Google | `?state=sent` (code entry) · `code-verifying` · `code-wrong` · `code-expired` · `code-attempts` · `code-resent` · `resend-limited` · `verify-limited` · `code-failed` · `change-email` · `error` (sign-in didn't finish) · `invalid` · `cancelled` · `unavailable` (see §9) |
 | `/app?view=knowledge` | Knowledge base for one product (live: upload and reading simulators, edit, remove with Undo) | `&state=empty` · `drafting` · `loading` · `error` · `sources` · `source` · `partial` · `failed` · `upload` · `upload-errors` · `dragging` · `tray` · `editing` · `save-error` · `conflict` (see §10) |
-| `/app?view=companies` | Leads: the Companies table with sorting, selection, bulk bar, detail rail, filters as rules, CSV import (live) | `&state=loading` · `error` · `empty` · `no-results` · `partial` · `selected` · `select-all` · `bulk-confirm` · `bulk-running` · `status-menu` · `detail` · `duplicate` · `import` · `import-file-error` · `import-map` · `import-map-errors` · `import-review` · `import-running` · `import-done` (see §11) |
+| `/app?view=companies` | Leads: the Companies table with sorting, selection, bulk bar, detail rail, filters as rules, CSV import (live) | `&state=loading` · `error` · `empty` · `no-results` · `partial` · `selected` · `select-all` · `bulk-confirm` · `bulk-running` · `status-menu` · `detail` · `duplicate` · `import` · `import-file-error` · `import-map` · `import-map-errors` · `import-review` · `import-running` · `import-done` (see §11) · M4: `stale` · `provenance` (see §12) |
+| `/app?view=discovery` | Discovery runs: find companies that fit a product, watch them enrich, see where every field came from (live: the running run ticks forward) | `&state=empty` · `loading` · `error` · `new` · `new-error` · `queued` · `running` · `done` · `partial` · `failed` · `rate-limited` · `zero` · `detail` (see §12) |
 | `/app?view=segments` | A saved segment (live rules, same table) and the segment builder | `&state=builder` · `builder-empty` · `builder-error` · `loading` · `error` · `selected` · `detail` (see §11) |
 | `/onboarding` | 5-step workspace setup with progress and skip | `?step=1…6` (6 = done) · `?skipped=3,4,5` · `?crawl=done` · `?mailbox=1` |
-| `/styleguide` | Every component, live, where it is used (sections 01–30; knowledge base is 20–24, leads 25–29) | — |
+| `/styleguide` | Every component, live, where it is used (sections 01–34; knowledge base is 20–24, leads 25–29, discovery and provenance 30–33) | — |
 
-Keyboard in `/app`: ⌘K / Ctrl+K palette · `[` collapse sidebar · `G` then `I C P S Q R K ,` to jump · `J`/`K` next/previous thread · `E` archive (with Undo toast) · Esc closes the top layer.
+Keyboard in `/app`: ⌘K / Ctrl+K palette · `[` collapse sidebar · `G` then `I C D P S Q R K ,` to jump (`D` = Discovery, M4) · `J`/`K` next/previous thread · `E` archive (with Undo toast) · Esc closes the top layer.
 
 ## 2. Where things live
 
@@ -236,7 +237,7 @@ Sources: @_heyrico posts [2015453625791979955](https://x.com/_heyrico/status/201
 - `Toast` (new props: `tone`, `action`, `onClose`).
 
 ### Screens
-- `SignIn` (C, `components/app/screens/SignIn.tsx`): `{ initial? ["default" | "sent" | "error" | "invalid" | "cancelled" | "unavailable" | "code-verifying" | "code-wrong" | "code-expired" | "code-resent" | "resend-limited" | "change-email"]; actions? }`. `error` = the sign-in didn't finish (callback error), `cancelled` = backed out at Google, `unavailable` = auth provider down. The code states and `actions.sendCode` / `actions.verifyCode` are specified in §9.
+- `SignIn` (C, `components/app/screens/SignIn.tsx`): `{ initial? ["default" | "sent" | "error" | "invalid" | "cancelled" | "unavailable" | "code-verifying" | "code-wrong" | "code-expired" | "code-attempts" | "code-resent" | "resend-limited" | "verify-limited" | "code-failed" | "change-email"]; actions? }`. `error` = the sign-in didn't finish (callback error), `cancelled` = backed out at Google, `unavailable` = auth provider down. The code states and `actions.sendCode` / `actions.verifyCode` are specified in §9.
 - `CodeInput` (C, `components/app/screens/CodeInput.tsx`): `{ id; value; onChange(code); onComplete?(code); invalid?; disabled?; busy?; describedBy?; autoFocus? }` + ref `{ focus(select?) }`. See §9.
 - `Onboarding` (C, `components/app/screens/Onboarding.tsx`): `{ initialStep?; skipped?; crawl?; connected? }`. Steps 1–2 are required and 3–5 are skippable. Skipped steps show in the rail in caution and on the done screen with a "Finish" action.
 
@@ -319,39 +320,40 @@ WorkOS emails a **six-digit code** (not a link) that **expires in 10 minutes**. 
 | `code-verifying` | The field is read-only, "Checking…" sits next to the label, and the button reads "Checking code…" (disabled). | — |
 | `code-wrong` | Inline error. **The digits stay** and are selected on focus, so typing replaces them and Backspace edits. Editing clears the error. | "That code isn't right. Check the newest email from Corral and try again." |
 | `code-expired` | The field is locked. The primary becomes **Send a new code**, and the resend line hides (the primary is the resend). | "That code has expired. Codes last 10 minutes." |
+| `code-attempts` | WorkOS locked the code after too many wrong tries. **Same layout as `code-expired`**: the field is locked, the primary becomes **Send a new code**, and the resend line hides. Negative tone, in the error slot. | "Too many tries on that code. Send a new code and try again." |
 | `code-resent` | Success banner. The field is cleared and refocused, and the cooldown restarts at 0:20. | "**New code sent.** Use the code in the newest email. It expires in 10 minutes." |
 | `verify-limited` | 429 on **verify**. The field is **locked and keeps its digits**; **Continue** is disabled. Caution tone (caution banner/hint slot, not negative). A live countdown from `Retry-After` (seconds or an HTTP date, **60s if missing**, via `retryAfterSeconds`). At 0:00 the field unlocks and takes focus; the digits stay, so Continue or Enter retries. | "Too many tries for now. You can try again in 0:42." |
 | `code-failed` | A generic `auth_failed` on verify. The field is locked. The primary becomes **Send a new code** (it resends, then clears and focuses the field as `code-resent`). Negative tone, in the error slot. | "We couldn't sign you in with that code. Send a new code and try again." |
 | `resend-limited` | Caution banner with a live countdown. The resend link shows the same countdown. The banner clears itself at 0:00. | "**Too many codes asked for.** You can ask for 3 codes a minute. The last code we sent still works, or send another in 0:41." |
 | `change-email` | Back on the form. The old address is prefilled and selected on focus, with a note under the field. | "We'll send a new code to this address. The code sent to {old} won't work for it." |
 
-`verify-limited` and `code-failed` are new with PR #7. Krak adds them to the sign-in review states and to `SignIn.tsx`; this batch does not touch `SignIn.tsx`, and §19 of the styleguide will show them once they land.
+`verify-limited` and `code-failed` came with PR #7; `code-attempts` came with Krak's M3 stack (`SignIn.tsx`, `lib/auth/signInState.ts`, `lib/auth/code.ts`, styleguide §19). The design batches don't edit `SignIn.tsx`.
 
 Also designed, without their own review state: a failed first send stays on the form with "**Couldn't send your code.** Check your connection, then try again. Nothing was sent."; a failed resend shows "**Couldn't send a new code.** Check your connection, then try again. The last code we sent still works."; and a failed verify shows "Couldn't check the code. Check your connection and try again." (field stays editable). That copy is **only for network errors, timeouts and 5xx**; a 429 is `verify-limited` and `auth_failed` is `code-failed`.
 
 ### What Krak wires (`SignInActions`, `components/app/screens/SignIn.tsx`)
 ```ts
 sendCode?:   (email: string) => Promise<CodeSendResult>;   // { ok: true } | { ok: false, reason: "rate-limited", retryAfter } | { ok: false, reason: "network" }
-verifyCode?: (email: string, code: string) => Promise<CodeVerifyResult>; // { ok: true } | { ok: false, reason: "wrong" | "expired" | "failed" | "network" } | { ok: false, reason: "limited", retryAfter }
+verifyCode?: (email: string, code: string) => Promise<CodeVerifyResult>; // { ok: true } | { ok: false, reason: "wrong" | "expired" | "attempts" | "failed" | "network" } | { ok: false, reason: "rate-limited", retryAfter }
 ```
 - If `sendCode` is **absent**, the email button keeps today's behaviour (`startEmail` → AuthKit hosted page), so nothing breaks before the endpoints land. Once both are present, the email path stays in the app.
 - `sendCode` is used for the first send, for **send a new code** and for **Send a new code** after expiry. Map a 429 to `rate-limited`, with `retryAfter = retryAfterSeconds(res.headers.get("Retry-After"))` (seconds or an HTTP date; 60 if missing). Map network errors, timeouts and 5xx to `network`. A rate limit on the *first* send still opens the code screen with the limited banner, because an earlier code may be in the inbox.
-- `verifyCode` mapping (decided Sep 30; Krak implements on PR #7, reason names are Krak's call):
+- `verifyCode` mapping (decided Sep 30, implemented by Krak on PR #7 in `lib/api/auth.ts` `toCodeVerifyResult`):
 
   | API answer | Result | State |
   |---|---|---|
   | 400 `code_invalid`, or 422 | `wrong` | `code-wrong` |
   | 400 `code_expired` | `expired` | `code-expired` |
-  | 400 `one_time_code_too_many_attempts` | `expired` | `code-expired` |
-  | 429 (any code) | `limited` + `retryAfter` from `Retry-After` (60 if missing) | `verify-limited` |
-  | 400 `auth_failed` | `failed` | `code-failed` |
+  | 400 `too_many_attempts` (WorkOS `one_time_code_too_many_attempts`) | `attempts` | `code-attempts` |
+  | 429 (any code) | `rate-limited` + `retryAfter` from `Retry-After` (60 if missing) | `verify-limited` |
+  | 400 `auth_failed` (or any other 4xx, 401/403) | `failed` | `code-failed` |
   | network error, timeout, 5xx | `network` | "Couldn't check the code…" |
 
-  At the time of this batch the tree (after f49c3cc) still maps `too_many_attempts` → expired, and `auth_failed` and a verify 429 → network (`lib/api/auth.ts` `toCodeVerifyResult`, `lib/api/authCode.test.ts`). PR #7 replaces those rows.
+  `too_many_attempts` is its own result and state, not `expired`: the layout is the same but the line says why. (Updated Sep 30.)
 - `verifyCode` success: on `{ ok: true }`, set the session and navigate (to `safeReturnTo(next) ?? APP_HOME`, then `/onboarding` for new workspaces, as the callback does). The screen stays on "Checking…" until the page unloads.
 - **Soft cooldown:** after every successful send the resend link waits 20s (60s ÷ 3). One tab never hits the WorkOS limit. The server limit still wins (other tabs, other devices), which is when `resend-limited` shows.
-- Don't count or cap wrong attempts in the client. When WorkOS locks a code after too many tries (`one_time_code_too_many_attempts`, HTTP 400), return `expired` and the UI says the right thing.
-- Review mode (no API): `123456` signs in, `111111` is expired, anything else is wrong, and the 4th send inside a minute is rate-limited.
+- Don't count or cap wrong attempts in the client. When WorkOS locks a code after too many tries (`one_time_code_too_many_attempts`, HTTP 400), return `attempts`: `code-attempts` shows the expired layout with "Too many tries on that code. Send a new code and try again."
+- Review mode (no API): `123456` signs in, `111111` is expired, `999999` is locked (`attempts`), anything else is wrong, and the 4th send inside a minute is rate-limited.
 
 ### Copy changes (every "link" and "15 minutes" is gone)
 - Lede: "Use your work email. We email you a six-digit code instead of asking for a password."
@@ -361,9 +363,8 @@ verifyCode?: (email: string, code: string) => Promise<CodeVerifyResult>; // { ok
 - Tests updated for the new copy: `components/session/SignInScreen.test.tsx`, `test/pages.test.tsx`, `e2e/auth.spec.ts`. New tests: `components/app/screens/SignIn.code.test.tsx`, `lib/auth/code.test.ts`, and extra cases in `lib/auth/signInState.test.ts`. **Playwright visual baselines `sign-in.png` and `sign-in-error.png` need regenerating**, because the lede, button and error banner copy changed.
 
 ### Open questions
-1. ~~Does WorkOS lock a code after N wrong attempts?~~ Answered: it returns `one_time_code_too_many_attempts` (400), mapped to `expired`. Still open: whether `code-expired` copy ("Codes last 10 minutes") should say "too many tries" for that case. The design keeps one state for now.
-2. Does sending a new code invalidate the previous one? The copy says "use the code in the newest email", which is safe either way. If old codes stay valid, the limited banner's "the last code we sent still works" is still true.
-3. ~~The sender address in the hint.~~ Resolved: the hint says "From Corral" and shows no address.
+1. ~~Does WorkOS lock a code after N wrong attempts?~~ Answered: it returns `one_time_code_too_many_attempts` (400; our API sends `too_many_attempts`). The client maps it to `attempts` and its own state, `code-attempts` (`?state=code-attempts`): the expired layout with "Too many tries on that code. Send a new code and try again."
+2. Does sending a new code invalidate the previous one? The copy says "use the code in the newest email", which is safe either way. If old codes stay valid, the `resend-limited` banner's "the last code we sent still works" is still true.
 
 ## 10. Knowledge base (M2, ENG-52 → build ENG-79, backend ENG-65/66)
 
@@ -516,3 +517,76 @@ Logic (`lib/leads/`): `filterLeads`, `matches`, `ruleIssue`, `describeRule`, `so
 5. Status taxonomy: are Referral and Objection statuses or reply labels? Is Unsubscribed per address or per company?
 6. The ENG-53 Linear attachments link GitHub `Uzski-Corp/camposocial-client` #162/#190. Is that the right repo, or stale links from another project?
 7. Pool rate: the confirm uses 210/day from the mailbox pool card. Does the API expose the real per-day capacity for the dry run?
+
+## 12. Discovery runs, enrichment state and provenance (M4, ENG-54 → build ENG-82)
+
+A **discovery run** finds companies that fit one product: it searches the web (Serper), reads each site (Corral crawler), scores it against the product's knowledge base, and only then spends credits finding a person (site → Hunter → Dropcontact) and checking the email (ZeroBounce), and only for companies above the fit bar. Results land in **Companies** as they are found (source **Corral search**), so nothing waits for the run to finish. Styleguide §30–33. Logic is pure and tested in `lib/discovery/` (`run.ts`, `provenance.ts`, `state.ts`); components are in `components/app/discovery/` (CSS `discovery.css`, `d-*` classes, plus shared `.c-enrich` and `.c-stale`; imported in `app/globals.css`). Sidebar: **Discovery** after Companies (globe icon, `G D`). The Companies top bar's primary is now **Find companies** (globe), which opens a new run; the palette's "Find companies" does the same.
+
+### Routes and states (`/app?view=discovery&state=…` outside production)
+| `?state=` | What shows |
+|---|---|
+| (none) | Live. Six runs in the 272px list; the running one ("Dairy & cold rooms · East Africa") ticks every 1.4s until it finishes with a toast. |
+| `empty` | No runs yet: "Find companies that fit ColdTrace Sensors", what a run does, **Start your first run**. The top bar hides **New run** (one primary). |
+| `loading` · `error` | Skeleton list, stage boxes and table · "Couldn't load discovery runs" (`GET /discovery/runs · 503`), Try again. |
+| `new` · `new-error` | The New run dialog (640) over the running run, so the button reads **Queue run** with "Starts after …". Error seed: no countries and 1,000 at fit 60, which needs ~1,352 credits with 1,289 free: "2 things to fix", both named, the button disabled with "Fix 2 things above to start". |
+| `queued` | "Queued behind Dairy & cold rooms · East Africa", stages waiting, **Remove from queue**. |
+| `running` | Five stages with counts in their own unit (18/18 searches · 164/212 sites · 131/164 companies · 29/46 lookups · 21/38 checks), "75% · about 8 min left · 50 of ~221 credits used", results with enrichment in place, **Pause** / **Cancel run**. |
+| `rate-limited` | "**Paused: Hunter's hourly limit**", a live countdown (4:22) from `Retry-After`, "Nothing is lost and no credits are spent while it waits; reading and scoring carry on." Only Find people and Verify pause. |
+| `failed` | "**Web search stopped answering**": 41 companies kept, not read, so no credits spent. **Resume from search** / **Edit and run again**. Rows show Queued / "Waits for fit". |
+| `partial` | Finished with "15 of 96 sites couldn't be read", by reason (7 blocked, 5 timed out, 2 no website, 1 parked), "Their companies are kept without a fit", **Retry the 5 that timed out**. Summary: 96 found · 84 added to Companies · 12 already in Corral, updated · 14 fit 80+ · 43 credits used; **Open in Companies** / **Make a segment from this run**. |
+| `done` | The finished summary and results, **Run again** (setup prefilled). |
+| `zero` | "No companies matched": "All of 8 searches came back empty", and what to loosen (size, country, industry), with **Add 201–1,000 and run again**. A disclosure lists each search and what it found. |
+| `detail` | Kilima Dairies open from the run (400px rail; the runs list hides below a 1,680px container): "Found via" the search that found it, and **Where this data came from** with the email's evidence open. |
+
+| `?view=companies&state=` (M4) | What shows |
+|---|---|
+| `stale` | Caution banner "Contact details for 86 companies were last checked over 90 days ago", **Re-check 86 · 172 credits**. Stale emails carry a clock mark ("Checked 4 months ago"); the open detail says the same with **Re-check · 2 credits**. |
+| `provenance` | Kilima Dairies open with the email's evidence chain expanded. |
+
+### Decisions
+1. **One run at a time per workspace.** Starting another while one runs queues it ("Queue run", "Starts after …"). Credits held by the running run (its estimate minus what it has used) aren't free.
+2. **Score before enriching.** Every company found is read and scored; finding people and checking emails (the steps that cost credits) only run for companies at or above the **fit bar** (60/70/80, default 70). Companies under the bar are still added with their fit, marked "Not looked up", and can be enriched later. The New run estimate updates as the limit and bar change (`estimateCredits`), before anything is spent.
+3. **Every field keeps its evidence chain** (`Evidence { kind, what, url?, at, confidence? }`), newest last: where it was found, who confirmed it, when, how sure. The detail shows one row per field (value, source · age) that expands into the chain, plus a freshness line.
+4. **Values go stale by field** (`STALE_AFTER`): email 90 days; person, title, phone 180; fit 90; size, industry, country 365. **Anything you typed never goes stale and is never overwritten** ("Entered by you, so Corral won't overwrite it."). Corral re-checks a stale email before sending anything, so a stale mark is information, not a blocker.
+5. **Enrichment state is shown in place**, as quiet tertiary text where the value will be: Queued, Reading site, Scoring, Finding people, Verifying, Not looked up, No one found, Couldn't read site, "Waits for fit". No per-cell spinners; the fit bar is dimmed until scored.
+6. **Failure keeps what was found** and stops before spending credits. **Resume** continues from the stage that stopped.
+7. **Provider limits pause only the stages that need that provider**, say so with a countdown, and resume by themselves.
+8. **Unreadable sites are kept without a fit**, grouped by reason (`SKIP_TEXT`); only timeouts are worth a retry. Blocked sites stay unread; adding a contact by hand scores them.
+9. **Zero results explain themselves**: how many searches ran, and one hint per narrow criterion (`zeroResultHints`), with the widest one as the primary action.
+10. **Results are Companies.** A run dedupes against existing companies (updates them, "already in Corral, updated") and **Make a segment from this run** creates a segment of its results.
+11. **Mobile (≤ 767px container):** the run comes first with an "All runs" back row; stages become a vertical list (also in any container under 600px); results are two-line cards; the detail is full screen with "Back to results"; banner actions drop under the text; the New run dialog stacks its labels.
+
+### Component APIs (`import { … } from "@/components/app"`)
+```tsx
+<DiscoveryView state? setupOpen onSetupOpenChange onOpenCompanies onSegment(name) />
+<RunsList runs open onOpen(id) onNew />   <RunTag run />   <StageStrip run />
+<RunPanel run results active? onOpen(id) onAction(RunAction) countdown? actions? />   // RunAction: pause | cancel | resume | retry-timeouts | segment | open-companies | edit | widen | unqueue
+<RunSetup open onClose onStart({ name, criteria, limit, enrichAt, queued }) inline? seed? queueBehind? held? />
+<ProvenanceList list: FieldProv[] today initialOpen? onRecheck? rechecking? />   <StaleBanner list today person? onRecheck? rechecking? />
+<LeadDetail … prov? today? provOpen? onRecheck?(id) rechecking? foundVia? backLabel? />   // M4 props optional; M3 usage unchanged
+```
+`Lead` gains optional `enrich?: EnrichState`; `SegmentTable` renders it in place (and exports `StaleMark`). `LeadsView` gains the `stale` and `provenance` states. `AppDemo` gains `discovery?: DiscoveryReviewState`.
+Logic (`lib/discovery/`): `STAGES`, `overallPercent`, `currentStage`, `runHeadline`, `etaText`, `estimateCredits`, `setupIssues`, `zeroResultHints`, `advanceRun`, `enrichLabel`, `enrichBusy`, `fitPending`, `SKIP_TEXT`; `STALE_AFTER`, `ageDays`, `formatAge`, `shortAge`, `freshness`, `origin`, `confidenceWord`, `staleFields`, `chainSummary`, `SOURCE`, `FIELD_LABEL`; `discoveryReviewState`.
+
+### What Krak wires (ENG-82, backend TBD)
+- **Runs API:** `POST /discovery/runs` (criteria, limit, enrichAt, productId) → queued or running; `GET /discovery/runs`; pause, resume (from the failed stage), cancel, remove from queue, retry timeouts. **Progress events per stage** (`{ stage, done, total, state }`, SSE or polling) and per company (`enrich` state), so the table fills in place.
+- **Provider 429s:** pause the affected stages with `resumeAt` from `Retry-After`; the client shows the countdown. The run continues other stages.
+- **Credits:** a balance endpoint (month, left, held) and a **dry-run estimate** for the New run dialog (replaces the client's `estimateCredits` shares). Refuse a start that can't be afforded with the same numbers the dialog shows.
+- **Provenance storage:** per company and field, the evidence chain (`kind`, `what`, `url`, `at`, `confidence`), with user edits stored as `kind: "you"` and never overwritten by enrichment.
+- **Stale re-check job:** re-verify stale contact fields before any send, and on demand (single and bulk, 2 credits per company in the design).
+- **Dedupe with existing companies** (the §11 keys: email, then domain), counting "already in Corral, updated". Results are ordinary Companies with `source: "Corral search"` and `foundVia` (query and rank).
+- Review mode: `?state=` seeds each state; without a state the dairy run advances locally (`advanceRun`).
+
+### Tests
+- Added: `components/app/discovery/discovery.test.tsx` (15: every run state's copy and actions, setup issues and the disabled button, queueing, the live tick to done, estimate changes, enrichment cells, stale banner and re-check, provenance expansion and "entered by you"), `lib/discovery/*.test.ts` (11), `lib/leads/state.test.ts` (21 states), and a `/app?view=discovery&state=empty` page case.
+- For ENG-82: e2e of a run (start → progress → partial → open in Companies → make a segment), axe on `/app?view=discovery` plus every state above and companies `stale` / `provenance`, and visual baselines at 1440 and 390. **Existing baselines that need regenerating:** anything showing the sidebar (it gains Discovery) and `app-companies.png` (the top bar's primary is now Find companies).
+
+### Open questions
+1. Credit pricing and plan limits: what does a lookup and a check cost, and what are the monthly allowances? The design uses 2,000/month, 1 credit per people lookup and per email check, and ~1.6 checks per lookup.
+2. Enrichment order: is "score before enriching, people only above the fit bar" right, or should some plans enrich everything?
+3. Hunter, Dropcontact and ZeroBounce plan limits (the rate-limited state assumes Hunter's hourly cap).
+4. Freshness windows (`STALE_AFTER`): are 90 / 180 / 365 days right?
+5. Can blocked sites be retried another way (e.g. OpenClaw/browser crawl), or do they stay unread?
+6. One product per run (as designed), or several?
+7. The ENG-54 Linear attachments link GitHub `Uzski-Corp/camposocial-client` #163/#191, as ENG-53's did. Right repo, or stale links?
+8. Krak's worktree (ENG-80, earlier layering) once lacked the M2 knowledge base and the `pen` icon; worktree HEAD 82b2973 has them. Confirm nothing else from that layer is expected to change.

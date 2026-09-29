@@ -1,4 +1,6 @@
 "use client";
+import { enrichBusy, enrichLabel, fitPending, type EnrichState } from "@/lib/discovery/run";
+import { formatAge, shortAge } from "@/lib/discovery/provenance";
 import { useState } from "react";
 import { LEADS, type Lead } from "./data";
 import { Avatar, Button, Check, FitBar, Logo, Monogram, Tag, cx } from "./primitives";
@@ -38,14 +40,18 @@ export function SegmentTable({ leads = LEADS, selected, onToggle, limit, hover, 
         const on = selected.has(l.id);
         return (
           <div key={l.id} role="row" onClick={onOpen ? () => onOpen(l.id) : undefined}
-            className={cx("c-tr", on && "is-selected", hover === l.id && "is-hover", active === l.id && "is-active", l.fit < 80 && !l.scoring && !on && "is-dim")}>
+            className={cx("c-tr", on && "is-selected", hover === l.id && "is-hover", active === l.id && "is-active", l.fit < 80 && !l.scoring && !enrichBusy(l.enrich) && !on && "is-dim")}>
             <span role="cell"><Check on={on} onChange={() => onToggle?.(l.id)} label={`Select ${l.company}`} /></span>
             <span role="cell" className="c-cell"><Logo company={l.company} />
               {onOpen ? <button type="button" className="c-strong c-rowlink" onClick={(e) => { e.stopPropagation(); onOpen(l.id); }}>{l.company}</button> : <span className="c-strong">{l.company}</span>}
               <span className="c-mono">{l.domain}</span>{l.dupOf && <span className="c-dupmark">Duplicate?</span>}</span>
-            <span role="cell" className="c-cell">{l.avatar ? <Avatar id={l.avatar} /> : <Monogram name={l.person} />}<span className="c-strong">{l.person}</span><span className="c-muted">{l.title}</span></span>
-            <span role="cell">{l.scoring ? <span className="c-scoring"><Skeleton w={40} h={10} r={2} /><span>Scoring</span></span> : <FitBar value={l.fit} />}</span>
-            <span role="cell"><Tag status={l.email} /></span><span role="cell"><Tag status={l.reply} /></span>
+            <span role="cell" className="c-cell">{l.person ? <>{l.avatar ? <Avatar id={l.avatar} /> : <Monogram name={l.person} />}<span className="c-strong">{l.person}</span><span className="c-muted">{l.title}</span></>
+              : <EnrichNote e={l.enrich} slot="person" />}</span>
+            <span role="cell">{l.scoring || fitPending(l.enrich) ? <span className="c-scoring"><Skeleton w={40} h={10} r={2} /><span>{l.scoring ? "Scoring" : enrichLabel(l.enrich)}</span></span>
+              : l.enrich?.kind === "unreadable" ? <EnrichNote e={l.enrich} slot="fit" /> : <FitBar value={l.fit} />}</span>
+            <span role="cell">{l.enrich && l.enrich.kind !== "done" && l.enrich.kind !== "stale" ? <EnrichNote e={l.enrich} slot="email" />
+              : <span className="c-cell c-cell--tight"><Tag status={l.email} />{l.enrich?.kind === "stale" && <StaleMark days={l.enrich.days} />}</span>}</span>
+            <span role="cell"><Tag status={l.reply} /></span>
             <span role="cell" className="c-muted">{l.last}</span>
           </div>
         );
@@ -73,3 +79,23 @@ export function SegmentWindow({ limit = 8, className, sidebar = true }: { limit?
     </div>
   );
 }
+
+/* ------------------------------------------------------------ M4 enrichment cells
+   What a row shows while Corral is still finding the value, or why there isn't one. Quiet text,
+   never a spinner per cell: the run panel carries the motion. */
+function EnrichNote({ e, slot }: { e?: EnrichState; slot: "person" | "fit" | "email" }) {
+  const k = e?.kind;
+  const busy = (slot === "person" && k === "finding") || (slot === "email" && k === "verifying");
+  const text = slot === "person"
+    ? k === "finding" ? "Finding people" : k === "no-people" ? "No one found" : k === "below-bar" ? "Not looked up" : k === "unreadable" ? "—" : "Waits for fit"
+    : slot === "fit" ? "Couldn't read site"
+    : k === "verifying" ? "Verifying" : "—";
+  const warn = (slot === "fit" && k === "unreadable") || (slot === "person" && k === "no-people");
+  return <span className={cx("c-enrich", busy && "is-busy", warn && "is-warn")} title={slot === "person" && k === "below-bar" ? enrichLabel(e) ?? undefined : undefined}>{busy && <span className="c-enrich__dot" aria-hidden="true" />}{text}</span>;
+}
+
+/** Contact details past their freshness window: a caution clock with the age ("4mo"). */
+export function StaleMark({ days }: { days: number }) {
+  return <span className="c-stale" role="img" aria-label={`Checked ${formatAge(days)}`} title={`Checked ${formatAge(days)}`}><Icon name="clock" size={11} />{shortAge(days)}</span>;
+}
+

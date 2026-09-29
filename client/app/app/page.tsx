@@ -5,9 +5,10 @@ import { appReviewState } from "@/lib/auth/appState";
 import { getConfig } from "@/lib/config";
 import { kbReviewState } from "@/lib/kb/state";
 import { leadsReviewState } from "@/lib/leads/state";
+import { discoveryReviewState } from "@/lib/discovery/state";
 
 export const metadata: Metadata = { title: "Corral · Unibox" };
-const VIEWS: ViewId[] = ["unibox", "companies", "contacts", "segments", "sequences", "products", "knowledge", "settings"];
+const VIEWS: ViewId[] = ["unibox", "companies", "discovery", "contacts", "segments", "sequences", "products", "knowledge", "settings"];
 
 /**
  * /app — the M1 shell with the Unibox as home.
@@ -18,7 +19,9 @@ const VIEWS: ViewId[] = ["unibox", "companies", "contacts", "segments", "sequenc
  * Lead table (M3): ?view=companies&state=loading | error | empty | no-results | partial | selected | select-all | bulk-confirm |
  *   bulk-running | status-menu | detail | duplicate | import | import-file-error | import-map | import-map-errors | import-review |
  *   import-running | import-done · ?view=segments&state=builder | builder-empty | builder-error | loading | error | selected | detail
- *   (see lib/leads/state.ts)
+ *   (see lib/leads/state.ts) · M4 adds ?view=companies&state=stale | provenance
+ * Discovery (M4): ?view=discovery&state=empty | loading | error | new | new-error | queued | running | done | partial | failed |
+ *   rate-limited | zero | detail  (see lib/discovery/state.ts)
  */
 export default async function AppPage({ searchParams }: PageProps<"/app">) {
   const q = await searchParams;
@@ -28,5 +31,6 @@ export default async function AppPage({ searchParams }: PageProps<"/app">) {
   const preview = appReviewState(one("state"), reviewStates);
   const kb = kbReviewState(view, one("state"), reviewStates);
   const leads = leadsReviewState(view, one("state"), reviewStates);
-  return <AppScreen key={`${preview ?? "live"}-${kb ?? ""}-${leads ?? ""}`} preview={preview} kb={kb} leads={leads} initialView={view} cmdk={one("cmdk") === "1"} collapsed={one("collapsed") === "1"} drawer={one("nav") === "1"} dialog={one("dialog") === "enroll"} />;
+  const discovery = discoveryReviewState(view, one("state"), reviewStates);
+  return <AppScreen key={`${preview ?? "live"}-${kb ?? ""}-${leads ?? ""}-${discovery ?? ""}`} preview={preview} kb={kb} leads={leads} discovery={discovery} initialView={view} cmdk={one("cmdk") === "1"} collapsed={one("collapsed") === "1"} drawer={one("nav") === "1"} dialog={one("dialog") === "enroll"} />;
 }

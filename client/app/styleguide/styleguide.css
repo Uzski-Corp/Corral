@@ -199,3 +199,14 @@
 .sg-m3-imp { width: 792px; }
 .sg-kb__row .sg-m3-imp { width: 100%; }
 @media (max-width: 900px) { .sg-m3-tags { grid-template-columns: minmax(0, 1fr); } .sg-m3-details { grid-template-columns: minmax(0, 1fr); } .sg-m3-imp { width: 100%; } }
+
+/* M4: discovery (ENG-54) */
+.sg-m4-states { align-self: start; }
+.sg-m4-runs { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px; max-width: 1180px; }
+.sg-m4-run { display: flex; flex-direction: column; gap: 12px; }
+.sg-m4-run__hd { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; }
+.sg-m4-setup { display: grid; grid-template-columns: repeat(2, 640px); gap: 24px; overflow-x: auto; padding-bottom: 8px; }
+.sg-m4-table { max-width: 1180px; margin-bottom: 24px; overflow-x: auto; }
+.sg-m4-prov { display: grid; grid-template-columns: 380px 380px 400px; gap: 24px; overflow-x: auto; align-items: start; padding-bottom: 8px; }
+@media (max-width: 900px) { .sg-m4-setup, .sg-m4-prov { grid-template-columns: minmax(0, 1fr); } }
+.sg-m4-states .sg-anatomy + .sg-label { display: block; margin-top: 16px; }

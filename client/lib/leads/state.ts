@@ -22,6 +22,8 @@
  *   import-review    duplicates and bad rows, with the duplicate policy
  *   import-running   importing in the background
  *   import-done      the summary, and "Make a segment from this import"
+ *   stale            (M4) contact details older than their freshness window: banner, stale marks, Re-check
+ *   provenance       (M4) a lead open with the email's evidence chain expanded
  * /app?view=segments&state=
  *   builder          edit the segment's rules with the live count
  *   builder-empty    rules that match nothing
@@ -31,6 +33,7 @@
 export const LEADS_REVIEW_STATES = [
   "loading", "error", "empty", "no-results", "partial", "selected", "select-all", "bulk-confirm", "bulk-running", "status-menu",
   "detail", "duplicate", "import", "import-file-error", "import-map", "import-map-errors", "import-review", "import-running", "import-done",
+  "stale", "provenance",
 ] as const;
 export const SEGMENT_REVIEW_STATES = ["builder", "builder-empty", "builder-error", "loading", "error", "selected", "detail"] as const;
 export type LeadsReviewState = (typeof LEADS_REVIEW_STATES)[number] | (typeof SEGMENT_REVIEW_STATES)[number];

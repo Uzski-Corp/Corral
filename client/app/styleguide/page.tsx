@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import "./styleguide.css";
 import Link from "next/link";
 import { BuilderDemo, ImportDemo, LeadDetailDemo, LeadStatesDemo, LeadTableDemo, StatusTagsDemo } from "./M3Sections";
+import { DiscoveryShellDemo, EnrichDemo, RunStatesDemo, SetupDemo } from "./M4Sections";
 import { EditorDemo, KbShellDemo, SourceDetailDemo, SourceListDemo, UploadDemo } from "./M2Sections";
 import { AccountStatesDemo, CodeStatesDemo, CmdkDemo, ContrastDemo, FormDemo, OverlayDemo, SessionErrorDemo, ShellDemo, StatesDemo, TabsToastDemo } from "./M1Sections";
 import {
@@ -218,7 +219,27 @@ export default function Styleguide() {
         <ImportDemo />
       </Part>
 
-      <Part n="30" title="Things that float" tokens={["--shadow-pop", "--radius-window 14", "--color-surface-inverse"]}
+      <Part wide n="30" title="Discovery · a run in the shell" tokens={["runs list 272 + run", "detail replaces the list below 1680", "/app?view=discovery", "top bar: credits left + New run"]}
+        notes={<p>A run searches the web for companies that fit the product, reads each site, scores it against the ICP, and only then spends credits finding and verifying a person, and only for companies above the fit bar. One run at a time per workspace; the next one queues. Results land in Companies as they are found, source <b>Corral search</b>, so nothing waits for the run to finish.</p>}>
+        <DiscoveryShellDemo />
+      </Part>
+
+      <Part wide n="31" title="Discovery · stages and run states" tokens={["5 stages: Search → Read → Score → People → Verify", "d-stage bar 3px --color-action", "caution: paused, partial · negative: failed", "counts tabular, provider in mono"]}
+        notes={<p>Each stage names its provider and counts in its own unit (searches, sites, companies, lookups, checks). A provider limit pauses only the stages that need it and resumes on its own with a countdown. A failure keeps everything found and stops before spending credits; Resume starts from the stage that stopped. Sites that couldn&rsquo;t be read are kept without a fit, grouped by reason.</p>}>
+        <RunStatesDemo />
+      </Part>
+
+      <Part wide n="32" title="Discovery · new run" tokens={["dialog 640", "Segmented: stop after · fit bar", "estimate box: credits, free, time", "issues banner blocks Start"]}
+        notes={<p>Defaults come from the product&rsquo;s ICP, so most runs are one click. The estimate is shown before anything is spent and updates as the limit or fit bar changes; raising the bar is the cheapest way to save credits. Credits held by a run in progress are not free. Problems are listed and named, never guessed around.</p>}>
+        <SetupDemo />
+      </Part>
+
+      <Part wide n="33" title="Enrichment state and provenance" tokens={["c-enrich: tertiary text in place of the value", "c-stale dot caution-600", "evidence chain: source · what · when · confidence", "freshness windows: email 90 · person 180 · firmographics 365 days"]}
+        notes={<p>Every field keeps the chain of evidence that produced it: where it was found, who confirmed it, when, and how sure. Values age by field (an email goes stale in 90 days, an industry in a year) and Corral re-checks stale contact details before sending. Anything you typed is yours: it never goes stale and Corral won&rsquo;t overwrite it.</p>}>
+        <EnrichDemo />
+      </Part>
+
+      <Part n="34" title="Things that float" tokens={["--shadow-pop", "--radius-window 14", "--color-surface-inverse"]}
         notes={<p>Only moments float: a booked meeting, a reply worth seeing, a toast. Faces are film-graded photos in circles, one treatment for everyone.</p>}>
         <div className="sg-float">
           <MeetingCard />

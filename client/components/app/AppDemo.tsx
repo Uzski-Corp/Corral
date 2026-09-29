@@ -20,6 +20,8 @@ import { KnowledgeBase, PRODUCT } from "./kb";
 import type { KbReviewState } from "@/lib/kb/state";
 import { LeadsView } from "./leads";
 import type { LeadsReviewState } from "@/lib/leads/state";
+import { CREDITS, DiscoveryView } from "./discovery";
+import type { DiscoveryReviewState } from "@/lib/discovery/state";
 
 /** Fixed "today" for the demo so static renders are deterministic. Replace with new Date(). */
 export const DEMO_TODAY = new Date(2026, 8, 29);
@@ -140,10 +142,12 @@ export type AppDemoProps = {
   kb?: KbReviewState;
   /** Lead table / segment review state (M3): /app?view=companies&state=… or view=segments&state=… */
   leads?: LeadsReviewState;
+  /** Discovery review state (M4): /app?view=discovery&state=… */
+  discovery?: DiscoveryReviewState;
 };
 export function AppDemo(p: AppDemoProps) { return <ToastProvider><Demo {...p} /></ToastProvider>; }
 
-function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, drawer = false, dialog = false, frame = "viewport", hotkeys = true, className, account, onSignOut, sessionError, kb, leads }: AppDemoProps) {
+function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, drawer = false, dialog = false, frame = "viewport", hotkeys = true, className, account, onSignOut, sessionError, kb, leads, discovery }: AppDemoProps) {
   const router = useRouter();
   const toast = useToast();
   const signOut = useCallback(() => {
@@ -165,6 +169,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
   const [importOpen, setImportOpen] = useState(false);
   const [builderOpen, setBuilderOpen] = useState(false);
   const [enrollAll, setEnrollAll] = useState(0);
+  const [setupOpen, setSetupOpen] = useState(false);
   const [kbAdd, setKbAdd] = useState(kb === "upload" || kb === "upload-errors");
 
   const go = useCallback((v: ViewId) => { setView(v); setSegment(v === "segments" ? SAVED_SEGMENTS[0][0] : undefined); setBuilderOpen(false); }, []);
@@ -188,7 +193,8 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
       else if (id === "mailbox") router.push("/onboarding?step=4");
       else if (id === "product") router.push("/onboarding?step=2");
       else if (id === "segment") { setView("companies"); toast({ icon: "layers", children: "Filters ready. Press S to save them as a segment." }); }
-      else toast({ icon: id === "find" ? "globe" : "mail", children: label, meta: id === "find" ? "results land in Companies" : "sample action" });
+      else if (id === "find") { setView("discovery"); setSegment(undefined); setSetupOpen(true); }
+      else toast({ icon: "mail", children: label, meta: "sample action" });
     },
   }), [go, router, toast, signOut]);
 
@@ -199,7 +205,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
     const k = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPalette((o) => !o); return; }
       const t = e.target as HTMLElement;
-      if (palette || enroll || kbAdd || importOpen || t.closest("input, textarea, [contenteditable], [role=dialog], [role=menu], [role=listbox]:not(.c-threads)")) return;
+      if (palette || enroll || kbAdd || importOpen || setupOpen || t.closest("input, textarea, [contenteditable], [role=dialog], [role=menu], [role=listbox]:not(.c-threads)")) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const key = e.key.toLowerCase();
       if (Date.now() - gAt.current < 900) {
@@ -216,7 +222,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
     };
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);
-  }, [hotkeys, palette, enroll, kbAdd, importOpen, view, tab, threads, active, go, archive]);
+  }, [hotkeys, palette, enroll, kbAdd, importOpen, setupOpen, view, tab, threads, active, go, archive]);
 
   const label = APP_NAV.find((n) => n.id === view)!.label;
   const ws = typeof account === "object" ? account.workspace : account === undefined ? "ColdTrace" : "Corral";
@@ -224,6 +230,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
     : view === "knowledge" ? [ws, "Knowledge base", PRODUCT.name]
     : segment ? [ws, "Segments", segment] : [ws, label];
   const table = view === "companies" || view === "segments";
+  const findCompanies = () => { go("discovery"); setSetupOpen(true); };
   const actions = view === "unibox" ? <>
       <DropdownMenu align="end" width={240} label="Product" items={[{ heading: "Replies about" }, { label: "All products", checked: true }, { label: "ColdTrace Sensors", meta: "11" }, { label: "ColdTrace Gateway", meta: "1" }]}
         trigger={(tp) => <button type="button" className="c-btn c-btn--quiet" {...tp}><Icon name="filter" />All products<Icon name="down" size={12} /></button>} />
@@ -235,7 +242,8 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
         trigger={(tp) => <button type="button" className="c-btn c-btn--quiet k-prodbtn" {...tp}><Icon name="box" />ColdTrace Sensors<Icon name="down" size={12} /></button>} />
       <Button variant="primary" onClick={() => setKbAdd(true)}><Icon name="plus" />Add sources</Button>
     </>
-    : view === "companies" ? <><Button onClick={() => setImportOpen(true)}><Icon name="upload" />Import CSV</Button><Button variant="primary" kbd="⌘K" onClick={() => setPalette(true)}>Find companies</Button></>
+    : view === "companies" ? <><Button onClick={() => setImportOpen(true)}><Icon name="upload" />Import CSV</Button><Button variant="primary" onClick={findCompanies}><Icon name="globe" />Find companies</Button></>
+    : view === "discovery" ? <><span className="d-credits"><span className="c-num c-strong">{CREDITS.left.toLocaleString("en-US")}</span> credits left this month</span>{discovery !== "empty" && <Button variant="primary" onClick={() => setSetupOpen(true)}><Icon name="plus" />New run</Button>}</>
     : view === "segments" ? <><Button onClick={() => toast({ icon: "upload", children: `Exporting ${segment}`, meta: "CSV lands in your downloads" })}>Export</Button><Button variant="primary" onClick={() => setEnrollAll((x) => x + 1)}><Icon name="seq" />Enroll segment</Button></>
     : null;
 
@@ -246,10 +254,11 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
         {sessionError ? <SessionUnavailable {...sessionError} /> : <>
         {view === "unibox" && <UniboxView threads={threads} active={active} setActive={setActive} tab={tab} setTab={setTab} pane={pane} setPane={setPane} />}
         {table && <LeadsView key={`${view}-${segment ?? ""}`} view={view} state={leads} segment={segment} importOpen={importOpen} onImportOpenChange={setImportOpen}
-          builderOpen={builderOpen} onBuilderOpenChange={setBuilderOpen} enrollAllSignal={enrollAll} onFind={() => setPalette(true)} onEnroll={(n, replied) => { setEnrollFor({ n, replied }); setEnroll(true); }} />}
+          builderOpen={builderOpen} onBuilderOpenChange={setBuilderOpen} enrollAllSignal={enrollAll} onFind={findCompanies} onEnroll={(n, replied) => { setEnrollFor({ n, replied }); setEnroll(true); }} />}
+        {view === "discovery" && <DiscoveryView key={discovery ?? "live"} state={discovery} setupOpen={setupOpen} onSetupOpenChange={setSetupOpen} onOpenCompanies={() => go("companies")} />}
         {view === "contacts" && <ContactsView />}
         {view === "knowledge" && <KnowledgeBase state={kb} addOpen={kbAdd} onAddOpenChange={setKbAdd} contained={frame === "contained"} />}
-        {!table && view !== "unibox" && view !== "contacts" && view !== "knowledge" && <PendingView id={view} onSearch={() => setPalette(true)} />}
+        {!table && view !== "unibox" && view !== "contacts" && view !== "knowledge" && view !== "discovery" && <PendingView id={view} onSearch={() => setPalette(true)} />}
         </>}
       </AppShell>
       {palette && <CommandPalette open onClose={() => setPalette(false)} {...cmds} />}

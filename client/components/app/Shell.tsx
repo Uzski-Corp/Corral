@@ -6,10 +6,11 @@ import { Avatar, Kbd, Monogram, cx } from "./primitives";
 import { DropdownMenu, Tooltip, type MenuEntry } from "./Overlays";
 import { Skeleton } from "./States";
 
-export type ViewId = "unibox" | "companies" | "contacts" | "segments" | "sequences" | "products" | "knowledge" | "settings";
+export type ViewId = "unibox" | "companies" | "discovery" | "contacts" | "segments" | "sequences" | "products" | "knowledge" | "settings";
 export const APP_NAV: { id: ViewId; label: string; icon: IconName; count?: string; keys: string }[] = [
   { id: "unibox", label: "Unibox", icon: "inbox", count: "7", keys: "G I" },
   { id: "companies", label: "Companies", icon: "building", keys: "G C" },
+  { id: "discovery", label: "Discovery", icon: "globe", keys: "G D" },
   { id: "contacts", label: "Contacts", icon: "users", keys: "G P" },
   { id: "segments", label: "Segments", icon: "layers", keys: "G S" },
   { id: "sequences", label: "Sequences", icon: "seq", keys: "G Q" },

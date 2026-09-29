@@ -20,3 +20,4 @@ export * from "./useDismiss";
 export * from "./SessionUnavailable";
 export * from "./kb";
 export * from "./leads";
+export * from "./discovery";
