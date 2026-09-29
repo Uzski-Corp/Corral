@@ -36,6 +36,7 @@ describe("sign-in code rules", () => {
   it("has sample outcomes for review", () => {
     expect(reviewVerify("123456")).toEqual({ ok: true });
     expect(reviewVerify("111111")).toEqual({ ok: false, reason: "expired" });
+    expect(reviewVerify("999999")).toEqual({ ok: false, reason: "attempts" });
     expect(reviewVerify("482193")).toEqual({ ok: false, reason: "wrong" });
   });
 });

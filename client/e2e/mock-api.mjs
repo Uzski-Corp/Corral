@@ -3,7 +3,7 @@
 // Control: POST /__mock/scenario {"deny": true} makes the next AuthKit round trip fail, {"down": true}
 // makes /me answer 503 (API unreachable), {"sendLimited": 41} makes code sends answer 429 with Retry-After: 41;
 // email codes (Magic Auth, eng-61b-magic-auth): 123456 signs in, 111111 has expired, 222222 is a verify 429
-// (Retry-After: 42), 333333 is refused (auth_failed), 555555 is a 503 from the auth provider, anything else is wrong,
+// (Retry-After: 42), 333333 is refused (auth_failed), 444444 is locked (too_many_attempts), 555555 is a 503 from the auth provider, anything else is wrong,
 // and a 4th send for one address inside a minute is rate-limited, as WorkOS does;
 // GET /__mock/calls lists requests seen; POST /__mock/reset clears both.
 import http from "node:http";
@@ -101,6 +101,7 @@ const server = http.createServer((req, res) => {
       if (typeof body.code !== "string" || !/^\d{6}$/.test(body.code)) return json(res, 422, { detail: "code: six digits" });
       if (body.code === "111111") return json(res, 400, { error: "code_expired", detail: "That code has expired." });
       if (body.code === "222222") return json(res, 429, { error: "rate_limited", detail: "Too many requests.", retry_after: 42 }, { "Retry-After": "42" });
+      if (body.code === "444444") return json(res, 400, { error: "too_many_attempts", detail: "Too many attempts." });
       if (body.code === "333333") return json(res, 400, { error: "auth_failed", detail: "Sign-in failed." });
       if (body.code === "555555") return json(res, 503, { error: "auth_unavailable", detail: "Sign-in is unavailable." });
       if (body.code !== "123456") return json(res, 400, { error: "code_invalid", detail: "That code isn't right." });

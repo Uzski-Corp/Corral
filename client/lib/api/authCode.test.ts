@@ -65,7 +65,7 @@ describe("toCodeVerifyResult", () => {
     ["code_invalid", httpErr(400, { code: "code_invalid" }), "wrong"],
     ["a malformed code (422)", httpErr(422), "wrong"],
     ["code_expired", httpErr(400, { code: "code_expired" }), "expired"],
-    ["too_many_attempts", httpErr(400, { code: "too_many_attempts" }), "expired"],
+    ["too_many_attempts", httpErr(400, { code: "too_many_attempts" }), "attempts"],
     ["auth_failed", httpErr(400, { code: "auth_failed" }), "failed"],
     ["an unknown 400", httpErr(400, { code: "something_new" }), "failed"],
     ["a 401", { kind: "unauthorized", op: "x", status: 401, message: "m" }, "failed"],
@@ -135,7 +135,7 @@ describe("authApi.verifyCode (MSW)", () => {
     expect(toCodeVerifyResult(await api.verifyCode(EMAIL, "000000"))).toEqual({ ok: false, reason: "wrong" });
     expect(toCodeVerifyResult(await api.verifyCode(EMAIL, EXPIRED_CODE))).toEqual({ ok: false, reason: "expired" });
     server.use(http.post(VERIFY, () => codeError("too_many_attempts")));
-    expect(toCodeVerifyResult(await api.verifyCode(EMAIL, "000000"))).toEqual({ ok: false, reason: "expired" });
+    expect(toCodeVerifyResult(await api.verifyCode(EMAIL, "000000"))).toEqual({ ok: false, reason: "attempts" });
     server.use(http.post(VERIFY, () => codeError("auth_unavailable", 503)));
     expect(toCodeVerifyResult(await api.verifyCode(EMAIL, GOOD_CODE))).toEqual({ ok: false, reason: "network" });
     server.use(http.post(VERIFY, () => codeError("auth_failed")));

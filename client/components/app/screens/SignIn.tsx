@@ -15,14 +15,15 @@ import { CodeInput, type CodeInputHandle } from "./CodeInput";
 
 /**
  * error = the sign-in didn't finish (callback error) · cancelled = backed out at Google · unavailable = the auth provider is down.
- * Code screen (ENG-80): sent · code-verifying · code-wrong · code-expired · code-resent · resend-limited · verify-limited (429 on
+ * Code screen (ENG-80): sent · code-verifying · code-wrong · code-expired · code-attempts (expired layout: WorkOS locked the
+ * code after too many wrong tries) · code-resent · resend-limited · verify-limited (429 on
  * verify: locked, countdown) · code-failed (verify refused for another reason: send a new code); change-email = back on the form
  * after "Use a different email".
  */
 export type SignInState = "default" | "sent" | "error" | "invalid" | "sending" | "cancelled" | "unavailable"
-  | "code-verifying" | "code-wrong" | "code-expired" | "code-resent" | "resend-limited" | "verify-limited" | "code-failed" | "change-email";
-export const CODE_SCREEN_STATES: SignInState[] = ["sent", "code-verifying", "code-wrong", "code-expired", "code-resent", "resend-limited", "verify-limited", "code-failed"];
-type Check = "idle" | "verifying" | "wrong" | "expired" | "network" | "limited" | "failed";
+  | "code-verifying" | "code-wrong" | "code-expired" | "code-attempts" | "code-resent" | "resend-limited" | "verify-limited" | "code-failed" | "change-email";
+export const CODE_SCREEN_STATES: SignInState[] = ["sent", "code-verifying", "code-wrong", "code-expired", "code-attempts", "code-resent", "resend-limited", "verify-limited", "code-failed"];
+type Check = "idle" | "verifying" | "wrong" | "expired" | "attempts" | "network" | "limited" | "failed";
 /** Review sample for verify-limited: the countdown Bau's copy shows. */
 const REVIEW_VERIFY_WAIT = 42;
 type Notice = null | "resent" | "limited" | "send-failed";
@@ -56,8 +57,8 @@ export function SignIn({ initial = "default", actions }: { initial?: SignInState
   // "Use a different email": the address the last code went to.
   const [prevEmail, setPrevEmail] = useState<string | null>(initial === "change-email" && !actions ? SAMPLE : null);
   // Code screen
-  const [code, setCode] = useState(initial === "code-verifying" || initial === "code-failed" ? "482913" : initial === "code-wrong" || initial === "verify-limited" ? "482193" : initial === "code-expired" ? "639204" : "");
-  const [check, setCheck] = useState<Check>(initial === "code-verifying" ? "verifying" : initial === "code-wrong" ? "wrong" : initial === "code-expired" ? "expired"
+  const [code, setCode] = useState(initial === "code-verifying" || initial === "code-failed" ? "482913" : initial === "code-wrong" || initial === "verify-limited" || initial === "code-attempts" ? "482193" : initial === "code-expired" ? "639204" : "");
+  const [check, setCheck] = useState<Check>(initial === "code-verifying" ? "verifying" : initial === "code-wrong" ? "wrong" : initial === "code-expired" ? "expired" : initial === "code-attempts" ? "attempts"
     : initial === "verify-limited" ? "limited" : initial === "code-failed" ? "failed" : "idle");
   // Seconds until verifying is allowed again after a 429 on verify (Retry-After).
   const [verifyWait, setVerifyWait] = useState(initial === "verify-limited" ? REVIEW_VERIFY_WAIT : 0);
@@ -168,13 +169,14 @@ export function SignIn({ initial = "default", actions }: { initial?: SignInState
   const differentEmail = () => { setPrevEmail(email.trim()); setState("default"); setCode(""); setCheck("idle"); setNotice(null); setWait(0); };
   const codeMsg = check === "wrong" ? "That code isn’t right. Check the newest email from Corral and try again."
     : check === "expired" ? `That code has expired. Codes last ${CODE_TTL_MINUTES} minutes.`
+    : check === "attempts" ? "Too many tries on that code. Send a new code and try again."
     : check === "network" ? "Couldn’t check the code. Check your connection and try again."
     : check === "failed" ? "We couldn’t sign you in with that code. Send a new code and try again."
     : undefined;
-  const bad = check === "wrong" || check === "expired" || check === "network" || check === "failed";
+  const bad = check === "wrong" || check === "expired" || check === "attempts" || check === "network" || check === "failed";
   const limited = check === "limited";
-  // Expired and failed codes are dead: the field locks and the primary becomes "Send a new code".
-  const dead = check === "expired" || check === "failed";
+  // Expired, over-tried and failed codes are dead: the field locks and the primary becomes "Send a new code".
+  const dead = check === "expired" || check === "attempts" || check === "failed";
 
   return (
     <div className="s-auth c-app">

@@ -102,8 +102,8 @@ export function toCodeSendResult(r: Result<unknown, ApiError>): CodeSendResult {
 }
 
 /**
- * HANDOFF §9: a wrong code is `wrong`; expired, already used and locked (too many attempts) are
- * `expired`, so the screen offers "Send a new code". A 429 is `rate-limited` with Retry-After. Any other
+ * HANDOFF §9: a wrong code is `wrong`; expired and already used are `expired`, and a code WorkOS locked
+ * (one_time_code_too_many_attempts → `too_many_attempts`) is `attempts`: both offer "Send a new code". A 429 is `rate-limited` with Retry-After. Any other
  * refusal (`auth_failed`, another 4xx) is `failed`. Only no answer (network, timeout, a bad body) and
  * 5xx are `network` ("Couldn't check the code").
  */
@@ -112,7 +112,8 @@ export function toCodeVerifyResult(r: Result<unknown, ApiError>): CodeVerifyResu
   const e = r.error;
   if (e.kind === "http") {
     if (e.code === "code_invalid" || e.status === 422) return { ok: false, reason: "wrong" };
-    if (e.code === "code_expired" || e.code === "too_many_attempts") return { ok: false, reason: "expired" };
+    if (e.code === "code_expired") return { ok: false, reason: "expired" };
+    if (e.code === "too_many_attempts") return { ok: false, reason: "attempts" };
     if (e.status === 429) return { ok: false, reason: "rate-limited", retryAfter: retryAfterSeconds(e.retryAfter) };
     if (e.status < 500) return { ok: false, reason: "failed" };
   }

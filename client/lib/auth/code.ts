@@ -27,7 +27,7 @@ export function formatCountdown(seconds: number): string {
  * What verifying a code can come back with. `network` = no answer (offline, 5xx, timeout) · `failed` = the API refused the
  * sign-in for another reason (send a new code) · `rate-limited` = too many tries, `retryAfter` seconds from 429 Retry-After.
  */
-export type CodeVerifyResult = { ok: true } | { ok: false; reason: "wrong" | "expired" | "failed" | "network" } | { ok: false; reason: "rate-limited"; retryAfter: number };
+export type CodeVerifyResult = { ok: true } | { ok: false; reason: "wrong" | "expired" | "attempts" | "failed" | "network" } | { ok: false; reason: "rate-limited"; retryAfter: number };
 /** What sending (or resending) a code can come back with. `retryAfter` in seconds, from 429 Retry-After. */
 export type CodeSendResult = { ok: true } | { ok: false; reason: "rate-limited"; retryAfter: number } | { ok: false; reason: "network" };
 
@@ -45,5 +45,6 @@ export function retryAfterSeconds(header: string | null | undefined, now = Date.
 export function reviewVerify(code: string): CodeVerifyResult {
   if (code === "123456") return { ok: true };
   if (code === "111111") return { ok: false, reason: "expired" };
+  if (code === "999999") return { ok: false, reason: "attempts" };
   return { ok: false, reason: "wrong" };
 }

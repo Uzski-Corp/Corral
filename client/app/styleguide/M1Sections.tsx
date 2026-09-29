@@ -287,7 +287,8 @@ function CodeCell({ label, value = "", invalid, disabled, busy, locked, hint, er
 
 const CODE_URLS: [string, string][] = [
   ["sent", "code entry, resend cooldown 0:20"], ["code-verifying", "sixth digit landed, checking"], ["code-wrong", "inline error, digits kept, selected"],
-  ["code-expired", "field locked, primary becomes Send a new code"], ["code-resent", "success banner, field cleared"],
+  ["code-expired", "field locked, primary becomes Send a new code"], ["code-attempts", "expired layout, WorkOS locked the code after too many tries"],
+  ["code-resent", "success banner, field cleared"],
   ["resend-limited", "3 a minute, countdown from Retry-After"], ["verify-limited", "too many tries, field locked with its digits, countdown"],
   ["code-failed", "verify refused, field locked, primary becomes Send a new code"], ["change-email", "form, old address selected, note"],
 ];
@@ -301,6 +302,7 @@ export function CodeStatesDemo() {
         <CodeCell label="verifying · read-only" value="482913" busy />
         <CodeCell label="wrong · kept, retry" value="482193" invalid error="That code isn’t right. Check the newest email from Corral and try again." />
         <CodeCell label="expired · locked" value="639204" invalid disabled error="That code has expired. Codes last 10 minutes." />
+        <CodeCell label="locked code · expired layout" value="482193" invalid disabled error="Too many tries on that code. Send a new code and try again." />
         <CodeCell label="too many tries · locked, countdown" value="482193" locked caution={<>Too many tries for now. You can try again in <span className="c-num">0:42</span>.</>} />
         <CodeCell label="failed · locked, send a new code" value="482913" invalid disabled error="We couldn’t sign you in with that code. Send a new code and try again." />
         <div className="sg-code c-app"><Label>banners on the code screen</Label>
@@ -310,7 +312,7 @@ export function CodeStatesDemo() {
       </div>
       <div className="sg-card"><Label>reach every state · /sign-in?state=</Label>
         <ul className="sg-anatomy">{CODE_URLS.map(([s, d]) => <li key={s}><a className="c-link" href={`/sign-in?state=${s}`}><code>{s}</code></a> · {d}</li>)}</ul>
-        <p className="sg-faint" style={{ margin: "10px 0 0", fontSize: 12.5 }}>Review flow without an API: <code>123456</code> signs in, <code>111111</code> is expired, anything else is wrong. The 4th send inside a minute is rate-limited.</p>
+        <p className="sg-faint" style={{ margin: "10px 0 0", fontSize: 12.5 }}>Review flow without an API: <code>123456</code> signs in, <code>111111</code> is expired, <code>999999</code> is locked after too many tries, anything else is wrong. The 4th send inside a minute is rate-limited.</p>
       </div>
     </div>
   );

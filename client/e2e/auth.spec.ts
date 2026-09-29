@@ -130,6 +130,19 @@ test.describe("email code sign-in", () => {
     await expect(page.getByRole("button", { name: "Continue" })).toBeEnabled();
   });
 
+  test("a code WorkOS locked (too_many_attempts) keeps the expired layout with its own line", async ({ page, mockApi }) => {
+    void mockApi;
+    await page.goto("/sign-in");
+    await requestCode(page);
+    await codeField(page).fill("444444");
+    await expect(page.getByRole("alert").filter({ hasText: "on that code" })).toHaveText("Too many tries on that code. Send a new code and try again.");
+    await expect(codeField(page)).toBeDisabled();
+    await page.getByRole("button", { name: "Send a new code" }).click();
+    await expect(page.getByText("New code sent")).toBeVisible();
+    await expect(codeField(page)).toHaveValue("");
+    await expect(codeField(page)).toBeFocused();
+  });
+
   test("a refused code (auth_failed) locks the field and Send a new code starts over", async ({ page, mockApi }) => {
     await page.goto("/sign-in");
     await requestCode(page);

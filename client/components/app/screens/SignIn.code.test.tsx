@@ -78,6 +78,21 @@ describe("SignIn · six-digit code (ENG-80)", () => {
     expect(a.sendCode).toHaveBeenCalledTimes(2);
   });
 
+  it("a code locked after too many tries keeps the expired layout with its own line", async () => {
+    const a = actions({ ok: false, reason: "attempts" });
+    const user = await toCodeScreen(a);
+    await user.type(codeBox(), "482193");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Too many tries on that code. Send a new code and try again.");
+    expect(screen.getByRole("alert")).not.toHaveTextContent("expired");
+    expect(codeBox()).toBeDisabled();
+    expect(codeBox()).toHaveAttribute("aria-invalid", "true");
+    expect(screen.queryByText(/Nothing after a minute/)).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Send a new code" }));
+    expect(await screen.findByText("New code sent")).toBeInTheDocument();
+    expect(codeBox()).toBeEnabled();
+    expect(codeBox()).toHaveValue("");
+  });
+
   it("says when the connection dropped while checking", async () => {
     const a = actions({ ok: false, reason: "network" });
     const user = await toCodeScreen(a);
@@ -228,7 +243,8 @@ describe("SignIn · six-digit code (ENG-80)", () => {
   });
 
   it.each<[SignInState, RegExp]>([
-    ["code-wrong", /That code isn’t right/], ["code-expired", /That code has expired/], ["code-resent", /New code sent/],
+    ["code-wrong", /That code isn’t right/], ["code-expired", /That code has expired/],
+    ["code-attempts", /Too many tries on that code\. Send a new code and try again\./], ["code-resent", /New code sent/],
     ["resend-limited", /Too many codes asked for/], ["code-verifying", /Checking code/],
     ["verify-limited", /Too many tries for now\. You can try again in 0:42\./], ["code-failed", /We couldn’t sign you in with that code/],
   ])("review state %s renders its screen", (state, text) => {
@@ -243,6 +259,21 @@ describe("SignIn · six-digit code (ENG-80)", () => {
     expect(codeBox()).toHaveAttribute("readonly");
     expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
     expect(screen.getByRole("status")).toHaveClass("is-caution");
+  });
+
+  it("review code-attempts: expired layout (locked field, Send a new code), no Continue", () => {
+    render(<SignIn initial="code-attempts" />);
+    expect(codeBox()).toBeDisabled();
+    expect(codeBox()).toHaveValue("482193");
+    expect(screen.getByRole("button", { name: "Send a new code" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Continue" })).toBeNull();
+  });
+
+  it("review flow: 999999 is a code locked after too many tries", async () => {
+    render(<SignIn initial="sent" />);
+    fireEvent.change(codeBox(), { target: { value: "999999" } });
+    expect(await screen.findByRole("alert", {}, { timeout: 2000 })).toHaveTextContent("Too many tries on that code");
+    expect(screen.getByRole("button", { name: "Send a new code" })).toBeInTheDocument();
   });
 
   it("review code-failed: locked field, primary is 'Send a new code'", () => {
