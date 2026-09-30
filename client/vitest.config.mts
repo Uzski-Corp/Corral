@@ -20,6 +20,7 @@ export default defineConfig({
         "proxy.ts",
         "components/session/**/*.tsx",
         "components/app/useFocusTrap.ts",
+        "components/app/kb/live.ts",
         "app/app/layout.tsx",
         "app/onboarding/layout.tsx",
         "app/sign-in/page.tsx",
