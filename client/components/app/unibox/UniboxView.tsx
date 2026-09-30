@@ -12,6 +12,9 @@ import { ContextRail, ReadingPane, ThreadList } from "../Unibox";
 import { UNDO_SECONDS, canSend, type DraftKind, type SendKind } from "@/lib/unibox/draft";
 import { filterThreads, isFiltered, step, triageByKey, triageDef, type Filters, type Triage } from "@/lib/unibox/triage";
 import type { UniboxReviewState } from "@/lib/unibox/state";
+import { isHandoffState } from "@/lib/handoff/state";
+import { HandoffProblems, HandoffRail, MeetingCard } from "../handoff/Handoff";
+import { handoffFor } from "../handoff/data";
 import { COPILOT, HANDLED_NOTE, POOL_MAILBOX, TEAMMATE_REPLY, draftKindFor, seedFor, type UniboxTab } from "./data";
 import { DraftArea, draftText, type DraftActions } from "./Copilot";
 import { FilterChips, KeysSheet, RowTag, TriageMenu } from "./Triage";
@@ -46,6 +49,9 @@ export type UniboxViewProps = {
 export function UniboxView({ threads, setThreads, active, setActive, tab, setTab, pane, setPane, state, onArchive, hotkeys = true }: UniboxViewProps) {
   const toast = useToast();
   const seed = useMemo(() => seedFor(state), [state]);
+  // M8: Grace's meeting, as the live app has it (booked) or as a handoff review state has it.
+  const handoff = useMemo(() => handoffFor(isHandoffState(state) ? state : undefined), [state]);
+  const copilotOf = useCallback((id: string) => (id === "grace" && handoff.copilot ? handoff.copilot : COPILOT[id]), [handoff]);
   const [load, setLoad] = useState(seed.load);
   const [filters, setFilters] = useState<Filters>(seed.filters);
   const [kinds, setKinds] = useState<Record<string, DraftKind>>(seed.draft);
@@ -65,9 +71,9 @@ export function UniboxView({ threads, setThreads, active, setActive, tab, setTab
   const tabList = inTab(threads, tab);
   const shown = filterThreads(tabList, filters);
   const t = shown.find((x) => x.id === active) ?? shown[0];
-  const kindOf = (id: string): DraftKind => kinds[id] ?? draftKindFor(id);
+  const kindOf = (id: string): DraftKind => kinds[id] ?? draftKindFor(id, copilotOf(id));
   const sendOf = (id: string): SendKind => sends[id] ?? "idle";
-  const modelOf = (id: string) => (safe[id] ? COPILOT[id]?.safe : COPILOT[id]?.draft);
+  const modelOf = (id: string) => (safe[id] ? copilotOf(id)?.safe : copilotOf(id)?.draft);
   const textOf = (id: string) => (kindOf(id) === "edited" ? texts[id] ?? draftText(modelOf(id)) : draftText(modelOf(id)));
   const fromOf = (x: Thread) => x.mailbox ?? POOL_MAILBOX;
 
@@ -131,7 +137,7 @@ export function UniboxView({ threads, setThreads, active, setActive, tab, setTab
   const reply = (x: Thread) => {
     const k = kindOf(x.id);
     if (x.handled) return;
-    if (k === "none") draft(x.id, COPILOT[x.id] ? draftKindFor(x.id) : "edited");
+    if (k === "none") draft(x.id, copilotOf(x.id) ? draftKindFor(x.id, copilotOf(x.id)) : "edited");
     else if (k === "ready" || k === "low") setKind(x.id, "edited");
     else if (k === "refused") { setOwn((m) => ({ ...m, [x.id]: true })); setTexts((m) => ({ ...m, [x.id]: "" })); setKind(x.id, "edited"); }
     else if (k === "edited") document.querySelector<HTMLTextAreaElement>(".c-ux__pane textarea")?.focus();
@@ -201,10 +207,10 @@ export function UniboxView({ threads, setThreads, active, setActive, tab, setTab
   ) : null;
 
   const a: DraftActions | undefined = !t ? undefined : {
-    onDraft: () => draft(t.id, draftKindFor(t.id) === "none" ? "edited" : draftKindFor(t.id)),
+    onDraft: () => draft(t.id, draftKindFor(t.id, copilotOf(t.id)) === "none" ? "edited" : draftKindFor(t.id, copilotOf(t.id))),
     onStop: () => stopDraft(t.id),
     onSend: () => send(t), onEdit: () => { setSend(t.id, "idle"); setKind(t.id, "edited"); },
-    onBack: () => { setOwn((m) => ({ ...m, [t.id]: false })); setTexts((m) => { const n = { ...m }; delete n[t.id]; return n; }); setKind(t.id, draftKindFor(t.id) === "refused" ? "ready" : draftKindFor(t.id)); setTried((m) => ({ ...m, [t.id]: false })); },
+    onBack: () => { setOwn((m) => ({ ...m, [t.id]: false })); setTexts((m) => { const n = { ...m }; delete n[t.id]; return n; }); setKind(t.id, draftKindFor(t.id, copilotOf(t.id)) === "refused" ? "ready" : draftKindFor(t.id, copilotOf(t.id))); setTried((m) => ({ ...m, [t.id]: false })); },
     onText: (s: string) => setTexts((m) => ({ ...m, [t.id]: s })),
     onUndo: () => undo(t),
     onRetry: () => { setSend(t.id, "sending"); setTicking(true); },
@@ -221,8 +227,12 @@ export function UniboxView({ threads, setThreads, active, setActive, tab, setTab
   };
   const s = t ? sendOf(t.id) : "idle";
   const mine = t && sent[t.id] && (s === "undo" || s === "sending" || s === "sent") ? sent[t.id] : undefined;
-  const card = t && <DraftArea key={`d-${t.id}`} t={t} model={modelOf(t.id)} copilot={COPILOT[t.id]} kind={kindOf(t.id)} send={s}
+  const card = t && <DraftArea key={`d-${t.id}`} t={t} model={modelOf(t.id)} copilot={copilotOf(t.id)} kind={kindOf(t.id)} send={s}
     text={textOf(t.id)} original={own[t.id] ? "" : draftText(modelOf(t.id))} undoLeft={undoLeft} from={fromOf(t)} tried={tried[t.id]} handledNote={HANDLED_NOTE[t.id]} a={a!} />;
+  // The meeting as an event in the thread: a booking sits where it happened (before Grace's note about it); a move, a
+  // cancellation or a no-show happened after the last message, so it sits under it.
+  const meet = !t?.meeting ? undefined : t.meeting === "booked" && handoff.meeting.status === "booked" ? "early" : "late";
+  const meetBlock = t?.meeting && <><MeetingCard key={`mc-${handoff.key}`} h={handoff} /><HandoffProblems key={`hp-${handoff.key}`} h={handoff} /></>;
   const slot = !t ? null
     : resolved[t.id] ? <><TeammateMessage {...TEAMMATE_REPLY} /><p className="u-resolved"><Icon name="check" size={12} />{resolved[t.id] === "note" ? "Your reply is saved as a note on this thread; only your team sees it." : "Your reply was discarded. Amara’s answer stands."}</p></>
     : s === "sent" && mine ? <><SentMessage text={mine.text} at={mine.at} from={fromOf(t)} />
@@ -243,11 +253,11 @@ export function UniboxView({ threads, setThreads, active, setActive, tab, setTab
             <div className="c-ux__pane">
               <button type="button" className="c-ux__back" onClick={() => setPane("list")}><Icon name="back" />{label}</button>
               <ReadingPane t={t} tag={<TriageMenu t={t} open={menu} onOpenChange={setMenu} onPick={(id) => retriage(t, id)} />}
-                history={<History key={`h-${t.id}`} msgs={t.history ?? []} />}
+                history={<>{meet === "early" && meetBlock}<History key={`h-${t.id}`} msgs={t.history ?? []} /></>}
                 message={<Message key={`m-${t.id}`} t={t} safe={state === "thread"} />}
-                draft={slot} />
+                draft={<>{meet === "late" && meetBlock}{slot}</>} />
             </div>
-            <div className="c-ux__rail"><ContextRail t={t} fit={<FitSummary t={t} />} sequence={<SequenceTrail t={t} />} extra={<MailboxLine t={t} disconnected={s === "disconnected"} />} /></div>
+            <div className="c-ux__rail"><ContextRail t={t} fit={<FitSummary t={t} />} sequence={<SequenceTrail t={t} />} extra={<><MailboxLine t={t} disconnected={s === "disconnected"} />{t.meeting && <HandoffRail h={handoff} />}</>} /></div>
           </>}
         </div>
       )}

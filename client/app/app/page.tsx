@@ -8,6 +8,7 @@ import { leadsReviewState } from "@/lib/leads/state";
 import { discoveryReviewState } from "@/lib/discovery/state";
 import { sequenceReviewState } from "@/lib/sequences/state";
 import { uniboxReviewState } from "@/lib/unibox/state";
+import { settingsReviewState } from "@/lib/integrations/state";
 
 export const metadata: Metadata = { title: "Corral · Unibox" };
 const VIEWS: ViewId[] = ["unibox", "companies", "discovery", "contacts", "segments", "sequences", "products", "knowledge", "settings"];
@@ -28,7 +29,11 @@ const VIEWS: ViewId[] = ["unibox", "companies", "discovery", "contacts", "segmen
  *   launching | running | paused | mailboxes  (see lib/sequences/state.ts)
  * Unibox (M7): ?view=unibox&state=panes | filtered | triage-menu | referral | ooo | unsubscribe | bounce | thread | keys |
  *   drafting | draft | low | refused | edited | undo | sending | sent | failed | disconnected | conflict | empty | loading | error
- *   (see lib/unibox/state.ts; ?view can be left out, the Unibox is home)
+ *   (see lib/unibox/state.ts; ?view can be left out, the Unibox is home) · M8 adds meeting-booked | meeting-rescheduled |
+ *   meeting-cancelled | meeting-no-show | deal-error | deal-duplicate | nurture-off (also on ?view=companies, Grace's lead)
+ * Settings → Integrations (M8): ?view=settings&state=integrations | none | connect-cal | connecting | connect-erp |
+ *   connect-erp-failed | connect-autosend | connected | reauth | error | disconnect | logs | mapping | mapping-errors | scopes |
+ *   autosend | loading | load-error  (see lib/integrations/state.ts)
  */
 export default async function AppPage({ searchParams }: PageProps<"/app">) {
   const q = await searchParams;
@@ -41,5 +46,6 @@ export default async function AppPage({ searchParams }: PageProps<"/app">) {
   const discovery = discoveryReviewState(view, one("state"), reviewStates);
   const sequences = sequenceReviewState(view, one("state"), reviewStates);
   const unibox = uniboxReviewState(view, one("state"), reviewStates);
-  return <AppScreen key={`${preview ?? "live"}-${kb ?? ""}-${leads ?? ""}-${discovery ?? ""}-${sequences ?? ""}-${unibox ?? ""}`} preview={preview} kb={kb} leads={leads} discovery={discovery} sequences={sequences} unibox={unibox} initialView={view} cmdk={one("cmdk") === "1"} collapsed={one("collapsed") === "1"} drawer={one("nav") === "1"} dialog={one("dialog") === "enroll"} />;
+  const settings = settingsReviewState(view, one("state"), reviewStates);
+  return <AppScreen key={`${preview ?? "live"}-${kb ?? ""}-${leads ?? ""}-${discovery ?? ""}-${sequences ?? ""}-${unibox ?? ""}-${settings ?? ""}`} preview={preview} kb={kb} leads={leads} discovery={discovery} sequences={sequences} unibox={unibox} settings={settings} initialView={view} cmdk={one("cmdk") === "1"} collapsed={one("collapsed") === "1"} drawer={one("nav") === "1"} dialog={one("dialog") === "enroll"} />;
 }

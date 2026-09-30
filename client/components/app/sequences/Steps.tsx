@@ -5,7 +5,7 @@ import { Icon } from "../icons";
 import { Banner } from "../States";
 import { Select } from "../Form";
 import {
-  CONDITION_HINT, CONDITION_SHORT, OPENS_NOTE, EXITS, gateText, pct, stepDays, subjectOf, summaryOf, tokensIn, varDef,
+  CONDITION_HINT, CONDITION_SHORT, EXITS, gateText, pct, stepDays, subjectOf, summaryOf, tokensIn, varDef,
   type Condition, type Gate, type Issue, type Step,
 } from "@/lib/sequences/sequence";
 import type { SeqStatus, Sequence } from "./data";
@@ -75,7 +75,7 @@ export function GateRow({ gate, editable, onChange, openCondition, n }: {
         <Select label={`Everyone else at step ${n}`} width={148} value={gate.otherwise ?? "stop"} onChange={(v) => onChange?.({ ...gate, otherwise: v as Gate["otherwise"] })}
           options={[{ value: "stop", label: "Stop" }, { value: "skip", label: "Skip this step" }]} />
       </>}
-      {gate.cond === "opened-no-reply" && <p className="q-gate__note">{OPENS_NOTE}</p>}
+      {CONDITION_HINT[gate.cond] && <p className="q-gate__note">{CONDITION_HINT[gate.cond]}</p>}
     </div>
   );
 }

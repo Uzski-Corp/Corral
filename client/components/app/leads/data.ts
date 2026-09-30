@@ -93,6 +93,10 @@ export function detailOf(l: Lead): LeadDetailData {
   };
   if (l.id === "pwani") return { ...base, activity: [{ when: "5h ago", what: "Replied: “Honestly the price is the blocker…”", who: "Brian Kamau", tone: "warn" }, { when: "5h ago", what: "Status set to Objection by Corral (price)" }, ...base.activity],
     sequence: "Cold-room pilot · step 3 of 4, paused (replied)" };
+  // M8: Grace booked through Cal.com; the sequence stopped and the deal went to Phoenix (HANDOFF §16).
+  if (l.id === "nyota") return { ...base, activity: [{ when: "Yesterday", what: "Booked Thu 1 Oct, 10:30 through Cal.com", who: "Grace Holloway", tone: "pos" },
+    { when: "Yesterday", what: "Deal PX-2288 opened in Phoenix ERP at Discovery" }, ...base.activity],
+    sequence: "Cold-room pilot · step 3 of 4, stopped (meeting booked)" };
   return base;
 }
 

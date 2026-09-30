@@ -7,6 +7,7 @@ import { DiscoveryShellDemo, EnrichDemo, RunStatesDemo, SetupDemo } from "./M4Se
 import { FitBarDemo, FitReasoningDemo } from "./M5Sections";
 import { PoolDemo, SequenceDemo, StepEditorDemo } from "./M6Sections";
 import { CopilotStatesDemo, ThreadViewDemo, UniboxTriageDemo } from "./M7Sections";
+import { HandoffDemo, IntegrationsDemo } from "./M8Sections";
 import { EditorDemo, KbShellDemo, SourceDetailDemo, SourceListDemo, UploadDemo } from "./M2Sections";
 import { AccountStatesDemo, CodeStatesDemo, CmdkDemo, ContrastDemo, FormDemo, OverlayDemo, SessionErrorDemo, ShellDemo, StatesDemo, TabsToastDemo } from "./M1Sections";
 import {
@@ -282,7 +283,17 @@ export default function Styleguide() {
         <CopilotStatesDemo />
       </Part>
 
-      <Part n="42" title="Things that float" tokens={["--shadow-pop", "--radius-window 14", "--color-surface-inverse"]}
+      <Part wide n="42" title="Handoffs" tokens={["h-meet: canvas card, border + 1px shadow; gone = surface-muted", "h-pill: live · positive · caution · negative · neutral", "h-steps: Ca · Px · As tiles 22px", "h-problem: negative-50 / caution-50, 200 inset"]}
+        notes={<p>A booking is an event in the thread, where it happened, with who is coming and what Corral did about it. Three handoffs follow it: the meeting (Cal.com), the deal (Phoenix ERP) and the follow-up (AutoSend), each one line with its state. A move changes all three quietly. A cancellation or a no-show goes back to Needs you with a draft for a person, and the deal stays open. Corral stops and asks when Phoenix refuses a deal or already has the company; it never merges on its own.</p>}>
+        <HandoffDemo />
+      </Part>
+
+      <Part wide n="43" title="Integrations" tokens={["i-row: tile 32 · name · role · pill · one action", "i-flow: 4 steps, dot = connection health", "i-log: mono time and event, redacted secrets, Replay", "i-maptable: Required tag, negative-50 row for an issue"]}
+        notes={<p>Settings says what each connection is for before asking you to connect it, and what Corral may and may never do. A connection that needs you says what broke, what is waiting and the one action to fix it; nothing is lost while it waits. Every push and delivery is logged with what went and what came back, secrets redacted, and a failed push replays with the same idempotency key. Phoenix&rsquo;s field mapping shows what Grace&rsquo;s deal would carry and won&rsquo;t save while a required field is empty.</p>}>
+        <IntegrationsDemo />
+      </Part>
+
+      <Part n="44" title="Things that float" tokens={["--shadow-pop", "--radius-window 14", "--color-surface-inverse"]}
         notes={<p>Only moments float: a booked meeting, a reply worth seeing, a toast. Faces are film-graded photos in circles, one treatment for everyone.</p>}>
         <div className="sg-float">
           <MeetingCard />

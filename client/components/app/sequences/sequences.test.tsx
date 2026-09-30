@@ -42,7 +42,7 @@ describe("SequencesView · builder", () => {
     expect(within(s).getByText("Replied")).toBeInTheDocument();
     expect(screen.getByText("2 things to fix before launch")).toBeInTheDocument();
     await userEvent.click(within(s).getByRole("button", { name: "Send step 3: Opened, no reply" }));
-    await userEvent.click(screen.getByRole("option", { name: "Not opened" }));
+    await userEvent.click(screen.getByRole("option", { name: /^Not opened/ }));
     expect(within(s).getByRole("button", { name: "Send step 3: Not opened" })).toBeInTheDocument();
     await userEvent.click(within(s).getByRole("button", { name: "Send step 2: No reply" }));
     await userEvent.click(screen.getByRole("option", { name: /Opened, no reply/ }));

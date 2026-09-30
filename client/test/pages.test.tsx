@@ -86,6 +86,23 @@ describe("/onboarding and /app pages keep their review params", () => {
     expect(await screen.findByText("Corral won’t draft this one")).toBeInTheDocument();
   });
 
+  it("opens a settings review state (M8)", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DESIGN_REVIEW", "1");
+    resetConfigCache();
+    const page = await AppPage(params({ view: "settings", state: "reauth" }) as never);
+    render(AppLayout({ children: page, params: Promise.resolve({}) } as never));
+    expect(await screen.findByRole("heading", { name: "Cal.com" })).toBeInTheDocument();
+    expect(screen.getAllByText(/sign-in expired/).length).toBeGreaterThan(0);
+  });
+
+  it("opens a unibox handoff state (M8)", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DESIGN_REVIEW", "1");
+    resetConfigCache();
+    const page = await AppPage(params({ state: "meeting-cancelled" }) as never);
+    render(AppLayout({ children: page, params: Promise.resolve({}) } as never));
+    expect(await screen.findByText("Grace cancelled the meeting")).toBeInTheDocument();
+  });
+
   it("wraps onboarding in the session layout", async () => {
     vi.stubEnv("NEXT_PUBLIC_DESIGN_REVIEW", "1");
     resetConfigCache();

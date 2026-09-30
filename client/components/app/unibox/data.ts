@@ -4,6 +4,8 @@ import { THREADS, type Thread } from "../data";
 import type { Cite, DraftKind, SendKind } from "@/lib/unibox/draft";
 import { NO_FILTERS, type Filters, type Triage } from "@/lib/unibox/triage";
 import type { UniboxReviewState } from "@/lib/unibox/state";
+import { isHandoffState } from "@/lib/handoff/state";
+import { backInNeedsYou } from "@/lib/unibox/ooo";
 
 export const POOL_MAILBOX = "tomas@coldtrace.io";
 
@@ -25,7 +27,7 @@ const EXTRA: Record<string, Partial<Thread>> = {
     history: [
       step1("Spoilage found in the morning", "Wanjiru, Kilima runs three cold rooms at Nakuru. In March a compressor failed overnight and the morning shift found 6,000 litres gone. ColdTrace calls whoever is on duty within two minutes.", "Mon 21 Sep, 08:12", "Opened 2×"),
       { ...step2("Wanjiru, one gateway covers a whole site, so three sites is three plugs and an afternoon each. Worth a look before the dry season?", "Thu 24 Sep, 08:10", "Opened"), note: "Cold-room pilot, step 2 · Three sites, one alert" }] },
-  grace: { email: "grace@nyota.co.tz", mailbox: POOL_MAILBOX, time: "08:55", unread: true, seq: { id: "pilot", name: "Cold-room pilot", step: 3, of: 4, state: "Stopped: meeting booked" },
+  grace: { email: "grace@nyota.co.tz", mailbox: POOL_MAILBOX, time: "08:55", unread: true, meeting: "booked", seq: { id: "pilot", name: "Cold-room pilot", step: 3, of: 4, state: "Stopped: meeting booked" },
     snippet: "Mercy asks two things before Thursday: is ColdTrace FDA approved…",
     body: "Mercy asks two things before Thursday. Is ColdTrace FDA approved? We export concentrate to the US. And could you install at our Arusha plant this week, same day, so we can show it running?",
     receipts: [["Classified as Meeting booked · question", "0.8s"], ["Asks for claims on the Never-say list", "2 rules"]],
@@ -53,9 +55,12 @@ const HANDLED: Thread[] = [
 /** The M7 thread list: every M1 thread (M1 order), extended, then the handled ones. */
 export const UNIBOX_THREADS: Thread[] = [...THREADS.map((t) => ({ ...t, ...EXTRA[t.id] })), ...HANDLED];
 
+/** The sample’s today (Wed 30 Sep 2026), for dates read out of replies. */
+export const TODAY = new Date(2026, 8, 30, 9, 0);
+
 /** What the triage buttons say Corral did on a handled thread. */
 export const HANDLED_NOTE: Record<string, string> = {
-  daniel: "Daniel is out until 14 October. Corral paused Cold-room pilot for him; step 3 goes on 15 Oct at 09:00, his morning. Nothing to send.",
+  daniel: `Daniel is out until 14 October. Corral paused Cold-room pilot for him; step 3 goes on 15 Oct at 09:00, his morning. ${backInNeedsYou(THREADS.find((t) => t.id === "daniel")!.body, TODAY).label}, the day he’s back. Nothing to send.`,
   neema: "Neema asked to be removed. Corral stopped Dairy proof drip for her and won’t write to neema@dodomadairy.co.tz again, from any sequence or mailbox.",
   bounce: "mwanzafish.co.tz is refusing mail. Corral marked juma@ bad, held the domain (3 bounces from ops@ on Sep 29) and found Rehema Said, Plant Manager, to try instead.",
 };
@@ -134,17 +139,35 @@ export type UniboxSeed = {
   draft: Record<string, DraftKind>; send: Record<string, SendKind>; text: Record<string, string>;
   menu?: boolean; keys?: boolean; load?: "loading" | "error"; empty?: boolean; sentAt?: string; undoLeft?: number;
   conflict?: boolean;
+  /** M8: a Cal.com handoff state (the thread is Grace's). `patch` changes her thread for that state. */
+  handoff?: boolean; patch?: Record<string, Partial<Thread>>;
 };
 
 /** Default draft kind for a thread: Corral has one ready (or low, or refused), else none. */
-export function draftKindFor(id: string): DraftKind {
-  const c = COPILOT[id]; if (!c) return "none";
+export function draftKindFor(id: string, c: CopilotModel | undefined = COPILOT[id]): DraftKind {
+  if (!c) return "none";
   return c.refused ? "refused" : c.low ? "low" : "ready";
 }
+
+/* M8 (ENG-58): how Grace's thread looks in each handoff state. Booked-type states sit in Meetings; a
+   cancellation or a no-show is a person's job again, so the thread is back in Needs you. */
+const GRACE_TAB: Partial<Record<UniboxReviewState, UniboxTab>> = { "meeting-cancelled": "needs", "meeting-no-show": "needs" };
+const GRACE_EARLIER = { from: "them" as const, who: "Grace Holloway", at: "Today, 08:55",
+  body: "Mercy asks two things before Thursday. Is ColdTrace FDA approved? We export concentrate to the US. And could you install at our Arusha plant this week, same day, so we can show it running?" };
+const GRACE_PATCH: Partial<Record<UniboxReviewState, Partial<Thread>>> = {
+  "meeting-rescheduled": { meeting: "rescheduled", time: "09:20" },
+  "meeting-cancelled": { status: "Interested", meeting: "cancelled", time: "09:20", seq: { id: "pilot", name: "Cold-room pilot", step: 3, of: 4, state: "Stopped: replied" },
+    snippet: "Mercy is tied up with the Arusha audit. Can we pick this up after…",
+    body: "Sorry for the late notice. Mercy is tied up with the Arusha audit this week, so I’ve cancelled Thursday. Can we pick this up after the 15th?",
+    receipts: [["Classified as Interested · later", "0.7s"], ["Cal.com: meeting cancelled by Grace", "Today, 09:20"]] },
+  "meeting-no-show": { status: "Interested", meeting: "no-show" },
+};
+const withHistory = (id: string): Partial<Thread> => (id === "meeting-cancelled" ? { history: [...(EXTRA.grace.history ?? []), GRACE_EARLIER] } : {});
 
 export function seedFor(state?: UniboxReviewState): UniboxSeed {
   const base: UniboxSeed = { active: "brian", tab: "needs", pane: "read", filters: NO_FILTERS, draft: {}, send: {}, text: {} };
   const on = (id: string, extra: Partial<UniboxSeed> = {}): UniboxSeed => ({ ...base, active: id, ...extra });
+  if (isHandoffState(state)) return on("grace", { handoff: true, tab: GRACE_TAB[state] ?? "meetings", patch: GRACE_PATCH[state] ? { grace: { ...GRACE_PATCH[state], ...withHistory(state) } } : undefined });
   switch (state) {
     case undefined: return { ...base, pane: "list" };
     case "panes": return { ...base, pane: "list" };

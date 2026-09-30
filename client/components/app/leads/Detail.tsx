@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Avatar, Button, FitBar, Logo, Monogram, Receipt, Receipts, Tag, cx, type Status } from "../primitives";
 import { Icon } from "../icons";
 import { Banner } from "../States";
@@ -16,7 +16,7 @@ import { FitReasoning, type FitActions } from "../fit/Reasoning";
  * Lead detail: one company, the person Corral writes to, why it fits, where it is in a sequence, and
  * everything that happened. Opens beside the table (rail 400) or full screen on a phone.
  */
-export function LeadDetail({ lead, onClose, onStatus, onEnroll, onMerge, onKeepBoth, onOpenLead, prov, today, provOpen, onRecheck, rechecking, foundVia, backLabel = "All companies", fit, fitActions, fitForm, fitBusy, fitFocus }: {
+export function LeadDetail({ lead, onClose, onStatus, onEnroll, onMerge, onKeepBoth, onOpenLead, prov, today, provOpen, onRecheck, rechecking, foundVia, backLabel = "All companies", fit, fitActions, fitForm, fitBusy, fitFocus, handoff }: {
   lead: Lead; onClose: () => void; onStatus: (id: string, s: Status, field?: "reply" | "email") => void; onEnroll: (id: string) => void;
   onMerge?: (id: string) => void; onKeepBoth?: (id: string) => void; onOpenLead?: (id: string) => void;
   /** M4 provenance: every field with its evidence chain. `today` anchors freshness (the demo's fixed date). */
@@ -25,6 +25,7 @@ export function LeadDetail({ lead, onClose, onStatus, onEnroll, onMerge, onKeepB
   /** M5: the fit score and its reasoning. Without it the detail shows the M3 "Why it fits" receipts. */
   fit?: FitStatus; fitActions?: FitActions; fitForm?: "override" | "disagree"; fitBusy?: boolean;
   /** Scroll to the reasoning when the detail opens (review state `fit`). */ fitFocus?: boolean;
+  /** M8: the meeting and its handoffs (Cal.com, Phoenix ERP, AutoSend), shown before the sequence. */ handoff?: ReactNode;
 }) {
   const d = detailOf(lead);
   const root = useRef<HTMLElement>(null);
@@ -101,6 +102,7 @@ export function LeadDetail({ lead, onClose, onStatus, onEnroll, onMerge, onKeepB
           <ProvenanceList key={provFocus ? `${provFocus.field}-${provFocus.n}` : "p"} list={prov} today={today} initialOpen={provFocus?.field ?? provOpen} onRecheck={onRecheck && (() => onRecheck(lead.id))} rechecking={rechecking} /></section>
       )}
 
+      {handoff}
       <section className="l-sec"><h3>Sequence</h3>
         <p className={cx("l-seq", !d.sequence && "c-muted")}>{d.sequence ?? (blocked ? `Can't be enrolled: ${lead.email === "Bounced" ? "email bounced" : lead.reply.toLowerCase()}.` : "Not in a sequence.")}</p>
         {d.segments.length > 0 && <p className="l-segs">In {d.segments.map((s) => <span key={s} className="c-chip">{s}</span>)}</p>}

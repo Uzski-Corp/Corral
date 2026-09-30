@@ -26,11 +26,16 @@
  *   empty         nothing needs you
  *   loading       list and thread skeletons
  *   error         the Unibox couldn't load
+ * M8 (ENG-58) adds the handoff states on Grace's thread, same names as on the lead: meeting-booked |
+ *   meeting-rescheduled | meeting-cancelled | meeting-no-show | deal-error | deal-duplicate | nurture-off (see lib/handoff/state.ts)
  */
+import { HANDOFF_REVIEW_STATES } from "@/lib/handoff/state";
+
 export const UNIBOX_REVIEW_STATES = [
   "panes", "filtered", "triage-menu", "referral", "ooo", "unsubscribe", "bounce", "thread", "keys",
   "drafting", "draft", "low", "refused", "edited", "undo", "sending", "sent", "failed", "disconnected", "conflict",
   "empty", "loading", "error",
+  ...HANDOFF_REVIEW_STATES,
 ] as const;
 export type UniboxReviewState = (typeof UNIBOX_REVIEW_STATES)[number];
 

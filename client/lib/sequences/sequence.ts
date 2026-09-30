@@ -88,7 +88,9 @@ export const CONDITION_SHORT: Record<Condition, string> = { "no-reply": "No repl
 /** Opens are unreliable (Apple Mail Privacy Protection and others fetch every email). M7 follow-up to M6 Q4. */
 export const OPENS_NOTE = "Opens are a guess. Apple Mail and some others open every email automatically, so this may fire for people who never read it.";
 /** Secondary line under the option in the condition menu. "Opened, no reply" is offered with it, never as the default. */
-export const CONDITION_HINT: Partial<Record<Condition, string>> = { "opened-no-reply": OPENS_NOTE };
+/** M8: the same caveat from the other side. Apple Mail's automatic opens make "Not opened" under-fire. */
+export const NOT_OPENED_NOTE = "Opens are a guess, so some people who read it may still count as not opened.";
+export const CONDITION_HINT: Partial<Record<Condition, string>> = { "opened-no-reply": OPENS_NOTE, "not-opened": NOT_OPENED_NOTE };
 /** What happens to people the condition doesn't match. */
 export type Otherwise = "stop" | "skip";
 export type Gate = { wait: number; cond: Condition; otherwise?: Otherwise };

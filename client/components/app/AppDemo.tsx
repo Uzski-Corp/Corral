@@ -26,6 +26,8 @@ import type { SequenceReviewState } from "@/lib/sequences/state";
 import { poolSummary } from "@/lib/sequences/sequence";
 import { UniboxView, UNIBOX_TABS, needsYou, UNIBOX_THREADS, uniboxSeedFor, type UniboxTab } from "./unibox";
 import type { UniboxReviewState } from "@/lib/unibox/state";
+import { SettingsView } from "./handoff";
+import type { SettingsReviewState } from "@/lib/integrations/state";
 
 /** Fixed "today" for the demo so static renders are deterministic. Replace with new Date(). */
 export const DEMO_TODAY = new Date(2026, 8, 29);
@@ -125,10 +127,12 @@ export type AppDemoProps = {
   sequences?: SequenceReviewState;
   /** Unibox review state (M7): /app?view=unibox&state=… */
   unibox?: UniboxReviewState;
+  /** Settings → Integrations review state (M8): /app?view=settings&state=… */
+  settings?: SettingsReviewState;
 };
 export function AppDemo(p: AppDemoProps) { return <ToastProvider><Demo {...p} /></ToastProvider>; }
 
-function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, drawer = false, dialog = false, frame = "viewport", hotkeys = true, className, account, onSignOut, sessionError, kb, leads, discovery, sequences, unibox }: AppDemoProps) {
+function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, drawer = false, dialog = false, frame = "viewport", hotkeys = true, className, account, onSignOut, sessionError, kb, leads, discovery, sequences, unibox, settings }: AppDemoProps) {
   const router = useRouter();
   const toast = useToast();
   const signOut = useCallback(() => {
@@ -142,7 +146,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
   const [collapsed, setCollapsed] = useState(c0);
   const [palette, setPalette] = useState(cmdk);
   const [ub] = useState(() => uniboxSeedFor(unibox));
-  const [threads, setThreads] = useState<Thread[]>(() => (ub.empty ? UNIBOX_THREADS.filter((t) => t.handled) : UNIBOX_THREADS));
+  const [threads, setThreads] = useState<Thread[]>(() => (ub.empty ? UNIBOX_THREADS.filter((t) => t.handled) : UNIBOX_THREADS.map((t) => (ub.patch?.[t.id] ? { ...t, ...ub.patch[t.id] } : t))));
   const [active, setActive] = useState(ub.active);
   const [tab, setTab] = useState<UniboxTab>(ub.tab);
   const [pane, setPane] = useState<"list" | "read">(ub.pane);
@@ -209,6 +213,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
   const crumbs = view === "unibox" ? [ws, "Unibox", UNIBOX_TABS.find((x) => x.id === tab)!.label]
     : view === "knowledge" ? [ws, "Knowledge base", PRODUCT.name]
     : view === "sequences" && seqTab === "pool" ? [ws, "Sequences", "Mailbox pool"]
+    : view === "settings" ? [ws, "Settings", "Integrations"]
     : segment ? [ws, "Segments", segment] : [ws, label];
   const table = view === "companies" || view === "segments";
   const findCompanies = () => { go("discovery"); setSetupOpen(true); };
@@ -245,8 +250,9 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
         {view === "discovery" && <DiscoveryView key={discovery ?? "live"} state={discovery} setupOpen={setupOpen} onSetupOpenChange={setSetupOpen} onOpenCompanies={() => go("companies")} />}
         {view === "sequences" && <SequencesView key={sequences ?? "live"} state={sequences} tab={seqTab} onTabChange={setSeqTab} pool={pool} onPoolChange={setPool} newSignal={newSeq} />}
         {view === "contacts" && <ContactsView />}
+        {view === "settings" && <SettingsView key={settings ?? "live"} state={settings} />}
         {view === "knowledge" && <KnowledgeBase state={kb} addOpen={kbAdd} onAddOpenChange={setKbAdd} contained={frame === "contained"} />}
-        {!table && view !== "unibox" && view !== "contacts" && view !== "knowledge" && view !== "discovery" && view !== "sequences" && <PendingView id={view} onSearch={() => setPalette(true)} />}
+        {!table && view !== "unibox" && view !== "contacts" && view !== "knowledge" && view !== "discovery" && view !== "sequences" && view !== "settings" && <PendingView id={view} onSearch={() => setPalette(true)} />}
         </>}
       </AppShell>
       {palette && <CommandPalette open onClose={() => setPalette(false)} {...cmds} />}

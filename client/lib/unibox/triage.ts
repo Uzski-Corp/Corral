@@ -12,7 +12,7 @@ export const TRIAGE: TriageDef[] = [
   { id: "interested", key: "1", label: "Interested", status: "Interested", then: "Corral drafts a reply that moves to a meeting", handled: false },
   { id: "objection", key: "2", label: "Objection", status: "Objection", then: "Corral drafts an answer from the battlecards", handled: false },
   { id: "referral", key: "3", label: "Referral", status: "Referral", then: "Corral finds the person and drafts an intro", handled: false },
-  { id: "ooo", key: "4", label: "Out of office", status: "OOO", then: "Pauses the sequence until the day after they're back", handled: true },
+  { id: "ooo", key: "4", label: "Out of office", status: "OOO", then: "Pauses the sequence; back in Needs you the day they return", handled: true },
   { id: "unsubscribe", key: "5", label: "Unsubscribe", status: "Unsubscribed", then: "Stops every sequence and never writes to them again", handled: true },
   { id: "bounce", key: "6", label: "Bounce", status: "Bounced", then: "Marks the address bad and looks for another contact", handled: true },
 ];

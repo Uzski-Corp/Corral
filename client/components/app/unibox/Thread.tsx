@@ -71,7 +71,7 @@ export function SentMessage({ text, at, from, pending }: { text: string; at: str
 export function TeammateMessage({ who, email, at, body }: { who: string; email: string; at: string; body: string }) {
   return (
     <div className="u-reply u-reply--team">
-      <div className="u-reply__head"><Avatar id="amara" size={20} /><span className="c-strong">{who}</span><span className="u-teamtag">Teammate</span><span className="c-mono u-reply__addr">{email}</span><span style={{ flex: 1 }} /><span className="c-faint">{at}</span></div>
+      <div className="u-reply__head"><Avatar id="njoroge" size={20} /><span className="c-strong">{who}</span><span className="u-teamtag">Teammate</span><span className="c-mono u-reply__addr">{email}</span><span style={{ flex: 1 }} /><span className="c-faint">{at}</span></div>
       <p className="c-message">{body}</p>
     </div>
   );

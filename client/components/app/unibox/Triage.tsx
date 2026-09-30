@@ -6,6 +6,7 @@ import { Kbd, Tag, cx } from "../primitives";
 import { Icon } from "../icons";
 import { Dialog } from "../Overlays";
 import { useDismiss } from "../useDismiss";
+import { MEETING_WORD } from "@/lib/handoff/handoff";
 import { TRIAGE, isFiltered, toggleTriage, triageCounts, triageOf, type Filters, type Triage } from "@/lib/unibox/triage";
 
 /** Chips over the thread list: one per triage (with its count in the tab), Unread, Clear. Scrolls sideways at 390. */
@@ -30,7 +31,8 @@ export function FilterChips({ list, filters, onChange }: { list: Thread[]; filte
 
 /** The row tag: the status, and "Handled" when Corral dealt with it on its own. */
 export function RowTag({ t }: { t: Thread }) {
-  return <span className="u-rowtag"><Tag status={t.status} />{t.handled && <span className="u-handledtag"><Icon name="check" size={11} />Handled by Corral</span>}</span>;
+  return <span className="u-rowtag"><Tag status={t.status} />{t.handled && <span className="u-handledtag"><Icon name="check" size={11} />Handled by Corral</span>}
+    {t.meeting && t.meeting !== "booked" && <span className={cx("u-handledtag h-rowtag", `is-${t.meeting}`)}><Icon name="cal" size={11} />Meeting {MEETING_WORD[t.meeting].toLowerCase()}</span>}</span>;
 }
 
 /**

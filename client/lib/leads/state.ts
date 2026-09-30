@@ -32,17 +32,21 @@
  *   fit-override     (M5) a fit you set yourself, next to Corral's
  *   fit-disagree     (M5) you told Corral the score is wrong; it re-reads with your note
  *   fit-error        (M5) scoring failed; the last score stands
+ *   meeting-booked | meeting-rescheduled | meeting-cancelled | meeting-no-show | deal-error | deal-duplicate | nurture-off
+ *                    (M8) Nyota Beverages open on its meeting and handoffs; same names as in the Unibox (lib/handoff/state.ts)
  * /app?view=segments&state=
  *   builder          edit the segment's rules with the live count
  *   builder-empty    rules that match nothing
  *   builder-error    an unfinished rule and a bad value
  *   loading | error  as above, for the segment
  */
+import { HANDOFF_REVIEW_STATES } from "@/lib/handoff/state";
 export const LEADS_REVIEW_STATES = [
   "loading", "error", "empty", "no-results", "partial", "selected", "select-all", "bulk-confirm", "bulk-running", "status-menu",
   "detail", "duplicate", "import", "import-file-error", "import-map", "import-map-errors", "import-review", "import-running", "import-done",
   "stale", "provenance",
   "fit", "fit-scoring", "fit-none", "fit-low", "fit-changed", "fit-override", "fit-disagree", "fit-error",
+  ...HANDOFF_REVIEW_STATES,
 ] as const;
 export const SEGMENT_REVIEW_STATES = ["builder", "builder-empty", "builder-error", "loading", "error", "selected", "detail"] as const;
 export type LeadsReviewState = (typeof LEADS_REVIEW_STATES)[number] | (typeof SEGMENT_REVIEW_STATES)[number];

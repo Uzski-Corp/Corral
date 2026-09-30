@@ -18,6 +18,9 @@ import { EXISTING, FIT_80, LEAD_ROWS, TOTAL_COMPANIES, crmExportCsv, tradeShowCs
 import { BULK_CONFIRM_AT, describeRule, filterLeads, nextSort, selectedCount, selectionLabel, sortLeads, type Match, type Rule, type Selection, type Sort } from "@/lib/leads/segment";
 import { guessMapping, parseCsv, type Mapping } from "@/lib/leads/import";
 import type { LeadsReviewState } from "@/lib/leads/state";
+import { isHandoffState } from "@/lib/handoff/state";
+import { HandoffSection } from "../handoff/Handoff";
+import { handoffFor } from "../handoff/data";
 import { DEMO_TODAY_M4, STALE_IDS, STALE_TOTAL, provOf } from "../discovery/data";
 import { FIT_OPEN, fitStatusFor, scoreFor } from "../fit/data";
 import { barOf, shownValue, type FitScore, type FitStatus } from "@/lib/fit/score";
@@ -86,7 +89,7 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
     ids: new Set(state === "selected" || state === "status-menu" ? ["kilima", "pwani", "savanna"] : []),
     all: state === "select-all" || state === "bulk-confirm" || state === "bulk-running",
   }));
-  const [open, setOpen] = useState<string | undefined>(state && FIT_OPEN[state] ? FIT_OPEN[state]!.id : state === "detail" || state === "provenance" ? "kilima" : state === "duplicate" ? "kilimaltd" : state === "stale" ? "kilima" : undefined);
+  const [open, setOpen] = useState<string | undefined>(state && FIT_OPEN[state] ? FIT_OPEN[state]!.id : state === "detail" || state === "provenance" ? "kilima" : state === "duplicate" ? "kilimaltd" : state === "stale" ? "kilima" : isHandoffState(state) ? "nyota" : undefined);
   const [confirm, setConfirm] = useState(state === "bulk-confirm");
   const [running, setRunning] = useState<number | null>(state === "bulk-running" ? 38 : null);
   const [seq, setSeq] = useState("pilot");
@@ -273,6 +276,7 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
             toast({ tone: "success", icon: "refresh", children: `${rows.find((l) => l.id === id)?.company} re-checked`, meta: "email still works · 2 credits" }); }, 1200); }} onStatus={(id, s, fld) => setStatus([id], s, fld)} onEnroll={() => onEnroll(1, lead.id === "pwani")}
           onOpenLead={setOpen}
           fit={fits[lead.id]} fitBusy={rescoring === lead.id} fitFocus={state === "fit"} fitActions={fitActions(lead)}
+          handoff={lead.id === "nyota" ? <HandoffSection key={state ?? "live"} h={handoffFor(isHandoffState(state) ? state : undefined)} /> : undefined}
           onMerge={(id) => { const before = rows; const into = rows.find((l) => l.id === id)!.dupOf!; setRows(rows.filter((l) => l.id !== id)); setOpen(into);
             toast({ tone: "success", children: `Merged into ${rows.find((l) => l.id === into)!.company}`, meta: "added 1 note", action: { label: "Undo", onClick: () => { setRows(before); setOpen(id); } } }); }}
           onKeepBoth={(id) => { setRows(rows.map((l) => (l.id === id ? { ...l, dupOf: undefined } : l))); toast({ children: "Kept both. Corral won't ask about this pair again." }); }} /></div>}

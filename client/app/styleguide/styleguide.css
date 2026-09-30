@@ -249,3 +249,17 @@
 .sg-m7-menuwrap { display: flex; justify-content: flex-end; min-height: 420px; padding-top: 8px; }
 .sg-m7-keys .c-scrim--inline { padding: 8px 0 0; }
 @media (max-width: 900px) { .sg-m7, .sg-m7--thread, .sg-m7--drafts { grid-template-columns: minmax(0, 1fr); } }
+
+/* M8: handoffs and integrations */
+.sg-m8 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; max-width: 1180px; }
+.sg-m8-stack { display: flex; flex-direction: column; gap: 12px; margin: 8px 0 16px; }
+.sg-m8-stack .h-meet, .sg-m8-stack .h-problem { margin: 0; }
+.sg-m8-win { height: 640px; margin: 8px 0 16px; border-radius: var(--radius-card); overflow: hidden; box-shadow: 0 0 0 1px var(--color-border); container: shell / inline-size; }
+.sg-m8-win .i-settings { height: 100%; }
+.sg-m8 .i-flow { margin: 8px 0 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.sg-m8 .i-flow__step:nth-child(3) { border-left: 0; }
+.sg-m8 .i-flow__step:nth-child(n+3) { border-top: 1px solid var(--color-border-subtle); }
+.sg-m8 .i-flow__step:nth-child(3)::before { display: none; }
+.sg-m8 .i-scopes__cols { grid-template-columns: minmax(0, 1fr); }
+.sg-m8 .i-logs, .sg-m8 .i-map { margin-top: 8px; }
+@media (max-width: 900px) { .sg-m8 { grid-template-columns: minmax(0, 1fr); } }

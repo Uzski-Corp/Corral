@@ -29,10 +29,10 @@ export const SOURCES: Source[] = [
   { id: "pitch", name: "ColdTrace pitch 2026.pdf", kind: "pdf", meta: "18 pages · 4.2 MB", passages: 46, cited: 9, by: { name: "Tomás Ibarra", avatar: "tomas" }, added: "Sep 22", updated: "Sep 22", status: { s: "ready" } },
   { id: "site", name: "coldtrace.io", kind: "url", host: "coldtrace.io", meta: "38 pages · re-read weekly", passages: 212, cited: 6, by: { name: "Wanjiru Kamau", avatar: "wanjiru" }, added: "Sep 14", updated: "2h ago", status: { s: "ready" } },
   { id: "kilima", name: "Kilima Dairies case study.docx", kind: "docx", meta: "6 pages · 1.1 MB", passages: 14, cited: 3, by: { name: "Tomás Ibarra", avatar: "tomas" }, added: "Sep 22", updated: "Sep 22", status: { s: "ready" } },
-  { id: "objections", name: "Objection handling v3.docx", kind: "docx", meta: "11 pages · 820 KB", passages: 22, cited: 4, by: { name: "Amara Njoroge", avatar: "amara" }, added: "Sep 19", updated: "Sep 25", status: { s: "ready" } },
+  { id: "objections", name: "Objection handling v3.docx", kind: "docx", meta: "11 pages · 820 KB", passages: 22, cited: 4, by: { name: "Amara Njoroge", avatar: "njoroge" }, added: "Sep 19", updated: "Sep 25", status: { s: "ready" } },
   { id: "pricing", name: "Pricing 2026.md", kind: "md", meta: "2,140 words · 14 KB", passages: 9, cited: 2, by: { name: "Tomás Ibarra", avatar: "tomas" }, added: "Sep 27", updated: "Sep 27", status: { s: "ready" } },
   { id: "pharmacy", name: "coldtrace.io/pharmacy", kind: "url", host: "coldtrace.io", meta: "1 page · re-read weekly", passages: 7, cited: 1, by: { name: "Wanjiru Kamau", avatar: "wanjiru" }, added: "Yesterday", updated: "yesterday", status: { s: "ready" } },
-  { id: "haccp", name: "HACCP logging whitepaper.pdf", kind: "pdf", meta: "12 pages · 2.9 MB", passages: 27, cited: 2, by: { name: "Amara Njoroge", avatar: "amara" }, added: "Sep 16", updated: "Sep 16", status: { s: "ready" } },
+  { id: "haccp", name: "HACCP logging whitepaper.pdf", kind: "pdf", meta: "12 pages · 2.9 MB", passages: 27, cited: 2, by: { name: "Amara Njoroge", avatar: "njoroge" }, added: "Sep 16", updated: "Sep 16", status: { s: "ready" } },
   { id: "faq", name: "Sales FAQ.md", kind: "md", meta: "3,480 words · 22 KB", passages: 19, cited: 3, by: { name: "Tomás Ibarra", avatar: "tomas" }, added: "Sep 14", updated: "Sep 24", status: { s: "ready" } },
 ];
 

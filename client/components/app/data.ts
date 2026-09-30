@@ -1,6 +1,7 @@
 /* Sample content for the Corral design study. People, companies and numbers are illustrative. */
 import type { Triage } from "@/lib/unibox/triage";
 import type { EnrichState } from "@/lib/discovery/run";
+import type { MeetingStatus } from "@/lib/handoff/handoff";
 import type { Status } from "./primitives";
 
 export const LOGOS = {
@@ -60,6 +61,8 @@ export type Thread = {
   history?: ThreadMsg[];
   /** The sequence the reply came from (M6). */
   seq?: { id: string; name: string; step: number; of: number; state: string };
+  /** M8: the Cal.com meeting on this thread, when there is one (ENG-58). */
+  meeting?: MeetingStatus;
 };
 /** One earlier message in a thread. `from`: you (the sequence), them, or a teammate. */
 export type ThreadMsg = { from: "you" | "them" | "teammate"; who: string; at: string; body: string; note?: string; meta?: string };

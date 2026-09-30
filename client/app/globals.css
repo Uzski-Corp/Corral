@@ -8,6 +8,7 @@
 @import "../components/app/fit/fit.css";
 @import "../components/app/sequences/sequences.css";
 @import "../components/app/unibox/unibox.css";
+@import "../components/app/handoff/handoff.css";
 
 /* ============================================================
    Corral — base layer: Open Range app tokens (Tailwind v4).
