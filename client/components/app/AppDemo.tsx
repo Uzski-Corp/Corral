@@ -30,7 +30,7 @@ import type { SequenceReviewState } from "@/lib/sequences/state";
 import { poolSummary } from "@/lib/sequences/sequence";
 import { UniboxView, UNIBOX_TABS, needsYou, UNIBOX_THREADS, uniboxSeedFor, type UniboxTab } from "./unibox";
 import type { UniboxReviewState } from "@/lib/unibox/state";
-import { SettingsView } from "./handoff";
+import { SettingsView, settingsTabLabel, settingsTabOf } from "./handoff";
 import type { SettingsReviewState } from "@/lib/integrations/state";
 import { SECTION_TITLE, sectionOf, type McpReviewState } from "@/lib/mcp/state";
 
@@ -151,12 +151,15 @@ export type AppDemoProps = {
   developer?: McpReviewState;
   /** Contacts review state (M10): /app?view=contacts&state=loading | empty | error */
   contacts?: ContactsReviewState;
+  /** Which Settings page opens: /app?view=settings&tab=mcp | keys | docs | integrations | … (not a review state; works live). */
+  settingsTab?: string;
 };
 export function AppDemo(p: AppDemoProps) { return <ToastProvider><Demo {...p} /></ToastProvider>; }
 
-function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, drawer = false, dialog = false, frame = "viewport", hotkeys = true, className, account, onSignOut, sessionError, kb, leads, discovery, sequences, unibox, settings, developer, contacts }: AppDemoProps) {
+function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, drawer = false, dialog = false, frame = "viewport", hotkeys = true, className, account, onSignOut, sessionError, kb, leads, discovery, sequences, unibox, settings, developer, contacts, settingsTab }: AppDemoProps) {
   const router = useRouter();
-  const [setSection, setSetSection] = useState(developer ? SECTION_TITLE[sectionOf(developer)] : "Integrations");
+  const settingsPage = settingsTabOf(settingsTab);
+  const [setSection, setSetSection] = useState(developer ? SECTION_TITLE[sectionOf(developer)] : settingsPage ? settingsTabLabel(settingsPage) : "Integrations");
   const toast = useToast();
   const signOut = useCallback(() => {
     if (!onSignOut) { router.push("/sign-in"); return; }
@@ -281,7 +284,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
         {view === "discovery" && <DiscoveryView key={discovery ?? "live"} state={discovery} setupOpen={setupOpen} onSetupOpenChange={setSetupOpen} onOpenCompanies={() => go("companies")} />}
         {view === "sequences" && <SequencesView key={sequences ?? "live"} state={sequences} tab={seqTab} onTabChange={setSeqTab} pool={pool} onPoolChange={setPool} newSignal={newSeq} />}
         {view === "contacts" && <ContactsView state={contacts} onFind={() => setView("discovery")} />}
-        {view === "settings" && <SettingsView key={settings ?? developer ?? "live"} state={settings} developer={developer} onSection={setSetSection} />}
+        {view === "settings" && <SettingsView key={settings ?? developer ?? "live"} state={settings} developer={developer} tab={settingsPage} onSection={setSetSection} />}
         {view === "knowledge" && <KnowledgeBase key={kbLive ? "live" : "sample"} state={kb} addOpen={kbAdd} onAddOpenChange={setKbAdd} contained={frame === "contained"} live={kbLive} />}
         {!table && view !== "unibox" && view !== "contacts" && view !== "knowledge" && view !== "discovery" && view !== "sequences" && view !== "settings" && <PendingView id={view} onSearch={() => setPalette(true)} />}
         </>}

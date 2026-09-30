@@ -43,6 +43,7 @@ const VIEWS: ViewId[] = ["unibox", "companies", "discovery", "contacts", "segmen
  *   docs-tool | docs-search-empty  (see lib/mcp/state.ts) · M10 adds keys-loading | keys-owner | keys-member |
  *   keys-member-key (who manages which key)
  * Contacts (M10): ?view=contacts&state=loading | empty | error  (see lib/contacts/state.ts)
+ * Settings page (not a review state, works in production): ?view=settings&tab=mcp | keys | docs | integrations | workspace | team | billing
  * Every review state, by view and kind: lib/states/index.ts, shown at /styleguide#every-state (M10)
  */
 export default async function AppPage({ searchParams }: PageProps<"/app">) {
@@ -59,5 +60,5 @@ export default async function AppPage({ searchParams }: PageProps<"/app">) {
   const settings = settingsReviewState(view, one("state"), reviewStates);
   const developer = mcpReviewState(view, one("state"), reviewStates);
   const contacts = contactsReviewState(view, one("state"), reviewStates);
-  return <AppScreen key={`${preview ?? "live"}-${kb ?? ""}-${leads ?? ""}-${discovery ?? ""}-${sequences ?? ""}-${unibox ?? ""}-${settings ?? ""}-${developer ?? ""}-${contacts ?? ""}`} preview={preview} kb={kb} leads={leads} discovery={discovery} sequences={sequences} unibox={unibox} settings={settings} developer={developer} contacts={contacts} initialView={view} cmdk={one("cmdk") === "1"} collapsed={one("collapsed") === "1"} drawer={one("nav") === "1"} dialog={one("dialog") === "enroll"} />;
+  return <AppScreen key={`${preview ?? "live"}-${kb ?? ""}-${leads ?? ""}-${discovery ?? ""}-${sequences ?? ""}-${unibox ?? ""}-${settings ?? ""}-${developer ?? ""}-${contacts ?? ""}-${view === "settings" ? one("tab") ?? "" : ""}`} preview={preview} kb={kb} leads={leads} discovery={discovery} sequences={sequences} unibox={unibox} settings={settings} developer={developer} contacts={contacts} settingsTab={view === "settings" ? one("tab") : undefined} initialView={view} cmdk={one("cmdk") === "1"} collapsed={one("collapsed") === "1"} drawer={one("nav") === "1"} dialog={one("dialog") === "enroll"} />;
 }

@@ -2,7 +2,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { Mark } from "@/components/app/icons";
 import { COMPARE, PLANS, priceWords, type PlanId } from "@/lib/marketing/plans";
-import { CTA, FOOTER, ROUTES, SAMPLE_NOTE, claim } from "@/lib/marketing/site";
+import { CTA, CTA_SIGNED_IN, FOOTER, ROUTES, SAMPLE_NOTE, claim } from "@/lib/marketing/site";
+import { VisitorLink } from "@/components/marketing/site/VisitorLink";
 import { ToConfirm } from "../site";
 
 export { SAMPLE_NOTE };
@@ -28,7 +29,7 @@ export function Pricing() {
             <h3>{p.name}<em>{p.tag}</em></h3><p>{p.line}</p>
             <div className="fl-plan__price"><span>{priceWords(p)}</span>{p.price !== null && <span>a month</span>}</div>
             <dl>{ROWS.map((a) => <div key={a}><dt>{a}</dt><dd>{cell(a, p.id)}</dd></div>)}</dl>
-            <Link className={`fl-btn${p.primary ? "" : " fl-btn--line"}`} href={p.price === null ? CTA.walkthrough : CTA.start}>{p.cta}</Link>
+            <VisitorLink className={`fl-btn${p.primary ? "" : " fl-btn--line"}`} href={p.price === null ? CTA.walkthrough : CTA.start} signedInHref={p.price === null ? CTA.walkthrough : CTA_SIGNED_IN.start}>{p.cta}</VisitorLink>
           </div>
         ))}
       </div>
@@ -42,7 +43,7 @@ export function Closing() {
     <>
       <section className="fl-close" aria-label="Get started">
         <Image className="fl-bg" src="/corral/en/acacia-plate.jpg" alt="" fill sizes="100vw" />
-        <div className="fl-close__inner"><Mark size={30} /><h2>Fewer, better, answered.</h2><Link className="fl-btn" href={CTA.start}>Start with one product</Link></div>
+        <div className="fl-close__inner"><Mark size={30} /><h2>Fewer, better, answered.</h2><VisitorLink className="fl-btn" href={CTA.start} signedInHref={CTA_SIGNED_IN.start}>Start with one product</VisitorLink></div>
         <span className="fl-cap"><b>Pl. VI</b>The same acacia, evening.</span>
       </section>
       <footer className="fl-foot">

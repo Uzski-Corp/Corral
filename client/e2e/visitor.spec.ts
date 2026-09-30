@@ -29,12 +29,19 @@ test.describe("signed-in marketing pages", () => {
     expect(await audit(page)).toEqual([]);
 
     await page.goto("/fenceline");
-    await expect(page.getByRole("link", { name: "Start with one product" }).first()).toHaveAttribute("href", "/app");
+    const starts = page.getByRole("link", { name: "Start with one product" });
+    await expect(starts.first()).toHaveAttribute("href", "/app");
+    for (const l of await starts.all()) await expect(l).toHaveAttribute("href", "/app");   // hero, plan, close
+
+    await page.goto("/pricing");
+    await expect(page.getByRole("link", { name: "Start a 14-day trial" }).first()).toHaveAttribute("href", "/app");
+    await expect(page.getByRole("link", { name: "Book a walkthrough" }).first()).toHaveAttribute("href", /^mailto:/);
 
     await page.goto("/mcp");
-    await expect(page.getByRole("link", { name: "Sign in and connect" })).toHaveAttribute("href", "/app?view=settings&state=mcp");
+    await expect(page.getByRole("link", { name: "Sign in and connect" })).toHaveAttribute("href", "/app?view=settings&tab=mcp");
 
-    await page.goto("/app");
+    await page.goto("/app?view=settings&tab=mcp");   // the connect target opens Developers → MCP in a live (non-review) build
+    await expect(page.getByRole("navigation", { name: "Settings" }).getByRole("button", { name: "MCP" })).toHaveAttribute("aria-current", "page");
     await page.getByRole("button", { name: "Account" }).click();
     await page.getByRole("menuitem", { name: "Sign out" }).click();
     await expect(page).toHaveURL(`${WEB}/`);
