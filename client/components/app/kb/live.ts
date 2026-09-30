@@ -225,7 +225,11 @@ export type LiveKb = {
 };
 
 const upsert = (list: ApiSource[], s: ApiSource) => (list.some((x) => x.id === s.id) ? list.map((x) => (x.id === s.id ? s : x)) : [s, ...list]);
-export const passageRows = (list: Passage[]) => list.map((p) => ({ loc: p.loc ?? `§${p.ordinal + 1}`, text: p.text }));
+/** Bau's passage column fits a short locator ("p. 14", "§2"). Markdown passages come back located by
+ *  their heading ("ColdTrace T4 wireless temperature sensors"), which has no design yet, so those show "§n". */
+export const MAX_LOC = 10;
+export const passageRows = (list: Passage[]) =>
+  list.map((p) => ({ loc: p.loc && p.loc.length <= MAX_LOC ? p.loc : `§${p.ordinal + 1}`, text: p.text }));
 
 export function useLiveKb({ api, products, me, now: nowProp }: { api: KbApi; products: KbProducts; me: Person; now?: () => Date }): LiveKb {
   const toast = useToast();

@@ -377,6 +377,8 @@ describe("useLiveKb", () => {
     expect(result.current.passages.s2).toBeUndefined();
     act(() => result.current.loadPassages("s1"));
     expect(passageRows([])).toEqual([]);
+    expect(passageRows([{ id: "a", ordinal: 4, loc: "ColdTrace T4 wireless temperature sensors", text: "t" }, { id: "b", ordinal: 0, loc: "p. 14", text: "u" }]))
+      .toEqual([{ loc: "§5", text: "t" }, { loc: "p. 14", text: "u" }]);
   });
 
   it("adds uploads to the list, creating the product first when there is none", async () => {
