@@ -1,5 +1,6 @@
 "use client";
-import { useCallback, useMemo, useRef, useState, type DragEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import type { AppData } from "@/components/session/AppData";
 import type { KbReviewState } from "@/lib/kb/state";
 import { Icon } from "../icons";
 import { Dialog } from "../Overlays";
@@ -12,7 +13,8 @@ import { KnowledgeEditor } from "./Editor";
 import { advance, isBusy, useTicker } from "./parts";
 import { SourceDetail } from "./SourceDetail";
 import { SourceList, type SourceFilter } from "./SourceList";
-import { DropZone, UploadDialog, UploadTray, UrlAdder, failed, fileItem, useUploadQueue, type QueueItem } from "./Upload";
+import { DropZone, UploadDialog, UploadTray, UrlAdder, failed, fileItem, useUploadQueue, type QueueItem, type UploadQueue } from "./Upload";
+import { useLiveKb, type KbProducts } from "./live";
 
 const MB = 1048576;
 /** Queues for the upload review states: a live-looking mix, and every way an upload can fail. */
@@ -38,23 +40,54 @@ export function reviewQueue(state?: KbReviewState): QueueItem[] {
 
 const FROZEN: KbReviewState[] = ["loading", "error", "sources", "source", "partial", "failed", "unreadable", "interrupted", "upload", "upload-errors", "dragging", "tray", "editing", "save-error", "conflict"];
 
-export function KnowledgeBase({ state, addOpen, onAddOpenChange, contained }: {
+/** What the page needs from its data, whether that's Bau's sample knowledge base or the API (live.ts). */
+export type KbModel = {
+  phase: "loading" | "error" | "ready";
+  /** The mono line under "Couldn’t load the knowledge base": the request that failed. */
+  errorDetail: string;
+  retry: () => void;
+  productName: string;
+  sources: Source[];
+  knowledge: KSection[];
+  setKnowledge: (next: KSection[] | ((k: KSection[]) => KSection[])) => void;
+  q: UploadQueue;
+  /** Names already in this knowledge base, for the duplicate check before upload. */
+  existing: string[];
+  reread: (id: string) => void;
+  remove: (id: string) => void;
+  /** "Replace file": the next file added replaces this source. */
+  replace: (id: string) => void;
+  /** Replace on a duplicate in the upload queue. */
+  replaceFromQueue: (it: QueueItem) => void;
+  /** The API's first passages per source; undefined uses the sample passages. */
+  passages?: Record<string, { loc: string; text: string }[] | undefined>;
+  loadPassages?: (id: string) => void;
+};
+
+type KbProps = {
   state?: KbReviewState; addOpen: boolean; onAddOpenChange: (open: boolean) => void; /** styleguide frame: tray and overlays stay inside */ contained?: boolean;
-}) {
+  /** Present when the app is signed in against the API (and no review state is set): real data. */
+  live?: { data: AppData; products: KbProducts };
+};
+
+export function KnowledgeBase(props: KbProps) {
+  return props.live && !props.state ? <LiveKnowledgeBase {...props} live={props.live} /> : <SampleKnowledgeBase {...props} />;
+}
+
+function LiveKnowledgeBase({ live, ...props }: KbProps & { live: NonNullable<KbProps["live"]> }) {
+  const m = useLiveKb({ api: live.data.kb, products: live.products, me: live.data.person });
+  const model: KbModel = { ...m, errorDetail: m.errorDetail ?? "", productName: live.products.selected?.name ?? live.data.me.organization.name };
+  return <KbView {...props} m={model} isLive />;
+}
+
+/** Bau's sample knowledge base, with the simulated pipeline and review states (unchanged from M2/M10b). */
+function useSampleKb(state: KbReviewState | undefined): KbModel {
   const toast = useToast();
   const live = !state || !FROZEN.includes(state);
   const [phase, setPhase] = useState<"loading" | "error" | "ready">(state === "loading" ? "loading" : state === "error" ? "error" : "ready");
   const [sources, setSources] = useState<Source[]>(() => (state === "empty" ? [] : state === "drafting" ? [{ ...SOURCES[4], id: "pitch", status: { s: "processing", stage: "parse", pct: 40 } }]
     : state === "unreadable" || state === "interrupted" ? [REVIEW_SOURCES[state], ...SOURCES] : SOURCES));
   const [knowledge, setKnowledge] = useState<KSection[]>(state === "empty" || state === "drafting" ? [] : KNOWLEDGE);
-  const sourceStates: KbReviewState[] = ["sources", "source", "partial", "failed", "unreadable", "interrupted", "tray", "dragging"];
-  const [tab, setTab] = useState<"knowledge" | "sources">(state && sourceStates.includes(state) ? "sources" : "knowledge");
-  const [selected, setSelected] = useState<string | undefined>(state === "source" ? "pitch" : state === "partial" ? "gateway" : state === "failed" ? "cert"
-    : state === "unreadable" || state === "interrupted" ? REVIEW_SOURCES[state].id : undefined);
-  const [filter, setFilter] = useState<SourceFilter>("all");
-  const [dragging, setDragging] = useState(state === "dragging");
-  const [removing, setRemoving] = useState<string | undefined>();
-  const depth = useRef(0);
 
   const onDone = useCallback((it: QueueItem) => {
     const now: Source = { id: `up-${it.id}`, name: it.name, kind: it.kind, host: it.host, meta: it.kind === "url" ? (it.whole ? "Whole section · re-read weekly" : "1 page · re-read weekly") : `${it.size ? `${Math.round(it.size / MB * 10) / 10} MB` : ""}`,
@@ -76,13 +109,9 @@ export function KnowledgeBase({ state, addOpen, onAddOpenChange, contained }: {
   if (knowledge.length === 0 && sources.some((s) => s.status.s === "ready")) setKnowledge(KNOWLEDGE);
 
   const existing = useMemo(() => sources.map((s) => s.name), [sources]);
-  const openSource = (id: string) => { setTab("sources"); setSelected(id); };
-  const jump = (itemId: string) => { setTab("knowledge"); setTimeout(() => document.getElementById(`k-item-${itemId}`)?.scrollIntoView({ block: "center", behavior: "smooth" }), 60); };
-  const action = (id: string, a: "reread" | "replace" | "remove") => {
+  const reread = (id: string) => {
     const s = sources.find((x) => x.id === id);
     if (!s) return;
-    if (a === "remove") { setRemoving(id); return; }
-    if (a === "replace") { onAddOpenChange(true); return; }
     setSources((l) => l.map((x) => (x.id === id ? { ...x, status: { s: "processing", stage: x.kind === "url" ? "upload" : "scan", pct: 0 } } : x)));
     toast({ icon: "refresh", children: `Reading ${s.name} again`, meta: "the current version stays searchable meanwhile" });
   };
@@ -91,9 +120,46 @@ export function KnowledgeBase({ state, addOpen, onAddOpenChange, contained }: {
     const before = { sources, knowledge };
     setSources((l) => l.filter((x) => x.id !== id));
     setKnowledge((ks) => ks.map((sec) => ({ ...sec, items: sec.items.map((i) => (i.cites.some((c) => c.src === id) && i.cites.every((c) => c.src === id) ? { ...i, flag: { f: "stale" as const, removed: s.name, when: "today" } } : i)) })));
+    toast({ tone: "success", children: `Removed ${s.name}`, action: { label: "Undo", onClick: () => { setSources(before.sources); setKnowledge(before.knowledge); } } });
+  };
+  return {
+    phase, errorDetail: `GET /api/v1/products/${PRODUCT.slug}/knowledge · 502`, retry: () => { setPhase("loading"); setTimeout(() => setPhase("ready"), 800); },
+    productName: PRODUCT.name, sources, knowledge, setKnowledge, q, existing, reread, remove, replace: () => {},
+    replaceFromQueue: (it) => toast({ icon: "upload", children: `Replacing ${it.name}`, meta: "the old copy stays searchable until the new one is read" }),
+  };
+}
+
+function SampleKnowledgeBase(props: KbProps) {
+  const m = useSampleKb(props.state);
+  return <KbView {...props} m={m} />;
+}
+
+function KbView({ state, addOpen, onAddOpenChange, contained, m, isLive: live }: Omit<KbProps, "live"> & { m: KbModel; isLive?: boolean }) {
+  const { phase, sources, knowledge, setKnowledge, q, existing } = m;
+  const sourceStates: KbReviewState[] = ["sources", "source", "partial", "failed", "unreadable", "interrupted", "tray", "dragging"];
+  // Live: nothing is drafted yet (the API has no knowledge drafting), so open on what's real.
+  const [tab, setTab] = useState<"knowledge" | "sources">(live || (state && sourceStates.includes(state)) ? "sources" : "knowledge");
+  const [selected, setSelected] = useState<string | undefined>(state === "source" ? "pitch" : state === "partial" ? "gateway" : state === "failed" ? "cert"
+    : state === "unreadable" || state === "interrupted" ? REVIEW_SOURCES[state].id : undefined);
+  const [filter, setFilter] = useState<SourceFilter>("all");
+  const [dragging, setDragging] = useState(state === "dragging");
+  const [removing, setRemoving] = useState<string | undefined>();
+  const depth = useRef(0);
+  const { loadPassages } = m;
+  useEffect(() => { if (selected) loadPassages?.(selected); }, [selected, loadPassages]);
+
+  const openSource = (id: string) => { setTab("sources"); setSelected(id); };
+  const jump = (itemId: string) => { setTab("knowledge"); setTimeout(() => document.getElementById(`k-item-${itemId}`)?.scrollIntoView({ block: "center", behavior: "smooth" }), 60); };
+  const action = (id: string, a: "reread" | "replace" | "remove") => {
+    if (!sources.some((x) => x.id === id)) return;
+    if (a === "remove") { setRemoving(id); return; }
+    if (a === "replace") { m.replace(id); onAddOpenChange(true); return; }
+    m.reread(id);
+  };
+  const remove = (id: string) => {
+    m.remove(id);
     if (selected === id) setSelected(undefined);
     setRemoving(undefined);
-    toast({ tone: "success", children: `Removed ${s.name}`, action: { label: "Undo", onClick: () => { setSources(before.sources); setKnowledge(before.knowledge); } } });
   };
 
   const onDrag = (e: DragEvent, kind: "enter" | "leave" | "drop") => {
@@ -109,6 +175,7 @@ export function KnowledgeBase({ state, addOpen, onAddOpenChange, contained }: {
   const remUsed = rem ? citedBy(rem.id, knowledge).length : 0;
   const sel = selected ? sources.find((s) => s.id === selected) : undefined;
   const empty = phase === "ready" && sources.length === 0;
+  const product = m.productName;
 
   return (
     <div className={cx("c-view k-kb", contained && "is-contained")} onDragEnter={(e) => onDrag(e, "enter")} onDragOver={(e) => { if (Array.from(e.dataTransfer?.types ?? []).includes("Files")) e.preventDefault(); }}
@@ -122,20 +189,20 @@ export function KnowledgeBase({ state, addOpen, onAddOpenChange, contained }: {
       {phase === "loading" && <KbSkeleton tab={tab} />}
       {phase === "error" && (
         <div className="c-view c-view--center">
-          <ErrorState title="Couldn’t load the knowledge base" detail={`GET /api/v1/products/${PRODUCT.slug}/knowledge · 502`}
-            actions={<Button variant="primary" onClick={() => { setPhase("loading"); setTimeout(() => setPhase("ready"), 800); }}><Icon name="refresh" />Try again</Button>}>
+          <ErrorState title="Couldn’t load the knowledge base" detail={m.errorDetail}
+            actions={<Button variant="primary" onClick={m.retry}><Icon name="refresh" />Try again</Button>}>
             Your sources and edits are safe; this is a connection problem. Corral keeps using the last saved version in emails meanwhile.
           </ErrorState>
         </div>
       )}
-      {empty && <FirstRun onFiles={(f) => { q.addFiles(f, existing); onAddOpenChange(true); }} onUrl={(h, p, w) => { q.addUrl(h, p, w); onAddOpenChange(true); }} />}
+      {empty && <FirstRun product={product} onFiles={(f) => { q.addFiles(f, existing); onAddOpenChange(true); }} onUrl={(h, p, w) => { q.addUrl(h, p, w); onAddOpenChange(true); }} />}
 
       {phase === "ready" && !empty && tab === "knowledge" && (
         <div className="c-view__scroll">
           {knowledge.length ? (
             <KnowledgeEditor sections={knowledge} onChange={setKnowledge} sources={sources} onOpenSource={openSource} onShowSources={() => setTab("sources")}
               initialEditing={state === "editing" || state === "save-error" ? "proof-kilima" : undefined} failFirstSave={state === "save-error"} initialFocus={state === "conflict" ? "price" : undefined} />
-          ) : <Drafting sources={sources} />}
+          ) : <Drafting sources={live && busy ? sources.filter(isBusy) : sources} />}
         </div>
       )}
       {phase === "ready" && !empty && tab === "sources" && (
@@ -143,17 +210,18 @@ export function KnowledgeBase({ state, addOpen, onAddOpenChange, contained }: {
           <div className="k-split__list">
             <SourceList sources={sources} filter={filter} onFilter={setFilter} selected={selected} onOpen={setSelected} onAction={action} onAdd={() => onAddOpenChange(true)} />
           </div>
-          {sel && <div className="k-split__detail"><SourceDetail key={sel.id} src={sel} knowledge={knowledge} onBack={() => setSelected(undefined)} onAction={action} onJump={jump} /></div>}
+          {sel && <div className="k-split__detail"><SourceDetail key={sel.id} src={sel} knowledge={knowledge} onBack={() => setSelected(undefined)} onAction={action} onJump={jump}
+            passages={m.passages ? m.passages[sel.id] ?? [] : undefined} /></div>}
         </div>
       )}
 
       {dragging && (
         <div className="k-dropover" aria-hidden="true">
-          <div className="k-dropover__card"><Icon name="upload" size={18} /><b>Drop to add to {PRODUCT.name}</b><span>PDF, DOCX or Markdown · up to 25 MB each</span></div>
+          <div className="k-dropover__card"><Icon name="upload" size={18} /><b>Drop to add to {product}</b><span>PDF, DOCX or Markdown · up to 25 MB each</span></div>
         </div>
       )}
-      <UploadDialog open={addOpen} onClose={() => onAddOpenChange(false)} q={q} product={PRODUCT.name} existing={existing} inline={contained}
-        onReplace={(it) => toast({ icon: "upload", children: `Replacing ${it.name}`, meta: "the old copy stays searchable until the new one is read" })} />
+      <UploadDialog open={addOpen} onClose={() => onAddOpenChange(false)} q={q} product={product} existing={existing} inline={contained}
+        onReplace={m.replaceFromQueue} />
       {!addOpen && (state === "tray" || q.busy || q.items.some((i) => i.state === "error")) && <UploadTray q={q} onOpen={() => onAddOpenChange(true)} inline={contained} />}
       <Dialog open={!!rem} onClose={() => setRemoving(undefined)} tone="danger" title={`Remove ${rem?.name ?? ""}?`}
         description={rem?.passages ? `Corral stops searching its ${rem.passages} passages.` : "Corral stops using it."}
@@ -166,12 +234,12 @@ export function KnowledgeBase({ state, addOpen, onAddOpenChange, contained }: {
 }
 
 /* First run: the page is the upload. No wizard, no modal: the drop zone is the empty state. */
-function FirstRun({ onFiles, onUrl }: { onFiles: (f: File[]) => void; onUrl: (host: string, path: string, whole: boolean) => void }) {
+function FirstRun({ product, onFiles, onUrl }: { product: string; onFiles: (f: File[]) => void; onUrl: (host: string, path: string, whole: boolean) => void }) {
   return (
     <div className="c-view__scroll">
       <div className="k-first">
         <div className="k-first__main">
-          <span className="k-eyebrow">Product knowledge · {PRODUCT.name}</span>
+          <span className="k-eyebrow">Product knowledge · {product}</span>
           <h1>Teach Corral what you sell</h1>
           <p className="k-lede">Add the documents your best rep would read before a first call. Corral reads them, drafts what it learns into one page you can edit, and cites every line back to where it came from.</p>
           <DropZone onFiles={onFiles} />

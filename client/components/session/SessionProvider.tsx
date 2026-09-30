@@ -38,6 +38,8 @@ export type SessionValue = {
   error: ApiError | null;
   signOut(): Promise<Result<void, ApiError>>;
   refresh(): Promise<Result<void, ApiError>>;
+  /** This deploy's config, so the app's data layer talks to the same API as the session. */
+  config: ClientConfig;
 };
 
 export type Navigator = { assign(url: string): void; replace(url: string): void };
@@ -144,9 +146,9 @@ export function SessionProvider({ children, config: configProp, api: apiProp, na
   }, [api, navigator, router]);
 
   const value = useMemo<SessionValue>(() => ({
-    status, me, error, signOut, refresh,
+    status, me, error, signOut, refresh, config,
     account: me ? toAccount(me) : null,
-  }), [status, me, error, signOut, refresh]);
+  }), [status, me, error, signOut, refresh, config]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

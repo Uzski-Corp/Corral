@@ -14,7 +14,12 @@ export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 export type RequestOptions<T> = {
   method?: HttpMethod;
+  /** JSON body. Mutually exclusive with `form`. */
   body?: unknown;
+  /** Multipart body (file uploads). The browser sets the boundary, so no Content-Type is sent. */
+  form?: FormData;
+  /** Upload progress, 0–100, for a `form` body. Uses XMLHttpRequest, since fetch can't report it. */
+  onUploadProgress?: (pct: number) => void;
   query?: Record<string, string | undefined>;
   signal?: AbortSignal;
   timeoutMs?: number;
@@ -53,6 +58,35 @@ async function readBody(res: Response): Promise<Result<unknown, string>> {
   }
 }
 
+/** fetch()-shaped XMLHttpRequest, only so an upload can report progress. Rejects like fetch does:
+ *  AbortError when the signal fires, TypeError when the request never got an answer. */
+export function xhrFetch(url: string, init: RequestInit, onProgress: (pct: number) => void): Promise<Response> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open(init.method ?? "GET", url);
+    xhr.withCredentials = init.credentials === "include";
+    for (const [k, v] of Object.entries((init.headers ?? {}) as Record<string, string>)) xhr.setRequestHeader(k, v);
+    xhr.upload.onprogress = (e) => { if (e.lengthComputable && e.total > 0) onProgress(Math.min(100, (e.loaded / e.total) * 100)); };
+    xhr.onload = () => {
+      const headers = new Headers();
+      for (const line of xhr.getAllResponseHeaders().trim().split(/[\r\n]+/)) {
+        const i = line.indexOf(":");
+        if (i > 0) headers.append(line.slice(0, i).trim(), line.slice(i + 1).trim());
+      }
+      const nullBody = xhr.status === 204 || xhr.status === 205;
+      resolve(new Response(nullBody ? null : xhr.responseText, { status: xhr.status, statusText: xhr.statusText, headers }));
+    };
+    xhr.onerror = () => reject(new TypeError("Network request failed"));
+    xhr.onabort = () => reject(new DOMException("The operation was aborted.", "AbortError"));
+    const signal = init.signal;
+    if (signal) {
+      if (signal.aborted) { reject(new DOMException("The operation was aborted.", "AbortError")); return; }
+      signal.addEventListener("abort", () => xhr.abort(), { once: true });
+    }
+    xhr.send(init.body as XMLHttpRequestBodyInit | null);
+  });
+}
+
 export function createApiClient({ baseUrl, timeoutMs: defaultTimeout, fetch: fetchImpl }: ApiClientOptions): ApiClient {
   const base = baseUrl.replace(/\/+$/, "");
   const doFetch = fetchImpl ?? ((input: RequestInfo | URL, init?: RequestInit) => globalThis.fetch(input, init));
@@ -70,17 +104,21 @@ export function createApiClient({ baseUrl, timeoutMs: defaultTimeout, fetch: fet
 
     try {
       const headers: Record<string, string> = { Accept: "application/json" };
-      if (o.body !== undefined) headers["Content-Type"] = "application/json";
+      if (o.body !== undefined && !o.form) headers["Content-Type"] = "application/json";
+      const init: RequestInit = {
+        method,
+        headers,
+        body: o.form ?? (o.body === undefined ? undefined : JSON.stringify(o.body)),
+        credentials: "include",
+        cache: "no-store",
+        signal: controller.signal,
+      };
+      const url = buildUrl(base, path, o.query);
       let res: Response;
       try {
-        res = await doFetch(buildUrl(base, path, o.query), {
-          method,
-          headers,
-          body: o.body === undefined ? undefined : JSON.stringify(o.body),
-          credentials: "include",
-          cache: "no-store",
-          signal: controller.signal,
-        });
+        res = o.form && o.onUploadProgress && !fetchImpl && typeof XMLHttpRequest !== "undefined"
+          ? await xhrFetch(url, init, o.onUploadProgress)
+          : await doFetch(url, init);
       } catch (e) {
         if (timedOut) return err({ kind: "timeout", op, timeoutMs, message: `timed out after ${timeoutMs}ms` });
         if (controller.signal.aborted) return err({ kind: "aborted", op, message: "request was cancelled" });

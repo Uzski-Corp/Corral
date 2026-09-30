@@ -17,6 +17,8 @@ import type { ContactsReviewState } from "@/lib/contacts/state";
 import { ToastProvider, useToast } from "./Toaster";
 import { SessionUnavailable, type SessionUnavailableProps } from "./SessionUnavailable";
 import { KnowledgeBase, PRODUCT } from "./kb";
+import { useKbProducts } from "./kb/live";
+import { useAppData } from "@/components/session/AppData";
 import type { KbReviewState } from "@/lib/kb/state";
 import { LeadsView } from "./leads";
 import type { LeadsReviewState } from "@/lib/leads/state";
@@ -181,6 +183,11 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
   const [pool, setPool] = useState(() => seedFor(sequences).pool);
   const [newSeq, setNewSeq] = useState(0);
   const poolNow = poolSummary(pool);
+  // Signed in against the API (and not showing a review state): the knowledge base uses real data.
+  const data = useAppData();
+  const kbProducts = useKbProducts(data && !kb ? data.kb : null, { active: view === "knowledge", workspace: data?.me.organization.name ?? "" });
+  const kbLive = data && kbProducts ? { data, products: kbProducts } : undefined;
+  const productName = kbLive ? kbProducts?.selected?.name ?? data?.me.organization.name ?? PRODUCT.name : PRODUCT.name;
 
   const go = useCallback((v: ViewId) => { setView(v); setSegment(v === "segments" ? SAVED_SEGMENTS[0][0] : undefined); setBuilderOpen(false); }, []);
 
@@ -231,7 +238,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
   const label = APP_NAV.find((n) => n.id === view)!.label;
   const ws = typeof account === "object" ? account.workspace : account === undefined ? "ColdTrace" : "Corral";
   const crumbs = view === "unibox" ? [ws, "Unibox", UNIBOX_TABS.find((x) => x.id === tab)!.label]
-    : view === "knowledge" ? [ws, "Knowledge base", PRODUCT.name]
+    : view === "knowledge" ? [ws, "Knowledge base", productName]
     : view === "sequences" && seqTab === "pool" ? [ws, "Sequences", "Mailbox pool"]
     : view === "settings" ? [ws, "Settings", setSection]
     : segment ? [ws, "Segments", segment] : [ws, label];
@@ -244,8 +251,10 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
       <Button kbd="C" onClick={() => toast({ icon: "mail", children: "Compose", meta: "sample action" })}>Compose</Button>
     </>
     : view === "knowledge" ? <>
-      <DropdownMenu align="end" width={240} label="Product" items={[{ heading: "Knowledge for" }, { label: "ColdTrace Sensors", checked: true, meta: "12 sources" }, { label: "ColdTrace Gateway", meta: "4 sources", onSelect: () => toast({ icon: "book", children: "ColdTrace Gateway", meta: "sample action" }) }]}
-        trigger={(tp) => <button type="button" className="c-btn c-btn--quiet k-prodbtn" {...tp}><Icon name="box" />ColdTrace Sensors<Icon name="down" size={12} /></button>} />
+      <DropdownMenu align="end" width={240} label="Product" items={kbLive && kbProducts
+          ? [{ heading: "Knowledge for" }, ...kbProducts.products.map((pr) => ({ label: pr.name, checked: pr.id === kbProducts.selected?.id, onSelect: () => kbProducts.select(pr.id) }))]
+          : [{ heading: "Knowledge for" }, { label: "ColdTrace Sensors", checked: true, meta: "12 sources" }, { label: "ColdTrace Gateway", meta: "4 sources", onSelect: () => toast({ icon: "book", children: "ColdTrace Gateway", meta: "sample action" }) }]}
+        trigger={(tp) => <button type="button" className="c-btn c-btn--quiet k-prodbtn" {...tp}><Icon name="box" />{productName}<Icon name="down" size={12} /></button>} />
       <Button variant="primary" onClick={() => setKbAdd(true)}><Icon name="plus" />Add sources</Button>
     </>
     : view === "companies" ? <><Button onClick={() => setImportOpen(true)}><Icon name="upload" />Import CSV</Button><Button variant="primary" onClick={findCompanies}><Icon name="globe" />Find companies</Button></>
@@ -271,7 +280,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
         {view === "sequences" && <SequencesView key={sequences ?? "live"} state={sequences} tab={seqTab} onTabChange={setSeqTab} pool={pool} onPoolChange={setPool} newSignal={newSeq} />}
         {view === "contacts" && <ContactsView state={contacts} onFind={() => setView("discovery")} />}
         {view === "settings" && <SettingsView key={settings ?? developer ?? "live"} state={settings} developer={developer} onSection={setSetSection} />}
-        {view === "knowledge" && <KnowledgeBase state={kb} addOpen={kbAdd} onAddOpenChange={setKbAdd} contained={frame === "contained"} />}
+        {view === "knowledge" && <KnowledgeBase key={kbLive ? "live" : "sample"} state={kb} addOpen={kbAdd} onAddOpenChange={setKbAdd} contained={frame === "contained"} live={kbLive} />}
         {!table && view !== "unibox" && view !== "contacts" && view !== "knowledge" && view !== "discovery" && view !== "sequences" && view !== "settings" && <PendingView id={view} onSearch={() => setPalette(true)} />}
         </>}
       </AppShell>

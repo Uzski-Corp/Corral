@@ -4,6 +4,7 @@ import { AppDemo, type AppDemoProps, type SessionUnavailableProps, type ShellAcc
 import type { ApiError } from "@/lib/api/errors";
 import type { AppReviewState } from "@/lib/auth/appState";
 import { useSession, type SessionValue } from "./SessionProvider";
+import { AppDataProvider, appDataFor } from "./AppData";
 
 /** What the shell shows for the account: the sample person in review, skeletons until /me lands,
  *  and a static "not connected" row once the check has failed without ever confirming a session. */
@@ -42,10 +43,19 @@ export function AppScreen({ preview, ...props }: Omit<AppDemoProps, "account" | 
     return { detail: sessionErrorDetail(session.error), checkedAt: hhmm(), onRetry: async () => (await session.refresh()).ok };
   }, [preview, liveError, session]);
 
+  // Real data once /me has confirmed who is signed in; until then (and in review) Bau's sample data.
+  const me = session?.status === "authenticated" ? session.me : null;
+  const config = session?.config;
+  const data = useMemo(() => (me && config && !preview ? appDataFor(me, config) : null), [me, config, preview]);
+
   if (preview) {
     const account: ShellAccountProp = preview === "api-down" ? "unavailable" : preview === "account-loading" ? "loading" : preview === "no-avatar" ? SAMPLE_NO_AVATAR : undefined;
     const fail = preview === "signout-failed" ? async () => { await new Promise((r) => setTimeout(r, 500)); return { ok: false }; } : undefined;
     return <AppDemo {...props} account={account} onSignOut={fail} sessionError={sessionError} />;
   }
-  return <AppDemo {...props} account={shellAccount(session)} onSignOut={session ? onSignOut : undefined} sessionError={sessionError} />;
+  return (
+    <AppDataProvider value={data}>
+      <AppDemo {...props} account={shellAccount(session)} onSignOut={session ? onSignOut : undefined} sessionError={sessionError} />
+    </AppDataProvider>
+  );
 }

@@ -1,4 +1,4 @@
-import type { Failure, SourceKind, Stage } from "@/lib/kb/upload";
+import type { Failure, PartialReason, SourceKind, Stage } from "@/lib/kb/upload";
 
 /* Sample knowledge base for ColdTrace Sensors (M2 design data; ENG-65 shapes the real one). */
 
@@ -8,7 +8,9 @@ import type { Failure, SourceKind, Stage } from "@/lib/kb/upload";
 export type SourceStatus =
   | { s: "ready" }
   | { s: "processing"; stage: Stage; pct: number; note?: string }
-  | { s: "partial"; read: number; total: number; unit: "pages"; note: string; skipped: string }
+  | { s: "partial"; read: number; total: number; unit: "pages"; note: string; skipped: string;
+      /** From the API's `skipped_reason` (lib/kb/map.ts). Without it the copy reads the note (partialReason). */
+      why?: PartialReason }
   | { s: "failed"; failure: Failure; at: Stage; note?: string; when?: string };
 
 export type Source = {
@@ -16,6 +18,8 @@ export type Source = {
   /** "18 pages · 4.2 MB" / "38 pages read · weekly" */
   meta: string; passages?: number; cited: number;
   by: { name: string; avatar?: string }; added: string; updated: string; status: SourceStatus;
+  /** API sources: worker tries of the current read (SourceOut `attempts`). */
+  attempts?: number;
 };
 
 export const PRODUCT = { name: "ColdTrace Sensors", slug: "coldtrace-sensors", letter: "S" };

@@ -38,13 +38,15 @@ export function pipelineSteps(src: Source): Step[] {
 
 const STEP_ICON = { done: "check", live: "clock", warn: "alert", fail: "x", todo: "check" } as const;
 
-export function SourceDetail({ src, knowledge, onBack, onAction, onJump }: {
+export function SourceDetail({ src, knowledge, onBack, onAction, onJump, passages: given }: {
   src: Source; knowledge?: KSection[]; onBack?: () => void;
   onAction?: (id: string, a: "reread" | "replace" | "remove") => void; onJump?: (itemId: string) => void;
+  /** The source's first passages (the API's); defaults to the sample passages. */
+  passages?: { loc: string; text: string }[];
 }) {
   const st = src.status;
   const used = citedBy(src.id, knowledge);
-  const passages = PASSAGES[src.id] ?? [];
+  const passages = given ?? PASSAGES[src.id] ?? [];
   const steps = pipelineSteps(src);
   return (
     <aside className="k-detail" aria-label={`${src.name} details`}>
@@ -91,7 +93,7 @@ export function SourceDetail({ src, knowledge, onBack, onAction, onJump }: {
         <section className="k-detail__sec" aria-labelledby={`${src.id}-x`}>
           <h3 id={`${src.id}-x`}>Passages <span className="k-count">{passages.length} of {src.passages}</span></h3>
           <ul className="k-passages">
-            {passages.map((p) => <li key={p.loc}><span className="c-mono">{p.loc}</span><p>{p.text}</p></li>)}
+            {passages.map((p, i) => <li key={`${p.loc}-${i}`}><span className="c-mono">{p.loc}</span><p>{p.text}</p></li>)}
           </ul>
         </section>
       )}
@@ -116,7 +118,7 @@ type OnAction = ((id: string, a: "reread" | "replace" | "remove") => void) | und
 function PartialBanner({ src, onAction }: { src: Source; onAction: OnAction }) {
   const st = src.status;
   if (st.s !== "partial") return null;
-  const why = partialReason(st.note, src.kind);
+  const why = st.why ?? partialReason(st.note, src.kind);
   const gone = st.total - st.read;
   const pages = skippedPages(st.skipped, st.total);
   const file = src.kind !== "url";
