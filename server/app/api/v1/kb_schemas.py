@@ -38,8 +38,17 @@ class ProductOut(BaseModel):
     id: uuid.UUID
     name: str
     description: str | None
+    source_count: int = Field(description="Sources in the knowledge base, removed ones excluded")
     created_at: datetime
     updated_at: datetime
+
+
+class Person(BaseModel):
+    """Who added a source: a current member of the workspace."""
+
+    id: uuid.UUID
+    name: str = Field(description="First and last name from the WorkOS profile, else the email")
+    avatar_url: str | None
 
 
 class UrlSourceCreate(BaseModel):
@@ -75,8 +84,13 @@ class SourceOut(BaseModel):
     )
     note: str | None
     passage_count: int
+    word_count: int | None = Field(description="Words in the text read; null until read")
+    heading_count: int | None = Field(description="Headings in the text read; 0 for PDFs")
     attempts: int = Field(description="Worker tries of the current read; 0 while queued")
     added_by_user_id: uuid.UUID | None
+    added_by: Person | None = Field(
+        description="Null when nobody is recorded or they are no longer in the workspace"
+    )
     created_at: datetime
     updated_at: datetime
     processed_at: datetime | None

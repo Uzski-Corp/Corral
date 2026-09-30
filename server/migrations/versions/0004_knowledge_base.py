@@ -89,6 +89,8 @@ def upgrade() -> None:
         sa.Column("skipped_reason", sa.String(20)),
         sa.Column("note", sa.String(500)),
         sa.Column("passage_count", sa.Integer(), server_default="0", nullable=False),
+        sa.Column("word_count", sa.Integer()),
+        sa.Column("heading_count", sa.Integer()),
         sa.Column("generation", sa.Integer(), server_default="0", nullable=False),
         sa.Column("attempts", sa.SmallInteger(), server_default="0", nullable=False),
         sa.Column("added_by_user_id", sa.Uuid()),
@@ -149,6 +151,13 @@ def upgrade() -> None:
         ),
         sa.CheckConstraint("stage_pct BETWEEN 0 AND 100", name=op.f("ck_kb_sources_stage_pct")),
         sa.CheckConstraint("attempts >= 0", name=op.f("ck_kb_sources_attempts")),
+        sa.CheckConstraint(
+            "word_count IS NULL OR word_count >= 0", name=op.f("ck_kb_sources_word_count")
+        ),
+        sa.CheckConstraint(
+            "heading_count IS NULL OR heading_count >= 0",
+            name=op.f("ck_kb_sources_heading_count"),
+        ),
         sa.CheckConstraint(
             "(kind = 'url') = (url IS NOT NULL)", name=op.f("ck_kb_sources_url_iff_web")
         ),

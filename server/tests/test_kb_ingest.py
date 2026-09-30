@@ -20,7 +20,16 @@ from app.models import KbSource, KbSourceFile
 from app.worker.main import build_worker_kwargs
 from app.worker.queue import QUEUE_NAME, JobQueue
 from tests.conftest import make_settings
-from tests.kb_fixtures import GATEWAY_PAGES, OBJECTIONS, PITCH_MD, encrypt_pdf, make_docx, make_pdf
+from tests.kb_fixtures import (
+    GATEWAY_PAGES,
+    OBJECTIONS,
+    PITCH_LOCS,
+    PITCH_MD,
+    PITCH_WORDS,
+    encrypt_pdf,
+    make_docx,
+    make_pdf,
+)
 from tests.kb_helpers import KbWorld, add_file, add_url, chunks_of, job_ctx, kb_world, reload
 from tests.tenancy_helpers import as_tenant
 from tests.test_kb_web import PUBLIC_IP, Web
@@ -60,7 +69,8 @@ async def test_markdown_becomes_ready_with_located_passages(
     assert done.processed_at is not None
     chunks = await chunks_of(db_engine, src.id)
     assert done.passage_count == len(chunks) == 4
-    assert [c.loc for c in chunks] == ["ColdTrace Sensors", "Alerts", "Pricing", "Battery"]
+    assert [c.loc for c in chunks] == PITCH_LOCS
+    assert (done.word_count, done.heading_count) == (PITCH_WORDS, 4)
     assert all(c.org_id == world.a.org_id and c.product_id == world.product_a for c in chunks)
     assert len(chunks[0].embedding) == 1536
 
@@ -346,6 +356,8 @@ async def test_a_reread_replaces_passages(db_engine: AsyncEngine, world: KbWorld
         {"skipped": "page 2", "skipped_reason": "bored"},
         {"skipped_reason": "scanned"},  # and a reason needs a skip
         {"attempts": -1},
+        {"word_count": -1},
+        {"heading_count": -1},
     ],
 )
 async def test_the_database_enforces_skip_reasons_and_attempts(
@@ -571,3 +583,31 @@ async def test_enqueued_ingest_runs_in_the_worker(
     finally:
         await queue.close()
     assert (await reload(db_engine, src.id)).status == "ready"
+
+
+async def test_a_failed_read_clears_the_counts(db_engine: AsyncEngine, world: KbWorld) -> None:
+    src = await add_file(
+        db_engine,
+        world.a,
+        world.product_a,
+        SETTINGS,
+        name="p.md",
+        kind="md",
+        data=PITCH_MD.encode(),
+    )
+    assert (src.word_count, src.heading_count) == (None, None)  # not read yet
+    assert await run(db_engine, src) == "ready"
+    done = await reload(db_engine, src.id)
+    assert (done.word_count, done.heading_count) == (PITCH_WORDS, 4)
+    async with as_tenant(db_engine, world.a) as s:
+        fresh = await KnowledgeBaseService(s, world.a.org_id, SETTINGS).get_source(
+            world.product_a, src.id
+        )
+        assert fresh is not None
+        await KnowledgeBaseService(s, world.a.org_id, SETTINGS).start_reread(fresh)
+    again = await reload(db_engine, src.id)
+    assert again.word_count == PITCH_WORDS  # kept while the re-read runs
+    tries = SETTINGS.worker_max_tries
+    assert await run(db_engine, again, embedder=Down(), job_try=tries) == "failed"
+    failed = await reload(db_engine, src.id)
+    assert (failed.word_count, failed.heading_count) == (None, None)

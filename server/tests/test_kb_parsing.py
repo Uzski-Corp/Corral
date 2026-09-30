@@ -12,11 +12,14 @@ from hypothesis import strategies as st
 from app.kb.errors import IngestFailure, skip_reason
 from app.kb.files import OLE_MAGIC
 from app.kb.parsing import (
+    LOC_MAX_CHARS,
     ParsedDocument,
     ParseLimits,
     Section,
     clean_text,
+    count_words,
     decode_text,
+    heading_path,
     markdown_sections,
     page_ranges,
     parse_document,
@@ -26,7 +29,9 @@ from tests.conftest import make_settings
 from tests.kb_fixtures import (
     GATEWAY_PAGES,
     OBJECTIONS,
+    PITCH_LOCS,
     PITCH_MD,
+    PITCH_WORDS,
     docx_xml,
     encrypt_pdf,
     make_docx,
@@ -223,9 +228,10 @@ def test_docx_headings_name_their_sections() -> None:
     doc = parse_document("docx", make_docx(OBJECTIONS), LIMITS)
     assert [s.loc for s in doc.sections] == [
         "Objection handling",
-        "We already use data loggers",
-        "We can't take rooms offline to install",
+        "Objection handling \u203a We already use data loggers",
+        "Objection handling \u203a We can't take rooms offline to install",
     ]
+    assert doc.heading_count == 3
     assert "log writes itself" in doc.sections[1].text
     assert doc.pages_total is None
     assert not doc.partial
@@ -393,13 +399,15 @@ def test_markdown_headings_name_sections_and_fences_are_respected() -> None:
         "~~~\n# also not\n~~~\n## Battery\nFive years"
     )
     doc = parse_document("md", text.encode(), LIMITS)
-    assert [s.loc for s in doc.sections] == [None, "Pricing", "Battery"]
+    assert [s.loc for s in doc.sections] == [None, "Pricing", "Pricing \u203a Battery"]
+    assert doc.heading_count == 2  # fenced "headings" don't count
     assert "# not a heading" in doc.sections[1].text
 
 
 def test_pitch_markdown() -> None:
     doc = parse_document("md", PITCH_MD.encode(), LIMITS)
-    assert [s.loc for s in doc.sections] == ["ColdTrace Sensors", "Alerts", "Pricing", "Battery"]
+    assert [s.loc for s in doc.sections] == PITCH_LOCS
+    assert (doc.heading_count, doc.word_count) == (4, PITCH_WORDS)
 
 
 def test_markdown_bom_and_crlf() -> None:
@@ -515,3 +523,92 @@ def test_skip_reason_is_mixed_only_for_distinct_reasons() -> None:
     assert skip_reason("scanned", None) == "scanned"
     assert skip_reason("size-limit", "size-limit") == "size-limit"
     assert skip_reason("scanned", "size-limit") == "mixed"
+
+
+# --- structure: heading paths and counts (M11) -----------------------------------------
+
+SEP = " \u203a "
+
+
+def test_heading_path_joins_outermost_first() -> None:
+    assert heading_path([]) is None
+    assert heading_path(["Setup"]) == "Setup"
+    assert heading_path(["Setup", "  Alerts  by  SMS "]) == f"Setup{SEP}Alerts by SMS"
+
+
+def test_long_heading_paths_drop_outer_headings_first() -> None:
+    path = heading_path(["A" * 70, "B" * 40, "C" * 30])
+    assert path == f"\u2026{SEP}{'B' * 40}{SEP}{'C' * 30}"
+    assert path is not None and len(path) <= LOC_MAX_CHARS
+    deepest_alone = heading_path(["A" * 10, "C" * 200])
+    assert deepest_alone is not None and len(deepest_alone) == LOC_MAX_CHARS
+    assert deepest_alone.endswith("\u2026")
+
+
+def test_markdown_heading_paths_follow_levels() -> None:
+    text = "# A\na\n## B\nb\n### C\nc\n## D\nd\n#### E\ne\n# F\nf"
+    doc = parse_document("md", text.encode(), LIMITS)
+    assert [s.loc for s in doc.sections] == [
+        "A",
+        f"A{SEP}B",
+        f"A{SEP}B{SEP}C",
+        f"A{SEP}D",
+        f"A{SEP}D{SEP}E",  # a skipped level still nests
+        "F",
+    ]
+    assert doc.heading_count == 6
+
+
+def test_docx_heading_paths_follow_style_levels() -> None:
+    paras = [
+        ("Title", "Playbook"),
+        ("Heading1", "Objections"),
+        ("heading 2", "Price"),
+        (None, "It pays for itself."),
+        ("Heading", "Install"),  # no number: level 1
+        (None, "An afternoon."),
+        ("Subtitle", "Not a heading style"),
+    ]
+    doc = parse_document("docx", make_docx(paras), LIMITS)
+    assert [s.loc for s in doc.sections] == [
+        "Playbook",
+        f"Playbook{SEP}Objections",
+        f"Playbook{SEP}Objections{SEP}Price",
+        f"Playbook{SEP}Install",
+    ]
+    assert "Not a heading style" in doc.sections[-1].text
+    assert doc.heading_count == 4
+
+
+def test_web_pages_keep_their_path_but_count_headings() -> None:
+    doc = markdown_sections("# One\nx\n## Two\ny", LIMITS, loc="/docs")
+    assert [s.loc for s in doc.sections] == ["/docs", "/docs"]
+    assert doc.heading_count == 2
+
+
+def test_headings_past_the_text_limit_are_not_counted() -> None:
+    text = "# A\n" + "x" * 60 + "\n# B\nmore"
+    doc = parse_document("md", text.encode(), replace(LIMITS, max_text_chars=50))
+    assert [s.loc for s in doc.sections] == ["A"]
+    assert doc.heading_count == 1
+
+
+@pytest.mark.parametrize(
+    ("text", "words"),
+    [
+        ("", 0),
+        ("# Pricing", 1),
+        ("$39 a month, billed annually.", 5),
+        ("don't e-mail v2.5 CR123A", 4),
+        ("Sensors \u2014 five years", 3),
+        ("\u6e29\u5ea6 sensor", 2),
+    ],
+)
+def test_count_words(text: str, words: int) -> None:
+    assert count_words(text) == words
+
+
+def test_pdfs_have_words_but_no_headings() -> None:
+    pages = ["one two three four five six", None, "seven eight nine ten eleven"]
+    doc = parse_document("pdf", make_pdf(pages), LIMITS)
+    assert (doc.word_count, doc.heading_count) == (11, 0)

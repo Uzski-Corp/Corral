@@ -7,15 +7,15 @@ from typing import Any
 
 import pytest
 from httpx import AsyncClient, Response
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from app.kb.ingest import ingest_source
 from app.main import create_app
-from app.models import KbChunk, KbSource, KbSourceFile, Product
+from app.models import KbChunk, KbSource, KbSourceFile, Product, User
 from app.worker.queue import QUEUE_NAME, JobQueue
 from tests.conftest import _running_app, make_settings
-from tests.kb_fixtures import GATEWAY_PAGES, PITCH_MD, make_docx, make_pdf
+from tests.kb_fixtures import GATEWAY_PAGES, PITCH_LOCS, PITCH_MD, PITCH_WORDS, make_docx, make_pdf
 from tests.kb_helpers import job_ctx, reload
 from tests.tenancy_helpers import provision
 from tests.workos_fakes import WorkOSHarness, user_payload
@@ -184,7 +184,8 @@ async def test_upload_is_accepted_queued_read_and_searchable(
     got = (await c.get(f"{base(pid)}/sources/{sid}")).json()
     assert (got["status"], got["progress"], got["passage_count"]) == ("ready", 100, 4)
     passages = (await c.get(f"{base(pid)}/sources/{sid}/passages", params={"limit": 2})).json()
-    assert [p["loc"] for p in passages] == ["ColdTrace Sensors", "Alerts"]
+    assert [p["loc"] for p in passages] == PITCH_LOCS[:2]
+    assert (got["word_count"], got["heading_count"]) == (PITCH_WORDS, 4)
     hits = (
         await c.post(
             f"{base(pid)}/search", json={"query": "battery life", "limit": 2}, headers=ORIGIN
@@ -192,7 +193,7 @@ async def test_upload_is_accepted_queued_read_and_searchable(
     ).json()
     assert len(hits) == 2
     assert (hits[0]["loc"], hits[0]["source_name"], hits[0]["source_kind"]) == (
-        "Battery",
+        PITCH_LOCS[3],
         "Pitch.md",
         "md",
     )
@@ -658,3 +659,78 @@ async def test_openapi_documents_the_contract(kb: AsyncClient) -> None:
     upload_op = spec["paths"]["/api/v1/products/{product_id}/knowledge/sources/files"]["post"]
     assert {"202", "409", "411", "413", "415", "422", "429"} <= set(upload_op["responses"])
     assert "/api/v1/products/{product_id}/knowledge/search" in spec["paths"]
+
+
+# --- M11 fields: source_count, added_by ---------------------------------------------------
+
+
+async def test_products_count_their_live_sources(kb: AsyncClient, tenants: dict[str, Any]) -> None:
+    assert (await act_as(kb, tenants["b"]).get("/api/v1/products")).json() == []
+    c = act_as(kb, tenants["a"])
+    created = await c.post("/api/v1/products", json={"name": "ColdTrace"}, headers=ORIGIN)
+    assert created.json()["source_count"] == 0
+    pid, other = created.json()["id"], await new_product(c, "Other")
+    first = (await upload(c, pid)).json()["id"]
+    assert (
+        await upload(c, pid, ("Notes.md", b"# Notes\nOther text", "text/markdown"))
+    ).status_code == 202
+    assert (await c.get(f"/api/v1/products/{pid}")).json()["source_count"] == 2
+    await c.delete(f"{base(pid)}/sources/{first}", headers=ORIGIN)  # removed ones don't count
+    counts = {p["id"]: p["source_count"] for p in (await c.get("/api/v1/products")).json()}
+    assert counts == {pid: 1, other: 0}
+    patched = await c.patch(f"/api/v1/products/{pid}", json={"description": "x"}, headers=ORIGIN)
+    assert patched.json()["source_count"] == 1
+    await c.post(f"{base(pid)}/sources/{first}/restore", headers=ORIGIN)
+    assert (await c.get(f"/api/v1/products/{pid}")).json()["source_count"] == 2
+
+
+async def _set_user(engine: AsyncEngine, user_id: uuid.UUID, **values: Any) -> None:
+    async with AsyncSession(engine) as s, s.begin():
+        await s.execute(update(User).where(User.id == user_id).values(**values))
+
+
+async def _set_adder(engine: AsyncEngine, source_id: str, user_id: uuid.UUID | None) -> None:
+    async with AsyncSession(engine) as s, s.begin():
+        await s.execute(
+            update(KbSource)
+            .where(KbSource.id == uuid.UUID(source_id))
+            .values(added_by_user_id=user_id)
+        )
+
+
+async def test_sources_say_who_added_them(
+    kb: AsyncClient, tenants: dict[str, Any], db_engine: AsyncEngine
+) -> None:
+    me = tenants["ident_a"].user_id
+    await _set_user(
+        db_engine,
+        me,
+        first_name="Amina",
+        last_name=" Otieno ",
+        profile_picture_url="https://i/a.png",
+    )
+    c = act_as(kb, tenants["a"])
+    pid = await new_product(c)
+    added = (await upload(c, pid)).json()
+    sid = added["id"]
+    amina = {"id": str(me), "name": "Amina Otieno", "avatar_url": "https://i/a.png"}
+    assert added["added_by"] == amina
+    assert [s["added_by"] for s in (await c.get(f"{base(pid)}/sources")).json()] == [amina]
+    assert (await c.post(f"{base(pid)}/sources/{sid}/reread", headers=ORIGIN)).json()[
+        "added_by"
+    ] == amina
+
+    await _set_user(db_engine, me, first_name=None, last_name="", profile_picture_url=None)
+    got = (await c.get(f"{base(pid)}/sources/{sid}")).json()
+    assert got["added_by"] == {"id": str(me), "name": "a@a.io", "avatar_url": None}
+
+    # Someone outside this workspace (org B's user) is never revealed, only the stored id.
+    outsider = tenants["ident_b"].user_id
+    await _set_user(db_engine, outsider, first_name="Bea", profile_picture_url="https://i/b.png")
+    await _set_adder(db_engine, sid, outsider)
+    got = (await c.get(f"{base(pid)}/sources/{sid}")).json()
+    assert (got["added_by_user_id"], got["added_by"]) == (str(outsider), None)
+
+    await _set_adder(db_engine, sid, None)  # the adder's account was deleted
+    got = (await c.get(f"{base(pid)}/sources/{sid}")).json()
+    assert (got["added_by_user_id"], got["added_by"]) == (None, None)

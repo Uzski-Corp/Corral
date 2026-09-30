@@ -87,6 +87,8 @@ class KbSource(TenantModel):
         CheckConstraint("(skipped IS NULL) = (skipped_reason IS NULL)", name="skip_has_reason"),
         CheckConstraint("stage_pct BETWEEN 0 AND 100", name="stage_pct"),
         CheckConstraint("attempts >= 0", name="attempts"),
+        CheckConstraint("word_count IS NULL OR word_count >= 0", name="word_count"),
+        CheckConstraint("heading_count IS NULL OR heading_count >= 0", name="heading_count"),
         CheckConstraint("(kind = 'url') = (url IS NOT NULL)", name="url_iff_web"),
         Index("ix_kb_sources_product_id", "product_id"),
         Index("ix_kb_sources_product_id_content_sha256", "product_id", "content_sha256"),
@@ -110,6 +112,10 @@ class KbSource(TenantModel):
     skipped_reason: Mapped[str | None] = mapped_column(String(20))
     note: Mapped[str | None] = mapped_column(String(500))
     passage_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    # Counted over the text that was read, at ingest; null until the first read finishes
+    # and after a failed one. PDF and plain web text have no headings (0).
+    word_count: Mapped[int | None] = mapped_column(Integer)
+    heading_count: Mapped[int | None] = mapped_column(Integer)
     # Bumped on every (re)ingest; a job only writes results for the generation it was
     # started for, so a stale job can't overwrite a newer read or a removed source.
     generation: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")

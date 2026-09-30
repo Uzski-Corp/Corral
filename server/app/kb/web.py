@@ -290,6 +290,7 @@ class _Page:
     url: str
     sections: list[Section] = field(default_factory=list)
     links: list[str] = field(default_factory=list)
+    heading_count: int = 0
 
 
 def _path_label(url: str) -> str:
@@ -326,9 +327,10 @@ async def _read_page(fetcher: SafeFetcher, url: str, limits: ParseLimits) -> _Pa
     else:
         raise FetchFailure("unreachable", "That address isn't a web page.")
     try:
-        page.sections = list(markdown_sections(text, limits, loc=loc).sections)
+        parsed = markdown_sections(text, limits, loc=loc)
     except IngestFailure:
-        page.sections = []
+        return page
+    page.sections, page.heading_count = list(parsed.sections), parsed.heading_count
     return page
 
 
@@ -395,6 +397,7 @@ async def read_web_source(
         pages_read=total - len(skipped_pages),
         skipped=_join_paths(skipped_pages) if skipped_pages else None,
         skipped_reason="unreadable" if skipped_pages else None,
+        heading_count=sum(p.heading_count for p in pages),
         note=note,
     )
 

@@ -16,7 +16,14 @@ from app.kb.ingest import ingest_source
 from app.kb.service import KnowledgeBaseService
 from app.models import KbSource
 from tests.conftest import make_settings
-from tests.kb_fixtures import GATEWAY_PAGES, OBJECTIONS, PITCH_MD, make_docx, make_pdf
+from tests.kb_fixtures import (
+    GATEWAY_PAGES,
+    OBJECTIONS,
+    PITCH_LOCS,
+    PITCH_MD,
+    make_docx,
+    make_pdf,
+)
 from tests.kb_helpers import KbWorld, add_file, job_ctx, kb_world
 from tests.tenancy_helpers import as_tenant
 
@@ -60,14 +67,18 @@ async def ask(
 
 
 QUESTIONS = [
-    ("how long does the battery in each sensor last?", "Pitch.md", "Battery"),
-    ("what does it cost per sensor each month", "Pitch.md", "Pricing"),
-    ("how fast does the manager get alerted by SMS", "Pitch.md", "Alerts"),
-    ("we already have data loggers, why switch", "Objections.docx", "We already use data loggers"),
+    ("how long does the battery in each sensor last?", "Pitch.md", PITCH_LOCS[3]),
+    ("what does it cost per sensor each month", "Pitch.md", PITCH_LOCS[2]),
+    ("how fast does the manager get alerted by SMS", "Pitch.md", PITCH_LOCS[1]),
+    (
+        "we already have data loggers, why switch",
+        "Objections.docx",
+        "Objection handling \u203a We already use data loggers",
+    ),
     (
         "do we need to take rooms offline to install it",
         "Objections.docx",
-        "We can't take rooms offline to install",
+        "Objection handling \u203a We can't take rooms offline to install",
     ),
     ("does the gateway stay online in a power cut", "Gateway.pdf", "p.3"),
     ("can the radio reach sensors through concrete walls", "Gateway.pdf", "p.1"),
@@ -94,7 +105,7 @@ async def test_another_orgs_product_returns_nothing(db_engine: AsyncEngine, worl
     # Org B holds identical documents, and org A even names B's product id: RLS still wins.
     assert await ask(db_engine, world, "battery life", product=world.product_b) == []
     hits_b = await ask(db_engine, world, "battery life", product=world.product_b, as_b=True)
-    assert hits_b[0][1] == "Battery"
+    assert hits_b[0][1] == PITCH_LOCS[3]
 
 
 async def test_removed_and_unfinished_sources_are_not_searched(

@@ -134,6 +134,16 @@ Sensor battery life is five years at a 60-second reading interval. Replacement c
 standard CR123A.
 """
 
+PITCH_LOCS = [
+    "ColdTrace Sensors",
+    "ColdTrace Sensors \u203a Alerts",
+    "ColdTrace Sensors \u203a Pricing",
+    "ColdTrace Sensors \u203a Battery",
+]
+PITCH_WORDS = 94
+"""Words in ``PITCH_MD`` as read: headings included, ``#`` marks not (= whitespace tokens with a
+letter or digit)."""
+
 GATEWAY_PAGES = [
     "The gateway uses sub-GHz radio (868 MHz) to reach sensors through two concrete walls,\n"
     "then backhauls over 4G with automatic fallback to the site's Ethernet.",

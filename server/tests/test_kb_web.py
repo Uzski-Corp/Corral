@@ -357,6 +357,15 @@ async def test_read_one_page(web: Web) -> None:
     doc = await read(web, "https://coldtrace.io/how-it-works")
     assert [s.loc for s in doc.sections] == ["/how-it-works", "/how-it-works"]  # type: ignore[attr-defined]
     assert (doc.pages_total, doc.pages_read, doc.partial) == (1, 1, False)  # type: ignore[attr-defined]
+    assert (doc.heading_count, doc.word_count) == (2, 8)  # type: ignore[attr-defined]
+
+
+async def test_headings_are_counted_across_a_section(web: Web) -> None:
+    web.add("coldtrace.io", "/docs", body="<h1>Docs</h1><p>Start.</p><a href='/docs/a'>a</a>")
+    web.add("coldtrace.io", "/docs/a", body="<h2>Alerts</h2><p>SMS.</p><h2>Calls</h2><p>Yes.</p>")
+    doc = await read(web, "https://coldtrace.io/docs", scope="section")
+    assert [s.loc for s in doc.sections] == ["/docs", "/docs/a", "/docs/a"]  # type: ignore[attr-defined]
+    assert doc.heading_count == 3  # type: ignore[attr-defined]
 
 
 async def test_plain_text_pages_are_read(web: Web) -> None:

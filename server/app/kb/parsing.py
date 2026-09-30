@@ -13,7 +13,7 @@ import io
 import re
 import unicodedata
 import zipfile
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from typing import Any
@@ -33,6 +33,7 @@ log = structlog.get_logger(__name__)
 
 MIB = 1024 * 1024
 LOC_MAX_CHARS = 120
+HEADING_SEPARATOR = " \u203a "  # U+203A: "A > B", the headings above a passage, outermost first
 SKIPPED_MAX_CHARS = 255
 EN_DASH = "\u2013"  # the client's copy: "pages 12\u201318"
 
@@ -76,10 +77,15 @@ class ParsedDocument:
     skipped: str | None = None
     skipped_reason: SkipReason | None = None
     note: str | None = None
+    heading_count: int = 0
 
     @property
     def partial(self) -> bool:
         return self.skipped is not None
+
+    @property
+    def word_count(self) -> int:
+        return sum(count_words(s.text) for s in self.sections)
 
     @property
     def char_count(self) -> int:
@@ -89,6 +95,7 @@ class ParsedDocument:
 # --- text helpers --------------------------------------------------------------------
 
 _SPACES = re.compile(r"[ \t\f\v\u00a0\u2000-\u200b\u202f\u205f\u3000]+")
+_WORD = re.compile(r"\w+(?:['\u2019.-]\w+)*")
 _BLANK_LINES = re.compile(r"\n{3,}")
 
 
@@ -103,6 +110,36 @@ def clean_text(text: str) -> str:
 def _loc(text: str) -> str:
     text = " ".join(text.split())
     return text if len(text) <= LOC_MAX_CHARS else text[: LOC_MAX_CHARS - 1] + "…"
+
+
+def count_words(text: str) -> int:
+    """Runs of letters/digits; ``don't``, ``e-mail`` and ``3.5`` are one word, ``#`` is none."""
+    return len(_WORD.findall(text))
+
+
+def heading_path(headings: Sequence[str]) -> str | None:
+    """``["Setup", "Alerts"]`` -> ``Setup > Alerts`` (U+203A). Too long: outer ones become ``…``."""
+    parts = [_loc(h) for h in headings]
+    if not parts:
+        return None
+    path = HEADING_SEPARATOR.join(parts)
+    while len(path) > LOC_MAX_CHARS and len(parts) > 1:
+        parts.pop(0)
+        path = HEADING_SEPARATOR.join(["\u2026", *parts])
+    return _loc(path)
+
+
+class _Outline:
+    """The open headings above the current line, by level (a new heading closes deeper ones)."""
+
+    def __init__(self) -> None:
+        self._open: list[tuple[int, str]] = []
+
+    def enter(self, level: int, title: str) -> str | None:
+        while self._open and self._open[-1][0] >= level:
+            self._open.pop()
+        self._open.append((level, title))
+        return heading_path([t for _, t in self._open])
 
 
 def page_ranges(pages: Iterable[int]) -> str:
@@ -274,10 +311,19 @@ def _paragraph_text(p: Element) -> str:
     return "".join(out)
 
 
-def _is_heading(p: Element) -> bool:
+_HEADING_STYLE = re.compile(r"^(?:heading\s*(\d?)|title)", re.IGNORECASE)
+
+
+def _heading_level(p: Element) -> int | None:
+    """``Title`` -> 0, ``Heading1``/``heading 2`` -> 1/2 (no number -> 1); body text -> None."""
     style = p.find(f"{W}pPr/{W}pStyle")
     value = (style.get(W + "val") or "") if style is not None else ""
-    return value.lower().startswith(("heading", "title"))
+    match = _HEADING_STYLE.match(value)
+    if match is None:
+        return None
+    if value.lower().startswith("title"):
+        return 0
+    return int(match.group(1) or 1)
 
 
 def parse_docx(data: bytes, limits: ParseLimits) -> ParsedDocument:
@@ -304,6 +350,8 @@ def parse_docx(data: bytes, limits: ParseLimits) -> ParsedDocument:
     budget = _Budget(limits.max_text_chars)
     sections: list[Section] = []
     heading: str | None = None
+    outline = _Outline()
+    headings = 0
     body: list[str] = []
 
     def flush() -> None:
@@ -318,27 +366,30 @@ def parse_docx(data: bytes, limits: ParseLimits) -> ParsedDocument:
         text = _paragraph_text(p).strip()
         if not text:
             continue
-        if _is_heading(p):
+        level = _heading_level(p)
+        if level is not None:
             flush()
-            heading = _loc(text)
-            body.append(text)
-        else:
-            body.append(text)
+            headings += 1
+            heading = outline.enter(level, text)
+        body.append(text)
     if not budget.exhausted:
         flush()
     if not sections:
         raise IngestFailure("no-text", "parse")
-    return _with_budget_note(tuple(sections), budget)
+    return _with_budget_note(tuple(sections), budget, headings)
 
 
-def _with_budget_note(sections: tuple[Section, ...], budget: _Budget) -> ParsedDocument:
+def _with_budget_note(
+    sections: tuple[Section, ...], budget: _Budget, heading_count: int
+) -> ParsedDocument:
     if not budget.exhausted:
-        return ParsedDocument(sections)
+        return ParsedDocument(sections, heading_count=heading_count)
     return ParsedDocument(
         sections,
         skipped="the end of the document",
         skipped_reason="size-limit",
         note="Only the first part was read (text limit).",
+        heading_count=heading_count,
     )
 
 
@@ -359,10 +410,16 @@ def decode_text(data: bytes) -> str:
 
 
 def markdown_sections(text: str, limits: ParseLimits, *, loc: str | None = None) -> ParsedDocument:
-    """Split on ATX headings (outside code fences); each heading names its section."""
+    """Split on ATX headings (outside code fences).
+
+    A section's ``loc`` is its heading path (``Setup \u203a Alerts``), or ``loc`` when given (a web
+    page is located by its URL path). ``heading_count`` counts the headings in the text read.
+    """
     budget = _Budget(limits.max_text_chars)
     sections: list[Section] = []
     heading = loc
+    outline = _Outline()
+    headings = 0
     lines: list[str] = []
     fence: str | None = None
 
@@ -379,12 +436,15 @@ def markdown_sections(text: str, limits: ParseLimits, *, loc: str | None = None)
             fence = None if fence == marker else (fence or marker)
         elif fence is None and (match := _ATX.match(line)):
             flush()
-            heading = _loc(match.group(2)) if loc is None else loc
+            if not budget.exhausted:
+                headings += 1
+            if loc is None:
+                heading = outline.enter(len(match.group(1)), match.group(2))
         lines.append(line)
     flush()
     if not sections:
         raise IngestFailure("no-text", "parse")
-    return _with_budget_note(tuple(sections), budget)
+    return _with_budget_note(tuple(sections), budget, headings)
 
 
 def parse_markdown(data: bytes, limits: ParseLimits) -> ParsedDocument:

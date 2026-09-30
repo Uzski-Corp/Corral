@@ -201,6 +201,8 @@ class IngestJob:
                     skipped_reason=source.skipped_reason,
                     note=source.note,
                     passage_count=len(chunks),
+                    word_count=source.word_count,
+                    heading_count=source.heading_count,
                     processed_at=datetime.now(UTC),
                 )
             )
@@ -219,6 +221,8 @@ class IngestJob:
                         note=failure.note,
                         stage=None,
                         passage_count=0,
+                        word_count=None,
+                        heading_count=None,
                         processed_at=datetime.now(UTC),
                     )
                     .returning(KbSource.id)

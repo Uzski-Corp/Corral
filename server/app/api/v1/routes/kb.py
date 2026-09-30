@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 from app.api.v1.deps import PageDep
 from app.api.v1.kb_schemas import (
     PassageOut,
+    Person,
     SearchHit,
     SearchRequest,
     SourceOut,
@@ -32,6 +33,7 @@ from app.kb.service import (
     overall_progress,
 )
 from app.kb.web import UrlRejected, normalize_url
+from app.models.identity import User
 from app.models.knowledge import KbSource
 from app.repositories import ProductRepository
 from app.worker.queue import JobQueue
@@ -69,11 +71,31 @@ async def get_service(
 ServiceDep = Annotated[KnowledgeBaseService, Depends(get_service)]
 
 
-def source_out(source: KbSource) -> SourceOut:
+COMPUTED = frozenset({"progress", "added_by"})
+
+
+def person(user: User) -> Person:
+    name = " ".join(p.strip() for p in (user.first_name, user.last_name) if p and p.strip())
+    return Person(id=user.id, name=name or user.email, avatar_url=user.profile_picture_url)
+
+
+def source_out(source: KbSource, people: dict[uuid.UUID, User]) -> SourceOut:
+    who = people.get(source.added_by_user_id) if source.added_by_user_id else None
     return SourceOut.model_validate(
-        {**{c: getattr(source, c) for c in SourceOut.model_fields if c != "progress"},
-         "progress": overall_progress(source)}
+        {**{c: getattr(source, c) for c in SourceOut.model_fields if c not in COMPUTED},
+         "progress": overall_progress(source),
+         "added_by": person(who) if who is not None else None}
     )  # fmt: skip
+
+
+async def sources_out(service: KnowledgeBaseService, sources: list[KbSource]) -> list[SourceOut]:
+    people = await service.contributors(s.added_by_user_id for s in sources)
+    return [source_out(s, people) for s in sources]
+
+
+async def one_out(service: KnowledgeBaseService, source: KbSource) -> SourceOut:
+    (out,) = await sources_out(service, [source])
+    return out
 
 
 async def load_source(service: ServiceDep, product_id: uuid.UUID, source_id: uuid.UUID) -> KbSource:
@@ -133,7 +155,7 @@ async def list_sources(
         limit=page.limit,
         offset=page.offset,
     )
-    return [source_out(r) for r in rows]
+    return await sources_out(service, list(rows))
 
 
 @router.post(
@@ -184,7 +206,7 @@ async def upload_file(
     except KnowledgeBaseFull as exc:
         raise ApiProblem(409, "kb_full", exc.detail) from exc
     await _enqueue(queue, source)
-    return source_out(source)
+    return await one_out(service, source)
 
 
 @router.post(
@@ -217,12 +239,12 @@ async def add_url(
     except KnowledgeBaseFull as exc:
         raise ApiProblem(409, "kb_full", exc.detail) from exc
     await _enqueue(queue, source)
-    return source_out(source)
+    return await one_out(service, source)
 
 
 @router.get("/sources/{source_id}")
-async def get_source(source: SourceDep) -> SourceOut:
-    return source_out(source)
+async def get_source(service: ServiceDep, source: SourceDep) -> SourceOut:
+    return await one_out(service, source)
 
 
 @router.get("/sources/{source_id}/passages")
@@ -234,13 +256,13 @@ async def list_passages(service: ServiceDep, source: SourceDep, page: PageDep) -
 @router.delete("/sources/{source_id}", dependencies=WRITE)
 async def remove_source(service: ServiceDep, source: SourceDep) -> SourceOut:
     """Soft delete: passages leave retrieval immediately; ``restore`` undoes it."""
-    return source_out(await service.remove(source))
+    return await one_out(service, await service.remove(source))
 
 
 @router.post("/sources/{source_id}/restore", dependencies=WRITE)
 async def restore_source(service: ServiceDep, source: SourceDep) -> SourceOut:
     try:
-        return source_out(await service.restore(source))
+        return await one_out(service, await service.restore(source))
     except DuplicateSource as exc:
         raise _duplicate(exc) from exc
     except KnowledgeBaseFull as exc:
@@ -253,7 +275,7 @@ async def reread_source(service: ServiceDep, source: SourceDep, queue: QueueDep)
         raise ApiProblem(409, "removed", "Restore the source before reading it again.")
     source = await service.start_reread(source)
     await _enqueue(queue, source)
-    return source_out(source)
+    return await one_out(service, source)
 
 
 @router.post("/search")

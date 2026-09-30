@@ -8,7 +8,7 @@ whole org when ``KB_DEDUPE_SCOPE=org``.
 
 import hashlib
 import uuid
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from datetime import UTC, datetime
 from typing import Literal
 
@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
 from app.kb.errors import FileKind
+from app.models.identity import Membership, User
 from app.models.knowledge import STAGES, KbChunk, KbSource, KbSourceFile
 
 LIVE_STATUSES = ("ready", "partial")
@@ -55,6 +56,19 @@ class KnowledgeBaseService:
         self.settings = settings
 
     # --- reads ---------------------------------------------------------------------
+
+    async def contributors(self, user_ids: Iterable[uuid.UUID | None]) -> dict[uuid.UUID, User]:
+        """The members of *this* org among ``user_ids`` (one query). Someone who has left the
+        org, or was never in it, is absent: RLS hides them and the membership join says so."""
+        ids = {i for i in user_ids if i is not None}
+        if not ids:
+            return {}
+        rows = await self.session.execute(
+            select(User)
+            .join(Membership, Membership.user_id == User.id)
+            .where(User.id.in_(ids), Membership.org_id == self.org_id)
+        )
+        return {u.id: u for u in rows.scalars()}
 
     def _sources(self) -> Select[KbSource]:
         return select(KbSource).where(KbSource.org_id == self.org_id)
@@ -276,3 +290,22 @@ class KnowledgeBaseService:
         )
         await self.session.refresh(source)
         return source
+
+
+async def source_counts(
+    session: AsyncSession, org_id: uuid.UUID, product_ids: Iterable[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """Sources in each product's knowledge base, removed ones excluded (one query)."""
+    ids = set(product_ids)
+    if not ids:
+        return {}
+    rows = await session.execute(
+        select(KbSource.product_id, func.count())
+        .where(
+            KbSource.org_id == org_id,
+            KbSource.product_id.in_(ids),
+            KbSource.deleted_at.is_(None),
+        )
+        .group_by(KbSource.product_id)
+    )
+    return {pid: int(n) for pid, n in rows.all()}
