@@ -14,6 +14,16 @@ export type NurtureState = "scheduled" | "moved" | "stopped" | "paused" | "waiti
 export const CAL_TRIGGER: Record<MeetingStatus, string> = {
   booked: "BOOKING_CREATED", rescheduled: "BOOKING_RESCHEDULED", cancelled: "BOOKING_CANCELLED", "no-show": "BOOKING_NO_SHOW_UPDATED",
 };
+/**
+ * Every Cal.com trigger Corral listens to, and the status it means. A no-show comes two ways, treated the same:
+ * the host marks it (BOOKING_NO_SHOW_UPDATED), or Cal Video reports that the hosts or the guests never joined.
+ */
+export const CAL_TRIGGERS: Record<string, MeetingStatus> = {
+  BOOKING_CREATED: "booked", BOOKING_RESCHEDULED: "rescheduled", BOOKING_CANCELLED: "cancelled",
+  BOOKING_NO_SHOW_UPDATED: "no-show", AFTER_HOSTS_CAL_VIDEO_NO_SHOW: "no-show", AFTER_GUESTS_CAL_VIDEO_NO_SHOW: "no-show",
+};
+/** The meeting status a Cal.com trigger means; undefined for triggers Corral ignores. */
+export const statusForTrigger = (trigger: string): MeetingStatus | undefined => CAL_TRIGGERS[trigger];
 export const MEETING_WORD: Record<MeetingStatus, string> = { booked: "Booked", rescheduled: "Moved", cancelled: "Cancelled", "no-show": "No-show" };
 
 /** Phoenix’s own deal stages (a sample ERP; the mapping in settings can point anywhere). */

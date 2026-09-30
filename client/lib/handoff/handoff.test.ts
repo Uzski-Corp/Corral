@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CAL_TRIGGER, RETRY_MINUTES, STAGE_FOR, afterMeeting, beforeCall, idempotencyKey, nextRetry, retryWords, retryable } from "./handoff";
+import { CAL_TRIGGER, RETRY_MINUTES, STAGE_FOR, afterMeeting, statusForTrigger, beforeCall, idempotencyKey, nextRetry, retryWords, retryable } from "./handoff";
 import { HANDOFF_REVIEW_STATES, isHandoffState } from "./state";
 
 describe("afterMeeting", () => {
@@ -25,6 +25,11 @@ describe("afterMeeting", () => {
   });
   it("names Cal.com's triggers", () => {
     expect(Object.values(CAL_TRIGGER)).toEqual(["BOOKING_CREATED", "BOOKING_RESCHEDULED", "BOOKING_CANCELLED", "BOOKING_NO_SHOW_UPDATED"]);
+  });
+  it("treats a host-marked no-show and Cal Video's own no-shows the same; ignores the rest", () => {
+    expect(["BOOKING_NO_SHOW_UPDATED", "AFTER_HOSTS_CAL_VIDEO_NO_SHOW", "AFTER_GUESTS_CAL_VIDEO_NO_SHOW"].map(statusForTrigger)).toEqual(["no-show", "no-show", "no-show"]);
+    expect(Object.values(CAL_TRIGGER).map(statusForTrigger)).toEqual(["booked", "rescheduled", "cancelled", "no-show"]);
+    expect(statusForTrigger("MEETING_STARTED")).toBeUndefined();
   });
 });
 

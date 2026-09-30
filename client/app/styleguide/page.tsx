@@ -8,6 +8,7 @@ import { FitBarDemo, FitReasoningDemo } from "./M5Sections";
 import { PoolDemo, SequenceDemo, StepEditorDemo } from "./M6Sections";
 import { CopilotStatesDemo, ThreadViewDemo, UniboxTriageDemo } from "./M7Sections";
 import { HandoffDemo, IntegrationsDemo } from "./M8Sections";
+import { DevelopersDemo } from "./M9Sections";
 import { EditorDemo, KbShellDemo, SourceDetailDemo, SourceListDemo, UploadDemo } from "./M2Sections";
 import { AccountStatesDemo, CodeStatesDemo, CmdkDemo, ContrastDemo, FormDemo, OverlayDemo, SessionErrorDemo, ShellDemo, StatesDemo, TabsToastDemo } from "./M1Sections";
 import {
@@ -293,7 +294,12 @@ export default function Styleguide() {
         <IntegrationsDemo />
       </Part>
 
-      <Part n="44" title="Things that float" tokens={["--shadow-pop", "--radius-window 14", "--color-surface-inverse"]}
+      <Part wide n="44" title="Developers" tokens={["m-code: surface-muted, mono 12/18, one Copy; the secret on canvas, 14/22", "m-access: area · what the level allows · None / Read / Write (/ Send)", "m-status: dot + word; m-scope: mono tag, write = info-50, send = caution-50", "m-docs: 30/36 title, numbered sections, sticky On this page"]}
+        notes={<p>A developer surface in Corral&rsquo;s own voice. MCP comes first: an AI client signs in as a person and gets only the areas they allow, and every call it makes is listed with what came back. API keys are for jobs that run without a person; the secret shows once, each key says what it can reach and when it was last used, rotating keeps the old one for 24 hours, and an expired key that something still calls says so. The docs are written like a page: how to connect each client, the fifteen tools with a real call from this workspace, and the guardrails that hold whoever calls.</p>}>
+        <DevelopersDemo />
+      </Part>
+
+      <Part n="45" title="Things that float" tokens={["--shadow-pop", "--radius-window 14", "--color-surface-inverse"]}
         notes={<p>Only moments float: a booked meeting, a reply worth seeing, a toast. Faces are film-graded photos in circles, one treatment for everyone.</p>}>
         <div className="sg-float">
           <MeetingCard />

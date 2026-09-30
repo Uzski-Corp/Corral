@@ -263,3 +263,5 @@
 .sg-m8 .i-scopes__cols { grid-template-columns: minmax(0, 1fr); }
 .sg-m8 .i-logs, .sg-m8 .i-map { margin-top: 8px; }
 @media (max-width: 900px) { .sg-m8 { grid-template-columns: minmax(0, 1fr); } }
+.sg-m9-consent { height: 720px; }
+.sg-m9-consent .m-consent { height: 100%; }

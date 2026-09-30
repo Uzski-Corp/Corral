@@ -5,7 +5,7 @@
 /** Where Corral's draft for a thread is. */
 export type DraftKind = "none" | "drafting" | "ready" | "low" | "refused" | "edited";
 /** Where sending the reply is. `undo`: queued, cancellable for UNDO_SECONDS. */
-export type SendKind = "idle" | "undo" | "sending" | "sent" | "failed" | "disconnected" | "conflict";
+export type SendKind = "idle" | "undo" | "sending" | "sent" | "failed" | "disconnected" | "conflict" | "conflict-lead";
 
 export const UNDO_SECONDS = 10;
 

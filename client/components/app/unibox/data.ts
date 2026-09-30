@@ -128,6 +128,15 @@ export const BRIAN_EDIT = [
 export const TEAMMATE_REPLY = { who: "Amara Njoroge", email: "amara@coldtrace.io", at: "09:51",
   body: "Hi Brian, Amara here, I look after Pwani’s region. Totally fair on price. Could I send you Kilima’s spoilage numbers and we compare them against your loggers on a call?" };
 
+/** The lead's second email, landed while you were writing (`conflict-lead`, M9). */
+export const LEAD_FOLLOWUP = { who: "Brian Kamau", email: "brian@pwanifresh.com", at: "09:53", pronoun: "he", avatar: "kamau",
+  body: "One more thing before you reply: our CFO wants numbers before any call. What did Kilima actually save, and what would a trial on our rooms cost us?" };
+/** Corral's draft again, answering both of Brian's emails (Redraft in `conflict-lead`). */
+export const BRIAN_REDRAFT = {
+  paras: ["Fair point on numbers first, Brian. Kilima Dairies cut spoilage by 31% in its first quarter;[1] I’ll send your CFO a one-page summary of how they measured it.",
+    "The trial costs nothing: a free 30-day pilot on up to three of your rooms, compared side by side with your loggers.[2] If the numbers hold on your own stock, we talk price then."],
+  cites: cites(C.kilima, C.trial), left: [NO_PRICE] };
+
 /** Where a send failed (`failed`). */
 export const SEND_ERROR = { code: "421 4.7.0", text: "Try again later, closing connection. (Google, tomas@coldtrace.io)", at: "09:44" };
 export const DISCONNECTED = { mailbox: "hello@coldtrace-mail.com", since: "06:12", why: "Google sign-in expired" };
@@ -139,6 +148,8 @@ export type UniboxSeed = {
   draft: Record<string, DraftKind>; send: Record<string, SendKind>; text: Record<string, string>;
   menu?: boolean; keys?: boolean; load?: "loading" | "error"; empty?: boolean; sentAt?: string; undoLeft?: number;
   conflict?: boolean;
+  /** M9: the lead wrote again while you were writing (`conflict-lead`). */
+  followUp?: boolean;
   /** M8: a Cal.com handoff state (the thread is Grace's). `patch` changes her thread for that state. */
   handoff?: boolean; patch?: Record<string, Partial<Thread>>;
 };
@@ -190,6 +201,7 @@ export function seedFor(state?: UniboxReviewState): UniboxSeed {
     case "failed": return { ...base, send: { brian: "failed" } };
     case "disconnected": return on("amara", { send: { amara: "disconnected" } });
     case "conflict": return { ...base, send: { brian: "conflict" }, conflict: true };
+    case "conflict-lead": return { ...base, send: { brian: "conflict-lead" }, followUp: true };
     case "empty": return { ...base, pane: "list", empty: true };
     case "loading": return { ...base, pane: "list", load: "loading" };
     case "error": return { ...base, pane: "list", load: "error" };

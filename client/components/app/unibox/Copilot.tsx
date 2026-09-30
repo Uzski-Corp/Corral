@@ -8,13 +8,15 @@ import { Icon } from "../icons";
 import { DropdownMenu } from "../Overlays";
 import { Skeleton, Spinner } from "../States";
 import { UNDO_SECONDS, changedSentences, checksOf, marks, stripMarks, type Check, type DraftKind, type SendKind } from "@/lib/unibox/draft";
-import { DISCONNECTED, SEND_ERROR, TEAMMATE_REPLY, type CopilotModel, type DraftModel } from "./data";
+import { DISCONNECTED, LEAD_FOLLOWUP, SEND_ERROR, TEAMMATE_REPLY, type CopilotModel, type DraftModel } from "./data";
 import { TeammateMessage } from "./Thread";
 
 export type DraftActions = {
   onDraft: () => void; onStop: () => void; onSend: () => void; onEdit: () => void; onBack: () => void; onText: (s: string) => void;
   onUndo: () => void; onRetry: () => void; onReconnect: () => void; onKeepDraft: () => void;
   onDiscard: () => void; onSendAnyway: () => void; onKeepNote: () => void;
+  /** M9 `conflict-lead`: Corral drafts again against both emails. */
+  onRedraftBoth: () => void;
   onWriteOwn: () => void; onDraftSafe: () => void; onRedraft: (how: string) => void; onUnhandle: () => void; onTriage: () => void;
 };
 export type DraftProps = {
@@ -135,6 +137,15 @@ export function DraftArea(p: DraftProps) {
       </ReplyCard>
     </>
   );
+
+  if (send === "conflict-lead") {
+    return (
+      <ReplyCard tone="caution" title={`On hold: ${first} wrote again`} from={from} label="Your reply, on hold" foot={<div className="c-reply__foot"><Button variant="primary" onClick={a.onRedraftBoth}><Icon name="refresh" />Redraft</Button><Button onClick={a.onEdit}>Edit mine</Button><Button variant="quiet" onClick={a.onSendAnyway}>Send mine anyway</Button></div>}>
+        <div className="u-sendnote is-top is-warn" role="status"><Icon name="mail" size={13} /><div><b>{first} wrote again at {LEAD_FOLLOWUP.at}</b>, while you were writing. Your reply is on hold so it answers what {LEAD_FOLLOWUP.pronoun} said. Redraft answers both emails; nothing was sent.</div></div>
+        {plain}
+      </ReplyCard>
+    );
+  }
 
   if (kind === "drafting") return (
     <ReplyCard title={<span className="u-live"><span className="u-live__dot" aria-hidden="true" />Corral is drafting</span>} from={from} busy label="Corral is drafting a reply"

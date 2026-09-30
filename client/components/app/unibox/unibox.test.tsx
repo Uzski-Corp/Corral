@@ -326,6 +326,26 @@ describe("UniboxView · Corral's draft", () => {
     expect(screen.getByText("Sending to Brian in 10s")).toBeInTheDocument();
   });
 
+  it("holds a reply when the lead wrote again: redraft, edit mine, or send mine anyway", async () => {
+    const a = render(<Host state="conflict-lead" />);
+    expect(screen.getByText("Wrote again")).toBeInTheDocument();
+    expect(screen.getByText("On hold: Brian wrote again")).toBeInTheDocument();
+    expect(screen.getByText(/so it answers what he said/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Redraft" }));
+    expect(screen.getByText(/Redrafting to answer both of Brian’s emails/)).toBeInTheDocument();
+    expect(await screen.findByText(/Fair point on numbers first/, {}, { timeout: 3000 })).toBeInTheDocument();
+    expect(screen.getByText("Wrote again")).toBeInTheDocument();
+    a.unmount();
+    const b = render(<Host state="conflict-lead" />);
+    await userEvent.click(screen.getByRole("button", { name: "Edit mine" }));
+    expect(screen.getByRole("textbox", { name: "Reply to Brian" })).toBeInTheDocument();
+    b.unmount();
+    render(<Host state="conflict-lead" />);
+    await userEvent.click(screen.getByRole("button", { name: "Send mine anyway" }));
+    expect(screen.getByText("Sending to Brian in 10s")).toBeInTheDocument();
+    expect(screen.getByText("Wrote again")).toBeInTheDocument();
+  });
+
   it("ignores keys while typing and in dialogs", async () => {
     render(<Host state="edited" />);
     await userEvent.type(screen.getByRole("textbox", { name: "Reply to Brian" }), "j");

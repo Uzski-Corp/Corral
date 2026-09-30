@@ -2,7 +2,7 @@
 /* Settings → Integrations (M8, ENG-58): Cal.com (meetings), Phoenix ERP (deals), AutoSend (follow-up mail).
    Connect, connected, needs sign-in, failing, disconnect; per-integration logs, Phoenix’s field mapping, and
    what each one may do. */
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Button, cx } from "../primitives";
 import { Icon } from "../icons";
 import { Dialog } from "../Overlays";
@@ -12,6 +12,8 @@ import { Banner, ErrorState, Skeleton, Spinner } from "../States";
 import { useToast } from "../Toaster";
 import { dealPayload, filterLogs, healthOf, isProblem, mappingIssues, RESULT_WORD, type Connection, type IntegrationId, type LogFilter, type LogRow, type MapRow } from "@/lib/integrations/integrations";
 import type { SettingsReviewState } from "@/lib/integrations/state";
+import { sectionOf, type DevSection, type McpReviewState } from "@/lib/mcp/state";
+import { Developer, McpConsent } from "../mcp";
 import { AUTOSEND_SENDER, CORRAL_FIELDS, ERP_FIELDS, ERP_URL, GRACE_VALUES, INTEGRATIONS, LOGS, MAPPING, MAPPING_BROKEN, PROBLEM, SCOPES, STAGE_MAP, integration, settingsSeed, type SettingsSeed } from "./data";
 import { Pill, Tile } from "./Handoff";
 
@@ -19,26 +21,38 @@ type Tab = SettingsSeed["tab"];
 type DialogKind = NonNullable<SettingsSeed["dialog"]>;
 const TILE: Record<IntegrationId, string> = { cal: "Ca", phoenix: "Px", autosend: "As" };
 
-const SECTIONS: { id: string; label: string; note?: string; href?: string }[] = [
+const SECTIONS: { id: string; label: string; note?: string; href?: string; group?: "dev" }[] = [
   { id: "workspace", label: "Workspace", note: "Name, time zone, sending hours" }, { id: "team", label: "Team", note: "People and roles" },
   { id: "mailboxes", label: "Mailboxes", href: "/app?view=sequences&state=mailboxes" }, { id: "integrations", label: "Integrations" },
-  { id: "api", label: "API keys", note: "Designed with the MCP server (M9)" }, { id: "billing", label: "Billing", note: "Plan and credits" },
+  { id: "billing", label: "Billing", note: "Plan and credits" },
+  /* M9 (ENG-59): Developers. */
+  { id: "mcp", label: "MCP", group: "dev" }, { id: "keys", label: "API keys", group: "dev" }, { id: "docs", label: "Docs", group: "dev" },
 ];
+const isDev = (id: string): id is DevSection => id === "mcp" || id === "keys" || id === "docs";
 
-/** The settings page. Only Integrations is designed in M8; the others keep their place. */
-export function SettingsView({ state }: { state?: SettingsReviewState }) {
-  const [section, setSection] = useState("integrations");
+/** The settings page. Integrations (M8) and Developers (M9) are designed; the others keep their place. */
+export function SettingsView({ state, developer, onSection }: { state?: SettingsReviewState; developer?: McpReviewState; onSection?: (label: string) => void }) {
+  const [section, setSection] = useState<string>(developer ? sectionOf(developer) : "integrations");
   const s = SECTIONS.find((x) => x.id === section)!;
+  const go = (id: string) => { setSection(id); onSection?.(SECTIONS.find((x) => x.id === id)!.label); };
+  // On a phone the nav is one scrolling row; keep the page you're on in view (Developers sits past Billing).
+  const nav = useRef<HTMLElement>(null);
+  useEffect(() => { nav.current?.querySelector<HTMLElement>(".is-on")?.scrollIntoView?.({ block: "nearest", inline: "nearest" }); }, [section]);
+  if (developer === "mcp-consent") return <div className="c-view"><McpConsent /></div>;
+  const item = (x: (typeof SECTIONS)[number]) => <li key={x.id}>{x.href
+    ? <a className="i-nav__item" href={x.href}>{x.label}<Icon name="arrow" size={12} /></a>
+    : <button type="button" className={cx("i-nav__item", x.id === section && "is-on")} aria-current={x.id === section ? "page" : undefined} onClick={() => go(x.id)}>{x.label}</button>}</li>;
   return (
     <div className="c-view i-settings">
-      <nav className="i-nav" aria-label="Settings">
+      <nav ref={nav} className="i-nav" aria-label="Settings">
         <span className="i-nav__title">Settings</span>
-        <ul>{SECTIONS.map((x) => <li key={x.id}>{x.href
-          ? <a className="i-nav__item" href={x.href}>{x.label}<Icon name="arrow" size={12} /></a>
-          : <button type="button" className={cx("i-nav__item", x.id === section && "is-on")} aria-current={x.id === section ? "page" : undefined} onClick={() => setSection(x.id)}>{x.label}</button>}</li>)}</ul>
+        <ul>{SECTIONS.filter((x) => !x.group).map(item)}</ul>
+        <span className="i-nav__title i-nav__group" id="i-nav-dev">Developers</span>
+        <ul aria-labelledby="i-nav-dev">{SECTIONS.filter((x) => x.group === "dev").map(item)}</ul>
       </nav>
       <div className="i-main">
         {section === "integrations" ? <Integrations key={state ?? "live"} state={state} />
+          : isDev(section) ? <Developer key={`${section}-${developer ?? "live"}`} section={section} state={developer && sectionOf(developer) === section ? developer : undefined} />
           : <div className="i-later"><h2>{s.label}</h2><p className="c-muted">{s.note}. Designed in a later milestone; this keeps its place in Settings.</p></div>}
       </div>
     </div>

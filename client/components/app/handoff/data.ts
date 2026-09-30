@@ -108,7 +108,7 @@ export const INTEGRATIONS: IntegrationModel[] = [
   { id: "cal", name: "Cal.com", role: "Meetings", tile: "Ca",
     what: "Your booking link goes in Corral’s drafts. When someone books, moves, cancels or misses a meeting, the thread and the lead know within seconds.",
     does: ["A booking stops the sequence and moves the thread to Meetings", "A move updates the meeting everywhere, including the deal in Phoenix", "A cancel or a no-show brings the thread back to Needs you with a note to send"],
-    account: [["Connected as", "tomas@coldtrace.io · Tomás Ibarra"], ["Link in drafts", "20 min intro · cal.com/tomas/20min"], ["Listens for", "BOOKING_CREATED · BOOKING_RESCHEDULED · BOOKING_CANCELLED · BOOKING_NO_SHOW_UPDATED"], ["Signed", "Every delivery checked against X-Cal-Signature-256; unsigned or wrong is rejected"], ["Since", "Sep 14"]],
+    account: [["Connected as", "tomas@coldtrace.io · Tomás Ibarra"], ["Link in drafts", "20 min intro · cal.com/tomas/20min"], ["Listens for", "BOOKING_CREATED · BOOKING_RESCHEDULED · BOOKING_CANCELLED · BOOKING_NO_SHOW_UPDATED · AFTER_HOSTS_CAL_VIDEO_NO_SHOW · AFTER_GUESTS_CAL_VIDEO_NO_SHOW"], ["Signed", "Every delivery checked against X-Cal-Signature-256; unsigned or wrong is rejected"], ["Since", "Sep 14"]],
     last: "BOOKING_CREATED · Yesterday, 16:18" },
   { id: "phoenix", name: "Phoenix ERP", role: "Deals", tile: "Px",
     what: "When a meeting is booked, Corral opens a deal in Phoenix and keeps it in step. When Phoenix marks a deal won or lost, Corral stops writing to that company.",

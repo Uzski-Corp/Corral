@@ -23,6 +23,7 @@
  *   failed        the mailbox provider refused; the reply is kept
  *   disconnected  the thread's mailbox is disconnected (M6 pool); Reconnect
  *   conflict      a teammate replied while you were writing
+ *   conflict-lead the lead wrote again while you were writing (M9): Redraft, Edit mine, Send mine anyway
  *   empty         nothing needs you
  *   loading       list and thread skeletons
  *   error         the Unibox couldn't load
@@ -33,7 +34,7 @@ import { HANDOFF_REVIEW_STATES } from "@/lib/handoff/state";
 
 export const UNIBOX_REVIEW_STATES = [
   "panes", "filtered", "triage-menu", "referral", "ooo", "unsubscribe", "bounce", "thread", "keys",
-  "drafting", "draft", "low", "refused", "edited", "undo", "sending", "sent", "failed", "disconnected", "conflict",
+  "drafting", "draft", "low", "refused", "edited", "undo", "sending", "sent", "failed", "disconnected", "conflict", "conflict-lead",
   "empty", "loading", "error",
   ...HANDOFF_REVIEW_STATES,
 ] as const;

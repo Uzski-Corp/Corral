@@ -28,6 +28,7 @@ import { UniboxView, UNIBOX_TABS, needsYou, UNIBOX_THREADS, uniboxSeedFor, type 
 import type { UniboxReviewState } from "@/lib/unibox/state";
 import { SettingsView } from "./handoff";
 import type { SettingsReviewState } from "@/lib/integrations/state";
+import { SECTION_TITLE, sectionOf, type McpReviewState } from "@/lib/mcp/state";
 
 /** Fixed "today" for the demo so static renders are deterministic. Replace with new Date(). */
 export const DEMO_TODAY = new Date(2026, 8, 29);
@@ -129,11 +130,14 @@ export type AppDemoProps = {
   unibox?: UniboxReviewState;
   /** Settings → Integrations review state (M8): /app?view=settings&state=… */
   settings?: SettingsReviewState;
+  /** Settings → Developers review state (M9): MCP, API keys, Docs. /app?view=settings&state=… */
+  developer?: McpReviewState;
 };
 export function AppDemo(p: AppDemoProps) { return <ToastProvider><Demo {...p} /></ToastProvider>; }
 
-function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, drawer = false, dialog = false, frame = "viewport", hotkeys = true, className, account, onSignOut, sessionError, kb, leads, discovery, sequences, unibox, settings }: AppDemoProps) {
+function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, drawer = false, dialog = false, frame = "viewport", hotkeys = true, className, account, onSignOut, sessionError, kb, leads, discovery, sequences, unibox, settings, developer }: AppDemoProps) {
   const router = useRouter();
+  const [setSection, setSetSection] = useState(developer ? SECTION_TITLE[sectionOf(developer)] : "Integrations");
   const toast = useToast();
   const signOut = useCallback(() => {
     if (!onSignOut) { router.push("/sign-in"); return; }
@@ -213,7 +217,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
   const crumbs = view === "unibox" ? [ws, "Unibox", UNIBOX_TABS.find((x) => x.id === tab)!.label]
     : view === "knowledge" ? [ws, "Knowledge base", PRODUCT.name]
     : view === "sequences" && seqTab === "pool" ? [ws, "Sequences", "Mailbox pool"]
-    : view === "settings" ? [ws, "Settings", "Integrations"]
+    : view === "settings" ? [ws, "Settings", setSection]
     : segment ? [ws, "Segments", segment] : [ws, label];
   const table = view === "companies" || view === "segments";
   const findCompanies = () => { go("discovery"); setSetupOpen(true); };
@@ -250,7 +254,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
         {view === "discovery" && <DiscoveryView key={discovery ?? "live"} state={discovery} setupOpen={setupOpen} onSetupOpenChange={setSetupOpen} onOpenCompanies={() => go("companies")} />}
         {view === "sequences" && <SequencesView key={sequences ?? "live"} state={sequences} tab={seqTab} onTabChange={setSeqTab} pool={pool} onPoolChange={setPool} newSignal={newSeq} />}
         {view === "contacts" && <ContactsView />}
-        {view === "settings" && <SettingsView key={settings ?? "live"} state={settings} />}
+        {view === "settings" && <SettingsView key={settings ?? developer ?? "live"} state={settings} developer={developer} onSection={setSetSection} />}
         {view === "knowledge" && <KnowledgeBase state={kb} addOpen={kbAdd} onAddOpenChange={setKbAdd} contained={frame === "contained"} />}
         {!table && view !== "unibox" && view !== "contacts" && view !== "knowledge" && view !== "discovery" && view !== "sequences" && view !== "settings" && <PendingView id={view} onSearch={() => setPalette(true)} />}
         </>}

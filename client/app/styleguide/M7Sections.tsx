@@ -12,7 +12,7 @@ import type { DraftKind, SendKind } from "@/lib/unibox/draft";
 const Label = ({ children }: { children: ReactNode }) => <span className="sg-label">{children}</span>;
 const noop = () => {};
 const A: DraftActions = { onDraft: noop, onStop: noop, onSend: noop, onEdit: noop, onBack: noop, onText: noop, onUndo: noop, onRetry: noop, onReconnect: noop, onKeepDraft: noop,
-  onDiscard: noop, onSendAnyway: noop, onKeepNote: noop, onWriteOwn: noop, onDraftSafe: noop, onRedraft: noop, onUnhandle: noop, onTriage: noop };
+  onDiscard: noop, onSendAnyway: noop, onKeepNote: noop, onRedraftBoth: noop, onWriteOwn: noop, onDraftSafe: noop, onRedraft: noop, onUnhandle: noop, onTriage: noop };
 const th = (id: string) => UNIBOX_THREADS.find((t) => t.id === id)!;
 
 export function UniboxTriageDemo() {
@@ -62,6 +62,7 @@ const CASES: { label: string; id: string; kind: DraftKind; send?: SendKind; text
   { label: "failed · the provider refused; the reply is kept", id: "brian", kind: "ready", send: "failed" },
   { label: "mailbox disconnected · replies go from the thread's mailbox", id: "amara", kind: "low", send: "disconnected" },
   { label: "conflict · a teammate replied first", id: "brian", kind: "ready", send: "conflict" },
+  { label: "conflict-lead · the lead wrote again", id: "brian", kind: "ready", send: "conflict-lead" },
   { label: "handled by Corral · unsubscribe", id: "neema", kind: "none" },
 ];
 

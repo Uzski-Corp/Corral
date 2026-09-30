@@ -67,6 +67,16 @@ export function SentMessage({ text, at, from, pending }: { text: string; at: str
   );
 }
 
+/** The lead's second email, landed while you were writing (`conflict-lead`). */
+export function FollowUpMessage({ who, email, at, body, avatar }: { who: string; email: string; at: string; body: string; avatar: string }) {
+  return (
+    <div className="u-reply u-reply--again">
+      <div className="u-reply__head"><Avatar id={avatar} size={20} /><span className="c-strong">{who}</span><span className="u-againtag">Wrote again</span><span className="c-mono u-reply__addr">{email}</span><span style={{ flex: 1 }} /><span className="c-faint">{at}</span></div>
+      <p className="c-message">{body}</p>
+    </div>
+  );
+}
+
 /** A teammate's reply in the same thread (the conflict state). */
 export function TeammateMessage({ who, email, at, body }: { who: string; email: string; at: string; body: string }) {
   return (

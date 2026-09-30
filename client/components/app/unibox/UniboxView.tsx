@@ -15,10 +15,10 @@ import type { UniboxReviewState } from "@/lib/unibox/state";
 import { isHandoffState } from "@/lib/handoff/state";
 import { HandoffProblems, HandoffRail, MeetingCard } from "../handoff/Handoff";
 import { handoffFor } from "../handoff/data";
-import { COPILOT, HANDLED_NOTE, POOL_MAILBOX, TEAMMATE_REPLY, draftKindFor, seedFor, type UniboxTab } from "./data";
+import { BRIAN_REDRAFT, COPILOT, HANDLED_NOTE, LEAD_FOLLOWUP, POOL_MAILBOX, TEAMMATE_REPLY, draftKindFor, seedFor, type UniboxTab } from "./data";
 import { DraftArea, draftText, type DraftActions } from "./Copilot";
 import { FilterChips, KeysSheet, RowTag, TriageMenu } from "./Triage";
-import { FitSummary, History, MailboxLine, Message, SentMessage, SequenceTrail, TeammateMessage } from "./Thread";
+import { FitSummary, FollowUpMessage, History, MailboxLine, Message, SentMessage, SequenceTrail, TeammateMessage } from "./Thread";
 
 export const UNIBOX_TABS: { id: UniboxTab; label: string }[] = [{ id: "needs", label: "Needs you" }, { id: "meetings", label: "Meetings" }, { id: "snoozed", label: "Snoozed" }, { id: "all", label: "All" }];
 
@@ -66,6 +66,8 @@ export function UniboxView({ threads, setThreads, active, setActive, tab, setTab
   const [ticking, setTicking] = useState(false);
   const [menu, setMenu] = useState(!!seed.menu);
   const [keys, setKeys] = useState(!!seed.keys);
+  const [followed] = useState<Record<string, boolean>>(seed.followUp ? { brian: true } : {});
+  const [redrafted, setRedrafted] = useState<Record<string, boolean>>({});
   const draftTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const tabList = inTab(threads, tab);
@@ -73,7 +75,7 @@ export function UniboxView({ threads, setThreads, active, setActive, tab, setTab
   const t = shown.find((x) => x.id === active) ?? shown[0];
   const kindOf = (id: string): DraftKind => kinds[id] ?? draftKindFor(id, copilotOf(id));
   const sendOf = (id: string): SendKind => sends[id] ?? "idle";
-  const modelOf = (id: string) => (safe[id] ? copilotOf(id)?.safe : copilotOf(id)?.draft);
+  const modelOf = (id: string) => (redrafted[id] && id === "brian" ? BRIAN_REDRAFT : safe[id] ? copilotOf(id)?.safe : copilotOf(id)?.draft);
   const textOf = (id: string) => (kindOf(id) === "edited" ? texts[id] ?? draftText(modelOf(id)) : draftText(modelOf(id)));
   const fromOf = (x: Thread) => x.mailbox ?? POOL_MAILBOX;
 
@@ -113,7 +115,7 @@ export function UniboxView({ threads, setThreads, active, setActive, tab, setTab
     const s = force ? "idle" : sendOf(x.id); const k = kindOf(x.id);
     if (x.handled || s === "undo" || s === "sending" || s === "sent" || k === "drafting" || k === "none") return;
     if (k === "refused") { toast({ tone: "error", children: "Nothing to send yet. Write it yourself, or let Corral draft without those claims." }); return; }
-    if (s === "disconnected" || s === "conflict") return;
+    if (s === "disconnected" || s === "conflict" || s === "conflict-lead") return;
     const text = textOf(x.id);
     if (!canSend(text)) { setTried((m) => ({ ...m, [x.id]: true })); toast({ tone: "error", children: "Not sent: your reply says something on the Never-say list." }); return; }
     setSent((m) => ({ ...m, [x.id]: { text, at: "Just now" } }));
@@ -218,6 +220,7 @@ export function UniboxView({ threads, setThreads, active, setActive, tab, setTab
     onKeepDraft: () => { setSend(t.id, "idle"); toast({ children: "Kept as a draft. It sends once the mailbox is back." }); },
     onDiscard: () => { setSend(t.id, "idle"); setResolved((m) => ({ ...m, [t.id]: "discarded" })); toast({ children: "Your reply is discarded. Amara’s stands." }); },
     onSendAnyway: () => send(t, true),
+    onRedraftBoth: () => { setSend(t.id, "idle"); setRedrafted((m) => ({ ...m, [t.id]: true })); draft(t.id, "ready"); toast({ icon: "refresh", children: `Redrafting to answer both of ${t.name.split(" ")[0]}’s emails` }); },
     onKeepNote: () => { setSend(t.id, "idle"); setResolved((m) => ({ ...m, [t.id]: "note" })); toast({ icon: "users", children: "Saved as a note for Amara on this thread" }); },
     onWriteOwn: () => { setOwn((m) => ({ ...m, [t.id]: true })); setTexts((m) => ({ ...m, [t.id]: "" })); setKind(t.id, "edited"); },
     onDraftSafe: () => { setSafe((m) => ({ ...m, [t.id]: true })); draft(t.id, "ready"); },
@@ -233,12 +236,14 @@ export function UniboxView({ threads, setThreads, active, setActive, tab, setTab
   // cancellation or a no-show happened after the last message, so it sits under it.
   const meet = !t?.meeting ? undefined : t.meeting === "booked" && handoff.meeting.status === "booked" ? "early" : "late";
   const meetBlock = t?.meeting && <><MeetingCard key={`mc-${handoff.key}`} h={handoff} /><HandoffProblems key={`hp-${handoff.key}`} h={handoff} /></>;
-  const slot = !t ? null
+  const again = t && followed[t.id] ? <FollowUpMessage {...LEAD_FOLLOWUP} /> : null;
+  const rest = !t ? null
     : resolved[t.id] ? <><TeammateMessage {...TEAMMATE_REPLY} /><p className="u-resolved"><Icon name="check" size={12} />{resolved[t.id] === "note" ? "Your reply is saved as a note on this thread; only your team sees it." : "Your reply was discarded. Amara’s answer stands."}</p></>
     : s === "sent" && mine ? <><SentMessage text={mine.text} at={mine.at} from={fromOf(t)} />
         <p className="u-resolved"><Icon name="check" size={12} />Sent from {fromOf(t)} in this thread. {t.seq ? `${t.seq.name} stays stopped for ${t.name.split(" ")[0]}.` : ""}</p></>
     : mine ? <><SentMessage text={mine.text} at={mine.at} from={fromOf(t)} pending />{card}</>
     : card;
+  const slot = again ? <>{again}{rest}</> : rest;
 
   return (
     <div className="c-view">
