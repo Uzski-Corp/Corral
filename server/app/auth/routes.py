@@ -3,6 +3,11 @@
 Login CSRF is prevented with a random ``state`` bound to a short-lived HttpOnly cookie
 and compared in constant time on callback. The email-code routes are JSON POSTs called
 by the frontend with ``fetch``; they require an allow-listed ``Origin`` instead.
+
+Every cookie-authenticated POST here (code send/verify, refresh, logout) goes through
+:func:`require_trusted_origin`. ``SameSite=Lax`` already stops cross-site POSTs from
+carrying the session cookie, but it treats sibling subdomains as same-site; the Origin
+allow-list closes that gap and blocks forced logout from any page we don't serve.
 """
 
 import secrets
@@ -313,7 +318,10 @@ async def verify_code(
     return SignedInResponse(redirect_to=settings.frontend_url)
 
 
-@router.post("/refresh")
+_ORIGIN_ERROR: dict[int | str, dict[str, Any]] = {403: {"description": "Origin not allowed"}}
+
+
+@router.post("/refresh", dependencies=[Depends(require_trusted_origin)], responses=_ORIGIN_ERROR)
 async def refresh(
     request: Request, response: Response, settings: SettingsDep, manager: SessionManagerDep
 ) -> RefreshResponse:
@@ -332,11 +340,15 @@ async def refresh(
     return RefreshResponse(refreshed=True)
 
 
-@router.post("/logout")
+@router.post("/logout", dependencies=[Depends(require_trusted_origin)], responses=_ORIGIN_ERROR)
 async def logout(
     request: Request, response: Response, settings: SettingsDep, manager: SessionManagerDep
 ) -> LogoutResponse:
-    """Clear the local cookie and return the WorkOS URL that ends the hosted session."""
+    """Clear the local cookie and return the WorkOS URL that ends the hosted session.
+
+    A request from an untrusted origin is refused before the cookie is touched, so a
+    third-party page can't sign the user out.
+    """
     clear_session_cookie(response, settings)
     sealed = request.cookies.get(settings.session_cookie_name)
     if not sealed:

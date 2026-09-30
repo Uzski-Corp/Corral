@@ -5,6 +5,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
+from structlog.testing import capture_logs
 from workos._errors import AuthenticationError, WorkOSConnectionError
 
 from app.auth.routes import STATE_COOKIE
@@ -14,6 +15,7 @@ from tests.conftest import FRONTEND_URL, make_settings
 from tests.workos_fakes import WorkOSHarness, auth_response, mint_access_token
 
 SESSION_COOKIE = "wos_session"
+ORIGIN = {"Origin": FRONTEND_URL}
 
 
 def set_cookie_headers(res: Response) -> list[str]:
@@ -83,7 +85,7 @@ async def test_auth_not_configured_returns_503(
     unconfigured_client: AsyncClient, method: str, path: str
 ) -> None:
     unconfigured_client.cookies.set(SESSION_COOKIE, "x")
-    res = await unconfigured_client.request(method, path)
+    res = await unconfigured_client.request(method, path, headers=ORIGIN)
     assert res.status_code == 503
     assert res.json()["detail"] == "Authentication is not configured"
 
@@ -234,14 +236,14 @@ async def test_expired_session_is_refreshed_transparently(
 
 
 async def test_refresh_requires_cookie(client: AsyncClient) -> None:
-    assert (await client.post("/api/v1/auth/refresh")).status_code == 401
+    assert (await client.post("/api/v1/auth/refresh", headers=ORIGIN)).status_code == 401
 
 
 async def test_refresh_success_sets_new_cookie(client: AsyncClient, workos: WorkOSHarness) -> None:
     old = workos.seal()
     client.cookies.set(SESSION_COOKIE, old)
     workos.refresh_succeeds()
-    res = await client.post("/api/v1/auth/refresh")
+    res = await client.post("/api/v1/auth/refresh", headers=ORIGIN)
     assert res.status_code == 200
     assert res.json() == {"refreshed": True}
     assert res.cookies[SESSION_COOKIE] != old
@@ -250,7 +252,7 @@ async def test_refresh_success_sets_new_cookie(client: AsyncClient, workos: Work
 async def test_refresh_denied_clears_cookie(client: AsyncClient, workos: WorkOSHarness) -> None:
     client.cookies.set(SESSION_COOKIE, workos.seal())
     workos.request_raw.return_value = {}
-    res = await client.post("/api/v1/auth/refresh")
+    res = await client.post("/api/v1/auth/refresh", headers=ORIGIN)
     assert res.status_code == 401
     assert cookie_cleared(res, SESSION_COOKIE)
 
@@ -258,7 +260,7 @@ async def test_refresh_denied_clears_cookie(client: AsyncClient, workos: WorkOSH
 async def test_refresh_provider_unavailable(client: AsyncClient, workos: WorkOSHarness) -> None:
     client.cookies.set(SESSION_COOKIE, workos.seal())
     workos.request_raw.side_effect = WorkOSConnectionError("down")
-    res = await client.post("/api/v1/auth/refresh")
+    res = await client.post("/api/v1/auth/refresh", headers=ORIGIN)
     assert res.status_code == 503
     assert res.json() == {"refreshed": False}
 
@@ -268,7 +270,7 @@ async def test_refresh_provider_unavailable(client: AsyncClient, workos: WorkOSH
 
 async def test_logout_with_valid_session(client: AsyncClient, workos: WorkOSHarness) -> None:
     client.cookies.set(SESSION_COOKIE, workos.seal())
-    res = await client.post("/api/v1/auth/logout")
+    res = await client.post("/api/v1/auth/logout", headers=ORIGIN)
     assert res.status_code == 200
     q = parse_qs(urlparse(res.json()["logout_url"]).query)
     assert q["session_id"] == ["session_01"]
@@ -277,19 +279,108 @@ async def test_logout_with_valid_session(client: AsyncClient, workos: WorkOSHarn
 
 
 async def test_logout_without_session(client: AsyncClient) -> None:
-    res = await client.post("/api/v1/auth/logout")
+    res = await client.post("/api/v1/auth/logout", headers=ORIGIN)
     assert res.json() == {"logout_url": FRONTEND_URL}
     assert cookie_cleared(res, SESSION_COOKIE)
 
 
 async def test_logout_with_invalid_session(client: AsyncClient) -> None:
     client.cookies.set(SESSION_COOKIE, "garbage")
-    res = await client.post("/api/v1/auth/logout")
+    res = await client.post("/api/v1/auth/logout", headers=ORIGIN)
     assert res.json() == {"logout_url": FRONTEND_URL}
 
 
 async def test_logout_is_post_only(client: AsyncClient) -> None:
     assert (await client.get("/api/v1/auth/logout")).status_code == 405
+
+
+# --- Origin / CSRF on refresh and logout --------------------------------------------
+
+UNTRUSTED_ORIGINS = [
+    {},
+    {"Origin": "https://evil.test"},
+    {"Origin": "null"},
+    {"Origin": FRONTEND_URL + ".evil"},
+    # A sibling subdomain is "same-site" to SameSite=Lax, but not a trusted origin.
+    {"Origin": "http://evil.frontend.test"},
+    {"Origin": FRONTEND_URL.replace("http://", "https://")},  # scheme must match
+    {"Origin": FRONTEND_URL + ":8443"},  # and so must the port
+]
+
+
+@pytest.mark.parametrize("headers", UNTRUSTED_ORIGINS)
+async def test_refresh_requires_a_trusted_origin(
+    client: AsyncClient, workos: WorkOSHarness, headers: dict[str, str]
+) -> None:
+    old = workos.seal()
+    client.cookies.set(SESSION_COOKIE, old)
+    workos.refresh_succeeds()
+    with capture_logs() as logs:
+        res = await client.post("/api/v1/auth/refresh", headers=headers)
+    assert res.status_code == 403
+    assert res.json() == {"detail": "Origin not allowed"}
+    # Refused before WorkOS is called and without reissuing or clearing the cookie.
+    workos.request_raw.assert_not_awaited()
+    assert set_cookie_headers(res) == []
+    assert any(
+        e["event"] == "auth_origin_rejected" and e["path"] == "/api/v1/auth/refresh" for e in logs
+    )
+
+
+@pytest.mark.parametrize("headers", UNTRUSTED_ORIGINS)
+async def test_logout_requires_a_trusted_origin(
+    client: AsyncClient, workos: WorkOSHarness, headers: dict[str, str]
+) -> None:
+    client.cookies.set(SESSION_COOKIE, workos.seal())
+    res = await client.post("/api/v1/auth/logout", headers=headers)
+    assert res.status_code == 403
+    assert res.json() == {"detail": "Origin not allowed"}
+    # A cross-site page can't force a sign-out: the cookie survives.
+    assert not cookie_cleared(res, SESSION_COOKIE)
+    assert set_cookie_headers(res) == []
+
+
+@pytest.mark.parametrize("path", ["/api/v1/auth/refresh", "/api/v1/auth/logout"])
+@pytest.mark.parametrize("origin", ["http://localhost:3000", "http://LOCALHOST:3000/"])
+async def test_refresh_and_logout_accept_cors_origins(
+    client: AsyncClient, workos: WorkOSHarness, path: str, origin: str
+) -> None:
+    # make_settings keeps the default CORS_ORIGINS (http://localhost:3000).
+    client.cookies.set(SESSION_COOKIE, workos.seal())
+    workos.refresh_succeeds()
+    res = await client.post(path, headers={"Origin": origin})
+    assert res.status_code == 200
+
+
+async def test_origin_check_runs_before_the_session_check(client: AsyncClient) -> None:
+    # No cookie *and* no origin: the CSRF guard answers first, so a probe learns nothing.
+    assert (await client.post("/api/v1/auth/refresh")).status_code == 403
+    assert (await client.post("/api/v1/auth/logout")).status_code == 403
+
+
+def test_every_cookie_authenticated_auth_post_checks_origin() -> None:
+    """Regression guard: a new state-changing auth route must opt into the Origin check."""
+    from fastapi.routing import APIRoute
+
+    from app.auth.deps import require_trusted_origin
+    from app.auth.routes import router
+
+    posts = [r for r in router.routes if isinstance(r, APIRoute) and "POST" in (r.methods or set())]
+    assert {r.path for r in posts} == {
+        "/auth/code/send",
+        "/auth/code/verify",
+        "/auth/refresh",
+        "/auth/logout",
+    }
+    for route in posts:
+        calls = {d.call for d in route.dependant.dependencies}
+        assert require_trusted_origin in calls, route.path
+
+
+def test_openapi_documents_the_origin_error() -> None:
+    schema = create_app(make_settings()).openapi()
+    for path in ("/api/v1/auth/refresh", "/api/v1/auth/logout"):
+        assert "403" in schema["paths"][path]["post"]["responses"]
 
 
 async def test_current_user_and_org_dependencies(
