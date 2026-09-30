@@ -1,7 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Mark } from "@/components/app/icons";
-import { CTA, ROUTES } from "@/lib/marketing/site";
+import { CTA, CTA_SIGNED_IN, ROUTES } from "@/lib/marketing/site";
+import { VisitorLink } from "@/components/marketing/site/VisitorLink";
 import { ProductFrame, Screen } from "../site";
 import { OpenRangeNavAccount } from "../site/Visitor";
 
@@ -24,7 +25,7 @@ export function OpenRangeHero() {
         <div className="or-hero__copy">
           <h1>The right fifty,<br />already read.</h1>
           <p>Corral reads every company’s website against what you actually sell, scores the fit, and puts a real person at the end of every row.</p>
-          <div className="or-hero__ctas"><Link className="c-btn c-btn--primary c-btn--lg" href={CTA.start}>Add your first product</Link><a className="c-btn c-btn--lg or-glass" href="#product">See a scored segment</a></div>
+          <div className="or-hero__ctas"><VisitorLink className="c-btn c-btn--primary c-btn--lg" href={CTA.start} signedInHref={CTA_SIGNED_IN.start}>Add your first product</VisitorLink><a className="c-btn c-btn--lg or-glass" href="#product">See a scored segment</a></div>
         </div>
       </div>
       <div className="or-hero__plate">

@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { API, LOGOUT_URL, ME_BODY, server, testConfig, unauthorized } from "@/test/msw";
 import { router } from "@/test/router";
 import { authApiFor } from "@/lib/api";
+import { forgetVisitor, readVisitor } from "@/lib/marketing/visitor";
 import { SessionProvider, toAccount, useSession, type Navigator, type SessionValue } from "./SessionProvider";
 
 const ME = `${API}/api/v1/auth/me`;
@@ -34,7 +35,7 @@ const setVisibility = (v: DocumentVisibilityState) => {
   document.dispatchEvent(new Event("visibilitychange"));
 };
 
-afterEach(() => { vi.useRealTimers(); setVisibility("visible"); probe.current = null; window.history.replaceState(null, "", "/"); });
+afterEach(() => { forgetVisitor(); vi.useRealTimers(); setVisibility("visible"); probe.current = null; window.history.replaceState(null, "", "/"); });
 
 describe("useSession outside a provider", () => {
   it("is null, so the styleguide keeps its sample shell", () => {
@@ -163,6 +164,54 @@ describe("SessionProvider in live mode", () => {
       vi.unstubAllEnvs();
       resetConfigCache();
     });
+  });
+});
+
+describe("SessionProvider and the marketing visitor hint (M10c)", () => {
+  const visitor = () => readVisitor(document.cookie);
+
+  it("remembers the person when /me succeeds and forgets them on sign-out", async () => {
+    const { nav: n } = mount();
+    await waitFor(() => expect(status()).toMatch(/^authenticated/));
+    expect(visitor()).toEqual({ name: "Wanjiru Mwangi", avatarUrl: "https://img.test/w.jpg" });
+    await act(async () => { expect((await probe.current!.signOut()).ok).toBe(true); });
+    expect(visitor()).toBeNull();
+    expect(n.assign).toHaveBeenCalledWith(LOGOUT_URL);
+  });
+
+  it("keeps the hint when sign-out fails for another reason, and drops it when the session is already gone", async () => {
+    server.use(http.post(LOGOUT, () => HttpResponse.json({ detail: "boom" }, { status: 500 })));
+    mount();
+    await waitFor(() => expect(status()).toMatch(/^authenticated/));
+    await act(async () => { await probe.current!.signOut(); });
+    expect(visitor()).not.toBeNull();
+    server.use(http.post(LOGOUT, unauthorized));
+    await act(async () => { expect(await probe.current!.signOut()).toMatchObject({ ok: false, error: { kind: "unauthorized" } }); });
+    expect(visitor()).toBeNull();
+  });
+
+  it("forgets the person on a 401 from /me", async () => {
+    document.cookie = "corral_visitor=" + encodeURIComponent(JSON.stringify({ name: "Old Name", avatarUrl: null })) + "; path=/";
+    expect(visitor()).not.toBeNull();
+    server.use(http.get(ME, unauthorized));
+    const { nav: n } = mount();
+    await waitFor(() => expect(n.replace).toHaveBeenCalled());
+    expect(visitor()).toBeNull();
+  });
+
+  it("forgets the person on a 401 from /refresh", async () => {
+    mount();
+    await waitFor(() => expect(status()).toMatch(/^authenticated/));
+    expect(visitor()).not.toBeNull();
+    server.use(http.post(REFRESH, unauthorized));
+    await act(async () => { await probe.current!.refresh(); });
+    expect(visitor()).toBeNull();
+  });
+
+  it("never writes the hint in review mode", async () => {
+    mount({ config: testConfig({ mode: "review", apiUrl: "" }) });
+    await act(async () => { await probe.current!.signOut(); });
+    expect(visitor()).toBeNull();
   });
 });
 

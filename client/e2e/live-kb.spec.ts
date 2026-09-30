@@ -32,6 +32,16 @@ test.describe("knowledge base on the API", () => {
     expect(await audit(page)).toEqual([]);
   });
 
+  test("skipped_reason and attempts from the API drive Bau's partial-mixed and retried states (M10c)", async ({ page }) => {
+    await openKb(page);
+    await expect(row(page, "Warranty terms.pdf")).toContainText("Reading stopped");
+    await row(page, "Install guide 2025.pdf").getByRole("button", { name: "Install guide 2025.pdf", exact: true }).first().click();
+    await expect(page.getByText(/for two reasons: some are scanned images/)).toBeVisible();
+    await row(page, "Warranty terms.pdf").getByRole("button", { name: "Warranty terms.pdf", exact: true }).first().click();
+    await expect(page.getByText(/Corral tried 3 times and couldn’t finish/)).toBeVisible();
+    expect(await audit(page)).toEqual([]);
+  });
+
   test("uploads a file: processing, then ready once the server has read it", async ({ page }) => {
     await openKb(page);
     await page.getByRole("button", { name: "Add sources" }).first().click();
@@ -103,7 +113,7 @@ test.describe("knowledge base on the API", () => {
     await page.getByRole("button", { name: "Actions for Cold-room SOP.pdf" }).click();
     await page.getByRole("menuitem", { name: "Remove" }).click();
     await page.getByRole("dialog").getByRole("button", { name: "Remove source" }).click();
-    await expect(page.getByRole("alert").filter({ hasText: "Couldn’t remove Cold-room SOP.pdf. Nothing changed." })).toBeVisible();
+    await expect(page.getByRole("alert").filter({ hasText: "Couldn’t remove Cold-room SOP.pdf. It’s still in your sources." })).toBeVisible();
     await expect(row(page, "Cold-room SOP.pdf")).toBeVisible();
   });
 

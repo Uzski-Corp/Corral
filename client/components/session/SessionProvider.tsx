@@ -8,6 +8,9 @@
  *   when a tab that has been hidden for longer comes back.
  * - Sign out: POST /logout, then a full navigation to the WorkOS logout URL it returns.
  *
+ * - Keeps the marketing pages' signed-in hint (the `corral_visitor` cookie, M10c) in step: remembered with the
+ *   person's name and picture whenever /me succeeds, forgotten on sign-out and on any 401.
+ *
  * In the design-review build (`NEXT_PUBLIC_DESIGN_REVIEW=1`) there is no network at all:
  * `account` is null so the shell shows Bau's sample person, and sign-out goes to /sign-in.
  */
@@ -18,6 +21,7 @@ import type { ApiError } from "@/lib/api/errors";
 import { getConfig, type ClientConfig } from "@/lib/config";
 import { err, ok, type Result } from "@/lib/result";
 import { signInUrl } from "@/lib/auth/paths";
+import { forgetVisitor, rememberVisitor } from "@/lib/marketing/visitor";
 
 /** What the shell shows for the signed-in person and workspace. */
 export type ShellAccount = {
@@ -89,13 +93,18 @@ export function SessionProvider({ children, config: configProp, api: apiProp, na
   const leaving = useRef(false);
 
   const toSignIn = useCallback(() => {
+    forgetVisitor();
     if (leaving.current) return;
     leaving.current = true;
     navigator.replace(signInUrl(here()));
   }, [navigator]);
 
   const applyMe = useCallback((r: Result<Me, ApiError>) => {
-    if (r.ok) { setMe(r.value); setError(null); setStatus("authenticated"); lastRefresh.current = Date.now(); return; }
+    if (r.ok) {
+      setMe(r.value); setError(null); setStatus("authenticated"); lastRefresh.current = Date.now();
+      rememberVisitor({ name: displayName(r.value.user), avatarUrl: r.value.user.profilePictureUrl });
+      return;
+    }
     if (r.error.kind === "aborted") return;
     if (r.error.kind === "unauthorized") { toSignIn(); return; }
     setError(r.error);
@@ -139,7 +148,11 @@ export function SessionProvider({ children, config: configProp, api: apiProp, na
   const signOut = useCallback(async (): Promise<Result<void, ApiError>> => {
     if (!api) { router.push("/sign-in"); return ok(undefined); }
     const r = await api.logout();
-    if (!r.ok) return err(r.error);
+    if (!r.ok) {
+      if (r.error.kind === "unauthorized") forgetVisitor();
+      return err(r.error);
+    }
+    forgetVisitor();
     leaving.current = true;
     navigator.assign(r.value.logoutUrl);
     return ok(undefined);

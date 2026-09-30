@@ -55,6 +55,9 @@ export const FOOTER: { title: string; links: { label: string; href: SiteRoute | 
 
 /** The sign-up CTA. There is no self-serve sign-up route yet; both land on /sign-in (open question). */
 export const CTA = { start: ROUTES.signIn, walkthrough: "mailto:hello@corral.app?subject=Walkthrough" } as const;
+/** Where the same CTAs go for a signed-in visitor (M10c question 5): the app, and /mcp's connect straight to
+ *  Settings → Developers → MCP. `state=mcp` opens that tab in review builds; see HANDOFF §17. */
+export const CTA_SIGNED_IN = { start: "/app", mcpConnect: "/app?view=settings&state=mcp" } as const;
 
 export const SAMPLE_NOTE =
   "Sample workspace: people, companies, quotes and numbers are illustrative. Photographs are reference-only stand-ins, not model-released, and are replaced before launch.";

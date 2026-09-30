@@ -1,9 +1,9 @@
 /* /mcp (M10): the public page for Corral's MCP server. The same tools, errors and limits the server serves
    (lib/mcp/tools.ts) and the in-app docs show (Settings → Developers → Docs). */
-import Link from "next/link";
 import { RATE, ROTATE_OVERLAP_HOURS, DEFAULT_EXPIRY } from "@/lib/mcp/keys";
 import { AREA_TITLE, ERRORS, MCP_URL, TOOLS, byArea, keyMayCall } from "@/lib/mcp/tools";
-import { CTA, ROUTES, claim } from "@/lib/marketing/site";
+import { CTA, CTA_SIGNED_IN, ROUTES, claim } from "@/lib/marketing/site";
+import { VisitorLink } from "./VisitorLink";
 import { Section, SitePage, ToConfirm } from "./Chrome";
 import { KeyAccessPiece, McpClientsPiece } from "./Pieces";
 
@@ -76,7 +76,7 @@ export function McpPage() {
           <div><dt>Sends</dt><dd>{RATE.sendsPerHour} an hour, never past a mailbox’s daily cap</dd></div>
           <div><dt>Log</dt><dd>Every call, 90 days</dd></div>
         </dl>
-        <p className="sn-body sn-mt"><Link className="c-btn c-btn--primary c-btn--lg" href={CTA.start}>Sign in and connect</Link></p>
+        <p className="sn-body sn-mt"><VisitorLink className="c-btn c-btn--primary c-btn--lg" href={CTA.start} signedInHref={CTA_SIGNED_IN.mcpConnect}>Sign in and connect</VisitorLink></p>
       </Section>
     </SitePage>
   );

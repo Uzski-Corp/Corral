@@ -65,6 +65,11 @@ function resetKb() {
       sourceRow({ id: "s2", name: "Pricing 2026.docx", kind: "docx", status: "failed", failure: "unreadable", failure_stage: "parse", pages_total: null, pages_read: null, passage_count: 0 }),
       sourceRow({ id: "s3", name: "kilima.co.ke/faq", kind: "url", url: "https://kilima.co.ke/faq", scope: "section", byte_size: null, status: "partial",
         pages_total: 9, pages_read: 7, skipped: "/faq/old, /faq/print", skipped_reason: "unreadable", note: "2 pages didn’t load", passage_count: 18 }),
+      // M10c/M11: the server's skipped_reason and attempts reach Bau's partial-mixed and "tried n times" states.
+      sourceRow({ id: "s4", name: "Install guide 2025.pdf", byte_size: 18_000_000, status: "partial", pages_total: 240, pages_read: 180,
+        skipped: "pp. 181–240", skipped_reason: "mixed", note: null, passage_count: 310 }),
+      sourceRow({ id: "s5", name: "Warranty terms.pdf", status: "failed", failure: "interrupted", failure_stage: "embed", attempts: 3,
+        pages_total: 8, pages_read: null, passage_count: 0 }),
     ],
   };
 }
