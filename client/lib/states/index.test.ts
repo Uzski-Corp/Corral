@@ -20,6 +20,11 @@ describe("every state, indexed", () => {
     expect(all.find((x) => x.state === "keys-loading")?.kind).toBe("loading");
     expect(all.filter((x) => x.surface === "developers")).toHaveLength(MCP_REVIEW_STATES.length);
   });
+  it("indexes the M10b KB source failures as partial moments", () => {
+    const kb = allStates().filter((x) => x.surface === "knowledge");
+    for (const st of ["unreadable", "partial", "interrupted"]) expect(kb.find((x) => x.state === st)?.kind, st).toBe("partial");
+    expect(kb.find((x) => x.state === "interrupted")?.href).toBe("/app?view=knowledge&state=interrupted");
+  });
   it("names map to kinds", () => {
     expect(kindOf("mcp-empty")).toBe("empty");
     expect(kindOf("builder-error")).toBe("error");

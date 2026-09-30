@@ -2,11 +2,14 @@ import type { Failure, SourceKind, Stage } from "@/lib/kb/upload";
 
 /* Sample knowledge base for ColdTrace Sensors (M2 design data; ENG-65 shapes the real one). */
 
+/** A source's status, from the server's SourceOut (PR #67, server/app/api/v1/kb_schemas.py):
+ *  processing ← `stage`, `stage_pct`, `note` · partial ← `pages_read` (read), `pages_total` (total), `skipped`, `note`
+ *  failed ← `failure`, `failure_stage` (at), `note`, `processed_at` (when, shown as people read it). */
 export type SourceStatus =
   | { s: "ready" }
   | { s: "processing"; stage: Stage; pct: number; note?: string }
   | { s: "partial"; read: number; total: number; unit: "pages"; note: string; skipped: string }
-  | { s: "failed"; failure: Failure; at: Stage };
+  | { s: "failed"; failure: Failure; at: Stage; note?: string; when?: string };
 
 export type Source = {
   id: string; name: string; kind: SourceKind; host?: string;
@@ -35,6 +38,17 @@ export const SOURCES: Source[] = [
   { id: "haccp", name: "HACCP logging whitepaper.pdf", kind: "pdf", meta: "12 pages · 2.9 MB", passages: 27, cited: 2, by: { name: "Amara Njoroge", avatar: "njoroge" }, added: "Sep 16", updated: "Sep 16", status: { s: "ready" } },
   { id: "faq", name: "Sales FAQ.md", kind: "md", meta: "3,480 words · 22 KB", passages: 19, cited: 3, by: { name: "Tomás Ibarra", avatar: "tomas" }, added: "Sep 14", updated: "Sep 24", status: { s: "ready" } },
 ];
+
+/** Sources for the M10b review states (?state=unreadable / interrupted), added on top of SOURCES so the
+ *  other states keep their counts. Notes are the server's own strings (server/app/kb/ingest.py). */
+export const REVIEW_SOURCES: Record<"unreadable" | "unreadable-timeout" | "interrupted", Source> = {
+  unreadable: { id: "pricelist", name: "Distributor price list 2026.pdf", kind: "pdf", meta: "3.6 MB", cited: 0, by: { name: "Amara Njoroge", avatar: "njoroge" }, added: "Today", updated: "just now",
+    status: { s: "failed", failure: "unreadable", at: "parse", when: "Today, 09:14" } },
+  "unreadable-timeout": { id: "tender", name: "KEMSA tender response.docx", kind: "docx", meta: "22 MB", cited: 0, by: { name: "Tomás Ibarra", avatar: "tomas" }, added: "Today", updated: "just now",
+    status: { s: "failed", failure: "unreadable", at: "parse", note: "Reading the file took too long.", when: "Today, 09:20" } },
+  interrupted: { id: "fleet", name: "Reefer fleet brochure.pdf", kind: "pdf", meta: "16 pages · 5.3 MB", cited: 0, by: { name: "Wanjiru Kamau", avatar: "wanjiru" }, added: "Today", updated: "8 min ago",
+    status: { s: "failed", failure: "interrupted", at: "embed", note: "Corral couldn't finish reading it.", when: "Today, 09:12" } },
+};
 
 /** A few passages per source, as retrieval sees them (ENG-65 chunks). */
 export const PASSAGES: Record<string, { loc: string; text: string }[]> = {

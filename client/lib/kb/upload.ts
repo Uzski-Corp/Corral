@@ -103,17 +103,54 @@ export function overallPercent(stage: Stage, stagePct: number): number {
 }
 
 /* ------------------------------------------------------------ failures
-   Every failure names what happened, whether anything was kept, and the one fix. */
-export type Failure = "interrupted" | "encrypted" | "no-text" | "rejected" | "duplicate" | "unreachable" | "blocked";
+   Every failure names what happened, whether anything was kept, and the one fix.
+   `ServerFailure` is `Failure` in server/app/kb/errors.py (PR #67, ENG-65/66) word for word: a failed
+   source's `failure`, with `failure_stage` (a Stage) and an optional `note`. The client adds two of
+   its own: `duplicate` (the 409 on add) and `dropped` (the browser lost the upload before the 202). */
+export const SERVER_FAILURES = ["interrupted", "encrypted", "no-text", "rejected", "unreadable", "unreachable", "blocked"] as const;
+export type ServerFailure = (typeof SERVER_FAILURES)[number];
+export type Failure = ServerFailure | "duplicate" | "dropped";
 export const FAILURE: Record<Failure, { title: string; fix: string; action?: "retry" | "replace" | "remove" }> = {
-  interrupted: { title: "Upload stopped", fix: "The connection dropped. Nothing was saved.", action: "retry" },
+  interrupted: { title: "Reading stopped", fix: "Corral tried again on its own and still couldn’t finish, so nothing from it is searchable yet. Your file is kept.", action: "retry" },
   encrypted: { title: "This PDF is password-protected", fix: "Remove the password, then add it again.", action: "replace" },
   "no-text": { title: "No readable text", fix: "It looks like a scanned document. Add a version with selectable text.", action: "replace" },
   rejected: { title: "This file was blocked", fix: "It contains macros or embedded files Corral won't open.", action: "remove" },
-  duplicate: { title: "Already in this knowledge base", fix: "Replace the old copy, or skip this one.", action: "replace" },
+  unreadable: { title: "Corral couldn’t read this file", fix: "It may be damaged, or it took too long to open. Save a fresh copy or export it as PDF, then replace it.", action: "replace" },
   unreachable: { title: "Couldn’t reach this page", fix: "It returned an error or timed out. Check it opens in a private window.", action: "retry" },
   blocked: { title: "This site blocks readers", fix: "Save the page as PDF and add the file instead.", action: "remove" },
+  duplicate: { title: "Already in this knowledge base", fix: "Replace the old copy, or skip this one.", action: "replace" },
+  dropped: { title: "Upload stopped", fix: "The connection dropped. Nothing was saved.", action: "retry" },
 };
+
+/** What a failed source offers. `interrupted` at `upload` means the stored file is gone (server note
+ *  "The upload wasn't stored."), so trying again can't help: it asks for the file instead. */
+export function recoveryOf(failure: Failure, stage?: Stage): "retry" | "replace" | "remove" {
+  if (failure === "interrupted" && stage === "upload") return "replace";
+  return FAILURE[failure].action ?? "remove";
+}
+
+/** Why a partial read skipped what it skipped. The server sends prose (`note`) and a label (`skipped`),
+ *  not a reason code, so this reads the note PR #67 writes: scanned pages, the page/text limit, or web
+ *  pages in a section that couldn't be read. Ask for a `skipped_reason` if the prose changes. */
+export type PartialReason = "scanned" | "limit" | "pages";
+export function partialReason(note: string | undefined, kind: SourceKind): PartialReason {
+  if (kind === "url") return "pages";
+  if (note && /scanned/i.test(note)) return "scanned";
+  return "limit";
+}
+
+/** Page numbers from the server's `skipped` label ("page 3", "pages 2, 5–7"). Null when it isn't a
+ *  page list (a web path list, "the end of the document") or was cut short with "…". */
+export function skippedPages(skipped: string | undefined, total?: number): number[] | null {
+  const m = skipped?.match(/^pages? (\d+(?:[–-]\d+)?(?:, \d+(?:[–-]\d+)?)*)$/);
+  if (!m) return null;
+  const out: number[] = [];
+  for (const span of m[1].split(", ")) {
+    const [a, b = a] = span.split(/[–-]/).map(Number);
+    for (let n = a; n <= b; n++) if (!total || n <= total) out.push(n);
+  }
+  return out;
+}
 
 /** Footer line for the upload queue: "4 added · 2 need attention", or "Uploading 3 of 5". */
 export function queueSummary(items: { state: "queued" | "active" | "done" | "error" }[]): string {

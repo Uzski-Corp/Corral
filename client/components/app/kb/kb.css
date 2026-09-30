@@ -336,3 +336,32 @@ button.k-cite__btn:hover { background: var(--color-surface-sunken); color: var(-
   .k-url { flex-direction: column; } .k-url .c-input { flex: none; height: var(--spacing-btn); } .k-url .c-btn { justify-content: center; }
   .k-drop { min-height: 120px; padding: 18px; }
 }
+
+/* M10b: partial page strip and the failure detail (unreadable, interrupted) */
+.k-partial, .k-failed { display: flex; flex-direction: column; gap: 10px; }
+.k-pages { margin: 0; display: flex; flex-direction: column; gap: 7px; }
+.k-pages__strip { display: flex; gap: 2px; height: 22px; }
+.k-pages__p { flex: 1 1 0; min-width: 2px; max-width: 12px; border-radius: 1.5px; background: var(--color-surface-inverse); opacity: .78; }
+.k-pages__p.is-off { opacity: 1; background: repeating-linear-gradient(135deg, var(--color-caution-200) 0 2px, var(--color-caution-50) 2px 4px); box-shadow: inset 0 0 0 1px var(--color-caution-200); }
+.k-pages__key { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--color-text-tertiary); }
+.k-pages__key > span { display: inline-flex; align-items: center; gap: 6px; }
+.k-pages__key .c-mono { margin-left: auto; color: var(--color-text-tertiary); }
+.k-pages__sw { width: 8px; height: 12px; border-radius: 1.5px; background: var(--color-surface-inverse); opacity: .78; }
+.k-pages__sw.is-off { opacity: 1; background: repeating-linear-gradient(135deg, var(--color-caution-200) 0 2px, var(--color-caution-50) 2px 4px); box-shadow: inset 0 0 0 1px var(--color-caution-200); }
+.k-why { border: 1px solid var(--color-border-subtle); border-radius: 8px; background: var(--color-canvas); }
+.k-why > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; font-size: var(--text-label); color: var(--color-text-secondary); border-radius: 8px; }
+.k-why > summary::-webkit-details-marker { display: none; }
+.k-why > summary::before { content: ""; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform 120ms var(--ease-snap); margin-right: 2px; }
+.k-why[open] > summary::before { transform: rotate(45deg); }
+.k-why > summary:focus-visible { outline: 2px solid var(--color-action); outline-offset: 2px; }
+.k-why dl { margin: 0; padding: 2px 12px 10px; display: flex; flex-direction: column; gap: 7px; }
+.k-why dl > div { display: grid; grid-template-columns: 92px 1fr; gap: 10px; font-size: 12.5px; line-height: 18px; }
+.k-why dt { color: var(--color-text-tertiary); }
+.k-why dd { margin: 0; color: var(--color-text-body); min-width: 0; }
+.k-why dd .c-mono { margin-left: 6px; font-size: 11.5px; color: var(--color-text-tertiary); }
+.k-why__code { margin: 0; padding: 8px 12px; border-top: 1px solid var(--color-border-subtle); font-size: 11.5px; color: var(--color-text-tertiary); overflow-wrap: anywhere; }
+@media (max-width: 640px) { .k-why dl > div { grid-template-columns: 1fr; gap: 1px; } }
+/* In the 380 rail the fix sits under the words, not beside them, so the explanation keeps its measure. */
+.k-detail .c-banner { flex-wrap: wrap; }
+.k-detail .c-banner__txt { flex: 1 1 calc(100% - 34px); }
+.k-detail .c-banner > .c-btn { margin: 4px 0 0 24px; align-self: flex-start; }

@@ -7,7 +7,7 @@ import { Button, cx } from "../primitives";
 import { EmptyState, ErrorState, Skeleton } from "../States";
 import { Tabs } from "../Tabs";
 import { useToast } from "../Toaster";
-import { KNOWLEDGE, PRODUCT, SOURCES, citedBy, type KSection, type Source } from "./data";
+import { KNOWLEDGE, PRODUCT, REVIEW_SOURCES, SOURCES, citedBy, type KSection, type Source } from "./data";
 import { KnowledgeEditor } from "./Editor";
 import { advance, isBusy, useTicker } from "./parts";
 import { SourceDetail } from "./SourceDetail";
@@ -26,7 +26,7 @@ export function reviewQueue(state?: KbReviewState): QueueItem[] {
     f("Sensor datasheet 2026.pdf", 2.6 * MB, { state: "done", pct: 100 }),
   ];
   if (state === "upload-errors") return [
-    failed(f("Q3 customer webinar.pdf", 14.2 * MB, { state: "active", pct: 58 }), "interrupted", ["retry"]),
+    failed(f("Q3 customer webinar.pdf", 14.2 * MB, { state: "active", pct: 58 }), "dropped", ["retry"]),
     f("Trade show deck.key", 42 * MB),
     f("Installer training video notes.pdf", 31.4 * MB),
     failed(f("Calibration certificate 2026.pdf", 380 * 1024), "encrypted", ["replace", "skip"]),
@@ -36,7 +36,7 @@ export function reviewQueue(state?: KbReviewState): QueueItem[] {
   return [];
 }
 
-const FROZEN: KbReviewState[] = ["loading", "error", "sources", "source", "partial", "failed", "upload", "upload-errors", "dragging", "tray", "editing", "save-error", "conflict"];
+const FROZEN: KbReviewState[] = ["loading", "error", "sources", "source", "partial", "failed", "unreadable", "interrupted", "upload", "upload-errors", "dragging", "tray", "editing", "save-error", "conflict"];
 
 export function KnowledgeBase({ state, addOpen, onAddOpenChange, contained }: {
   state?: KbReviewState; addOpen: boolean; onAddOpenChange: (open: boolean) => void; /** styleguide frame: tray and overlays stay inside */ contained?: boolean;
@@ -44,11 +44,13 @@ export function KnowledgeBase({ state, addOpen, onAddOpenChange, contained }: {
   const toast = useToast();
   const live = !state || !FROZEN.includes(state);
   const [phase, setPhase] = useState<"loading" | "error" | "ready">(state === "loading" ? "loading" : state === "error" ? "error" : "ready");
-  const [sources, setSources] = useState<Source[]>(() => (state === "empty" ? [] : state === "drafting" ? [{ ...SOURCES[4], id: "pitch", status: { s: "processing", stage: "parse", pct: 40 } }] : SOURCES));
+  const [sources, setSources] = useState<Source[]>(() => (state === "empty" ? [] : state === "drafting" ? [{ ...SOURCES[4], id: "pitch", status: { s: "processing", stage: "parse", pct: 40 } }]
+    : state === "unreadable" || state === "interrupted" ? [REVIEW_SOURCES[state], ...SOURCES] : SOURCES));
   const [knowledge, setKnowledge] = useState<KSection[]>(state === "empty" || state === "drafting" ? [] : KNOWLEDGE);
-  const sourceStates: KbReviewState[] = ["sources", "source", "partial", "failed", "tray", "dragging"];
+  const sourceStates: KbReviewState[] = ["sources", "source", "partial", "failed", "unreadable", "interrupted", "tray", "dragging"];
   const [tab, setTab] = useState<"knowledge" | "sources">(state && sourceStates.includes(state) ? "sources" : "knowledge");
-  const [selected, setSelected] = useState<string | undefined>(state === "source" ? "pitch" : state === "partial" ? "gateway" : state === "failed" ? "cert" : undefined);
+  const [selected, setSelected] = useState<string | undefined>(state === "source" ? "pitch" : state === "partial" ? "gateway" : state === "failed" ? "cert"
+    : state === "unreadable" || state === "interrupted" ? REVIEW_SOURCES[state].id : undefined);
   const [filter, setFilter] = useState<SourceFilter>("all");
   const [dragging, setDragging] = useState(state === "dragging");
   const [removing, setRemoving] = useState<string | undefined>();

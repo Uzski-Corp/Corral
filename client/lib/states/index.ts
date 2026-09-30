@@ -44,7 +44,7 @@ export const SURFACES: Surface[] = [
     kinds: { "no-avatar": "partial", "signout-failed": "error" },
     na: { empty: "The shell always has its navigation; each view owns its own empty state." } },
   { id: "knowledge", label: "Knowledge base", milestone: "M2", view: "knowledge", states: KB_REVIEW_STATES,
-    kinds: { failed: "partial", conflict: "error" } },
+    kinds: { failed: "partial", unreadable: "partial", interrupted: "partial", conflict: "error" } },
   { id: "companies", label: "Companies and fit", milestone: "M3–M5", view: "companies", states: LEADS_REVIEW_STATES,
     kinds: { "no-results": "empty", "fit-none": "partial", "fit-low": "view", "fit-changed": "view" } },
   { id: "segments", label: "Segments", milestone: "M3", view: "segments", states: SEGMENT_REVIEW_STATES },

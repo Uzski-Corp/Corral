@@ -1,10 +1,10 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { KNOWLEDGE, SOURCES, citedBy, sourceName, type Source } from "./data";
+import { KNOWLEDGE, REVIEW_SOURCES, SOURCES, citedBy, sourceName, type Source } from "./data";
 import { advance, FileTile } from "./parts";
 import { SourceList, filterSources } from "./SourceList";
-import { SourceDetail, pipelineSteps } from "./SourceDetail";
+import { PageStrip, SourceDetail, pipelineSteps } from "./SourceDetail";
 import { UploadDialog, UploadTray, fileItem, useUploadQueue, type QueueItem } from "./Upload";
 import { KnowledgeEditor, attentionOf } from "./Editor";
 import { KnowledgeBase, reviewQueue } from "./KnowledgeBase";
@@ -23,7 +23,10 @@ describe("pipeline", () => {
   });
   it("describes each state as receipts", () => {
     expect(pipelineSteps(src("pitch")).every((s) => s.state === "done")).toBe(true);
-    expect(pipelineSteps(src("gateway")).find((s) => s.stage === "parse")).toMatchObject({ state: "warn", text: "Read 31 of 38 pages" });
+    expect(pipelineSteps(src("gateway")).find((s) => s.stage === "parse")).toMatchObject({ state: "warn", text: "Used 31 of 38 pages" });
+    expect(pipelineSteps(REVIEW_SOURCES.interrupted).find((s) => s.state === "fail")).toMatchObject({ stage: "embed", meta: "retries used up" });
+    expect(pipelineSteps(REVIEW_SOURCES.unreadable).find((s) => s.state === "fail")).toMatchObject({ stage: "parse", meta: "file damaged" });
+    expect(pipelineSteps(REVIEW_SOURCES["unreadable-timeout"]).find((s) => s.state === "fail")?.meta).toBe("took too long");
     const failed = pipelineSteps(src("cert"));
     expect(failed.map((s) => s.state)).toEqual(["done", "fail", "todo", "todo", "todo"]);
     expect(failed[1]).toMatchObject({ text: "Stopped at checking file", meta: "password-protected" });
@@ -70,10 +73,86 @@ describe("SourceDetail", () => {
   it("explains a partial read and offers a replacement", async () => {
     const onAction = vi.fn();
     render(<SourceDetail src={src("gateway")} knowledge={KNOWLEDGE} onAction={onAction} onJump={vi.fn()} />);
-    expect(screen.getByText(/Partly read: 31 of 38 pages are searchable/)).toBeInTheDocument();
+    expect(screen.getByText("31 of 38 pages used · 7 skipped")).toBeInTheDocument();
     expect(screen.getAllByText(/skipped pages 12–18/).length).toBeGreaterThan(0);
-    await userEvent.click(screen.getAllByRole("button", { name: /Replace file/ })[0]);
+    expect(screen.getByRole("status")).toHaveTextContent(/They’re scanned images with no text layer, and Corral can’t read text inside images yet/);
+    expect(screen.getByRole("figure", { name: "31 pages used, 7 skipped" })).toBeInTheDocument();
+    expect(document.querySelectorAll(".k-pages__p.is-off")).toHaveLength(7);
+    await userEvent.click(screen.getByRole("button", { name: /Upload a text version/ }));
     expect(onAction).toHaveBeenCalledWith("gateway", "replace");
+    await userEvent.click(screen.getAllByRole("button", { name: /Replace file/ })[0]);
+    expect(onAction).toHaveBeenCalledTimes(2);
+  });
+  it("partial beyond scans: the limit and web sections say their own reason and fix", async () => {
+    const onAction = vi.fn();
+    const limit: Source = { ...src("gateway"), status: { s: "partial", read: 500, total: 620, unit: "pages", note: "Only the first 500 pages were read (size limit).", skipped: "pages 501–620" } };
+    const { unmount } = render(<SourceDetail src={limit} onAction={onAction} />);
+    expect(screen.getByRole("status")).toHaveTextContent(/Split it into smaller files/);
+    expect(document.querySelectorAll(".k-pages__p.is-off")).toHaveLength(120);
+    unmount();
+    const web: Source = { ...src("blog"), status: { s: "partial", read: 37, total: 40, unit: "pages", note: "3 of 40 pages couldn't be read.", skipped: "/blog/a, /blog/b, /blog/c" } };
+    render(<SourceDetail src={web} onAction={onAction} />);
+    expect(screen.queryByRole("figure")).toBeNull();
+    await userEvent.click(screen.getAllByRole("button", { name: /Re-read/ })[0]);
+    expect(onAction).toHaveBeenCalledWith("blog", "reread");
+  });
+  it("unreadable: couldn't read the file, Replace file, and what happened", async () => {
+    const onAction = vi.fn();
+    const { unmount } = render(<SourceDetail src={REVIEW_SOURCES.unreadable} onAction={onAction} />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Corral couldn’t read this file");
+    expect(screen.getByRole("alert")).toHaveTextContent(/It may be damaged, or it took too long to open.*Corral isn’t using anything from it/);
+    expect(screen.getByText("failure: unreadable · failure_stage: parse")).toBeInTheDocument();
+    expect(screen.getByText(/isn’t really a PDF/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Try again/ })).toBeNull();
+    await userEvent.click(within(screen.getByRole("alert")).getByRole("button", { name: /Replace file/ }));
+    expect(onAction).toHaveBeenCalledWith("pricelist", "replace");
+    unmount();
+    render(<SourceDetail src={REVIEW_SOURCES["unreadable-timeout"]} />);
+    expect(screen.getByRole("alert")).toHaveTextContent(/^.*Reading the file took too long\. Save a fresh copy or export it as PDF, then replace it\./);
+    expect(screen.getByText(/isn’t really a Word document|very large or complex/)).toHaveTextContent(/very large or complex/);
+  });
+  it("interrupted: retries used up, Try again first, with the detail open", async () => {
+    const onAction = vi.fn();
+    render(<SourceDetail src={REVIEW_SOURCES.interrupted} onAction={onAction} />);
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("Reading stopped");
+    expect(alert).toHaveTextContent(/Your file is kept/);
+    expect(document.querySelector("details.k-why")).toHaveAttribute("open");
+    expect(document.querySelector(".k-why dd")).toHaveTextContent("Indexing embed");
+    expect(screen.getByText("Corral couldn’t finish reading it.")).toBeInTheDocument();
+    expect(screen.getByText(/ran out of tries/)).toBeInTheDocument();
+    expect(screen.getByText("Today, 09:12")).toBeInTheDocument();
+    expect(screen.getByText(/retries used up/)).toBeInTheDocument();
+    await userEvent.click(within(alert).getByRole("button", { name: /Try again/ }));
+    expect(onAction).toHaveBeenCalledWith("fleet", "reread");
+    await userEvent.click(screen.getByRole("button", { name: /Replace instead/ }));
+    expect(onAction).toHaveBeenCalledWith("fleet", "replace");
+  });
+  it("interrupted at upload: the file is gone, so it asks for it again", async () => {
+    const onAction = vi.fn();
+    const lost: Source = { ...REVIEW_SOURCES.interrupted, status: { s: "failed", failure: "interrupted", at: "upload", note: "The upload wasn't stored." } };
+    render(<SourceDetail src={lost} onAction={onAction} />);
+    expect(screen.getByRole("alert")).toHaveTextContent(/nothing to try again/);
+    expect(screen.queryByRole("button", { name: /Try again/ })).toBeNull();
+    expect(screen.queryByText(/ran out of tries/)).toBeNull();
+    expect(screen.getByText("Not stored. Upload it again.")).toBeInTheDocument();
+    expect(screen.getByText("file not stored")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Upload again/ }));
+    expect(onAction).toHaveBeenCalledWith("fleet", "replace");
+  });
+  it("a failure whose fix is removal offers Remove; a web page has no file line", async () => {
+    const onAction = vi.fn();
+    const blocked: Source = { ...src("blog"), status: { s: "failed", failure: "blocked", at: "upload" } };
+    render(<SourceDetail src={blocked} onAction={onAction} />);
+    await userEvent.click(within(screen.getByRole("alert")).getByRole("button", { name: "Remove" }));
+    expect(onAction).toHaveBeenCalledWith("blog", "remove");
+    const web: Source = { ...src("blog"), id: "w2", status: { s: "failed", failure: "interrupted", at: "parse" } };
+    render(<SourceDetail src={web} />);
+    expect(screen.queryByText("Your file")).toBeNull();
+  });
+  it("the page strip counts one page, and ignores pages past the total", () => {
+    render(<PageStrip total={3} skipped={[2]} />);
+    expect(screen.getByRole("figure", { name: "2 pages used, 1 skipped" })).not.toHaveTextContent("images");
   });
   it("lists where a source is cited and jumps there", async () => {
     const onJump = vi.fn();
@@ -204,11 +283,13 @@ describe("KnowledgeEditor", () => {
 });
 
 describe("KnowledgeBase", () => {
+  let last: ReturnType<typeof render> | undefined;
   const mount = (state?: Parameters<typeof KnowledgeBase>[0]["state"], addOpen = false) => {
     const onAdd = vi.fn();
-    render(<KnowledgeBase state={state} addOpen={addOpen} onAddOpenChange={onAdd} contained />);
+    last = render(<KnowledgeBase state={state} addOpen={addOpen} onAddOpenChange={onAdd} contained />);
     return onAdd;
   };
+  const cleanupAndMount = (state: Parameters<typeof KnowledgeBase>[0]["state"]) => { last?.unmount(); mount(state); };
   it("starts empty with the drop zone as the page", () => {
     mount("empty");
     expect(screen.getByRole("heading", { name: "Teach Corral what you sell" })).toBeInTheDocument();
@@ -250,6 +331,13 @@ describe("KnowledgeBase", () => {
     fireEvent.drop(view, { dataTransfer });
     expect(onAdd).toHaveBeenCalledWith(true);
     expect(screen.getByRole("region", { name: "Uploads" })).toBeInTheDocument();
+  });
+  it("opens the M10b failures in the detail, on top of the list", () => {
+    mount("unreadable");
+    expect(screen.getByRole("complementary", { name: /Distributor price list 2026.pdf details/ })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Sources/ })).toHaveTextContent(String(SOURCES.length + 1));
+    cleanupAndMount("interrupted");
+    expect(screen.getByRole("complementary", { name: /Reefer fleet brochure.pdf details/ })).toHaveTextContent("Reading stopped");
   });
   it("shows the tray while uploads continue", () => {
     mount("tray");

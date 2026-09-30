@@ -379,7 +379,7 @@ verifyCode?: (email: string, code: string) => Promise<CodeVerifyResult>; // { ok
 
 ## 10. Knowledge base (M2, ENG-52 → build ENG-79, backend ENG-65/66)
 
-One knowledge base per product. Users drop in files and web pages; Corral reads them, splits them into passages it can search, and drafts **one editable page** of what it knows, with every line cited back to a source. Code: `components/app/kb/` (CSS `kb.css`, `k-` prefix, container queries on the shell), rules in `lib/kb/upload.ts` and `lib/kb/state.ts`. Styleguide §20–24.
+One knowledge base per product. Users drop in files and web pages; Corral reads them, splits them into passages it can search, and drafts **one editable page** of what it knows, with every line cited back to a source. Code: `components/app/kb/` (CSS `kb.css`, `k-` prefix, container queries on the shell), rules in `lib/kb/upload.ts` and `lib/kb/state.ts`. Styleguide §20–24, source failures §22b (M10b).
 
 ### Routes and states (`/app?view=knowledge&state=…` outside production)
 | `state=` | Tab | What shows |
@@ -391,10 +391,12 @@ One knowledge base per product. Users drop in files and web pages; Corral reads 
 | `error` | Knowledge | "Couldn't load the knowledge base". "Your sources and edits are safe; this is a connection problem. Corral keeps using the last saved version in emails meanwhile." **Try again**. |
 | `sources` | Sources | The ledger: needs-you rows first, then reading, then ready. Filters All / Files / Web / Needs you. |
 | `source` | Sources | A ready source in the detail rail. |
-| `partial` | Sources | Gateway spec sheet: 31 of 38 pages read, pages 12–18 are scans. |
+| `partial` | Sources | Gateway spec sheet: **31 of 38 pages used · 7 skipped**; pages 12–18 are scanned images with no text layer (no OCR). Page strip; **Upload a text version**. (M10b) |
 | `failed` | Sources | Calibration certificate: password-protected, Corral uses nothing from it. |
+| `unreadable` | Sources | M10b. Distributor price list 2026.pdf: failure `unreadable` at `parse`. "Corral couldn't read this file"; **Replace file**; What happened (closed). |
+| `interrupted` | Sources | M10b. Reefer fleet brochure.pdf: failure `interrupted` at `embed`, retries used up. "Reading stopped"; **Try again** (primary); What happened (open). |
 | `upload` | Knowledge | Add sources dialog mid-upload (two active, queued, done). |
-| `upload-errors` | Knowledge | Every failure at once: stopped, unsupported (.key), too large, password, duplicate, plus one added. |
+| `upload-errors` | Knowledge | Every failure at once: upload stopped (client `dropped`), unsupported (.key), too large, password, duplicate, plus one added. |
 | `dragging` | Knowledge | Files held over the page: full-window drop target. |
 | `tray` | Knowledge | Dialog closed while uploading: the tray in the bottom corner. |
 | `editing` | Knowledge | A Proof line open for editing. |
@@ -425,25 +427,36 @@ Review states are frozen (no tickers), so screenshots are stable. `kbReviewState
 <UploadTray q onOpen inline? />   <DropZone onFiles compact? />   <UrlAdder onAdd(host, path, whole) />   <QueueRow it onRetry? onDismiss? onReplace? />
 <FileTile kind size?: 20|28|36 label? />   <SourceState src compact? />   <Progress value? label tone? />   <CiteChip cite sources onOpen? onRemove? />
 ```
-Shapes (`components/app/kb/data.ts`) are the starting contract: `Source { id, name, kind: "pdf"|"docx"|"md"|"url", host?, meta, passages?, cited, by, added, updated, status }`, `SourceStatus = ready | processing{stage, pct} | partial{read, total, skipped, note} | failed{failure, at}`, `KSection { id, title, hint, add, items: KItem[] }`, `KItem { id, q?, body, cites: {src, loc?}[], by: "corral"|"you", when, flag? }`, `KFlag = review{note} | stale{removed, when} | conflict{options[]}`.
+Shapes (`components/app/kb/data.ts`) are the starting contract: `Source { id, name, kind: "pdf"|"docx"|"md"|"url", host?, meta, passages?, cited, by, added, updated, status }`, `SourceStatus = ready | processing{stage, pct} | partial{read, total, skipped, note} | failed{failure, at, note?, when?}` (M10b: SourceOut `pages_read`→read, `pages_total`→total, `failure_stage`→at, `processed_at`→when), `KSection { id, title, hint, add, items: KItem[] }`, `KItem { id, q?, body, cites: {src, loc?}[], by: "corral"|"you", when, flag? }`, `KFlag = review{note} | stale{removed, when} | conflict{options[]}`.
 
 ### What Krak wires to ENG-65/66
 - **Limits and types** from `lib/kb/upload.ts`: `MAX_FILE_BYTES` (25 MB), `MAX_FILES_PER_DROP` (20), `ACCEPTED` / `ACCEPT_ATTR` (PDF, DOCX, Markdown). `checkFile` returns the exact copy, including the convert-it fix for .key/.pages/.pptx/.doc/.xlsx/.csv/.zip/images. `checkUrl` adds https:// and rejects localhost/private addresses; the server must re-check (SSRF).
 - **Progress events per stage**: `upload` (bytes %), `scan`, `parse` (pages read of total), `chunk`, `embed`. Map each to `SourceStatus.processing{stage, pct}`; `stageLabel(stage, kind)` gives the words (web pages say Fetching / Reading pages). `overallPercent` weights stages equally for the tray.
-- **Failure codes** → `FAILURE` keys: `interrupted`, `encrypted`, `no-text`, `rejected` (macros/embedded files), `duplicate` (same content hash in this KB), `unreachable`, `blocked` (robots/403). Each carries its title, fix and the one action. Partial reads return `{read, total, skipped}`.
+- **Failure codes** → `FAILURE` keys. `SERVER_FAILURES` is PR #67's `Failure` word for word (`interrupted`, `encrypted`, `no-text`, `rejected`, `unreadable`, `unreachable`, `blocked`; a test pins the list). The client adds `duplicate` (the 409 on add) and `dropped` (the browser lost the upload before the 202; copy "Upload stopped", which the e2e spec checks). Each carries its title, fix and action; `recoveryOf(failure, failure_stage)` picks the one recovery (`interrupted` at `upload` asks for the file, since there's nothing stored to retry). Partial reads map `pages_read`, `pages_total`, `skipped`, `note`; `skippedPages(skipped, total)` turns "pages 2, 5–7" into the strip, and `partialReason(note, kind)` picks the copy (see M10b below).
 - **429 / Retry-After** on upload or re-read: keep the item queued and retry after the header (reuse `retryAfterSeconds` from `lib/auth/code.ts`).
 - **Web pages re-read weekly** ("re-read weekly" in meta); a changed page that contradicts an edited line creates a `conflict`, never an overwrite.
 - **Remove** = soft delete: passages leave retrieval now; items whose only citations were this source get `flag: stale`. Undo (in the toast) restores both.
 - **Edits**: optimistic; a failed save keeps the text open with the save-error banner. ⌘↵ saves, Esc cancels.
 - Two uploads at a time per tab, as the simulator does.
 
+### Source failures (M10b, PR #67 → ENG-65/66)
+Three states the backend reports, designed beside the password / no-text / blocked / unreachable ones. Names and fields are PR #67's (`server/app/kb/errors.py`, `api/v1/kb_schemas.py` `SourceOut`, `kb/ingest.py`, `kb/parsing.py`); nothing is invented. Styleguide §22b shows all four failure variants and the strip at 38, 12 and 3 pages.
+
+| State | Server | Copy | Visual | Recovery |
+|---|---|---|---|---|
+| `unreadable` | `status: failed`, `failure: unreadable`, `failure_stage: parse` (corrupt file) or `scan` (not really DOCX/UTF-8); `note` "Reading the file took too long." on a parse timeout | **Corral couldn't read this file.** "It may be damaged, or it took too long to open. Save a fresh copy or export it as PDF, then replace it. Corral isn't using anything from it." With a `note`, the note leads. | Negative row ("Corral couldn't read this file"); error banner; the Reading receipts stop at the stage (`file damaged` / `took too long`); What happened, closed: stopped at, reason, likely cause, your file, last try, `failure · failure_stage` in mono | **Replace file** (`POST …/sources/files` with `replace_source_id`); Remove |
+| `partial` | `status: partial`, `pages_read`, `pages_total`, `skipped` ("pages 12–18"), `note` ("7 pages are scanned images with no text layer.") | **31 of 38 pages used · 7 skipped.** "Corral skipped pages 12–18. They're scanned images with no text layer, and Corral can't read text inside images yet. Upload a version with selectable text, exported from the original rather than scanned, to include them." | Caution row ("Partly read · 31 of 38 pages"); caution banner; **page strip**: one tick per page, used in ink, skipped hatched caution, key "31 used · 7 skipped · images, no text · p.1–38"; receipt "Used 31 of 38 pages · skipped pages 12–18" | **Upload a text version** (replace). The page/text-limit case says "Split it into smaller files"; a web section says "Re-read" |
+| `interrupted` | `status: failed`, `failure: interrupted`, `failure_stage` (`embed` when retries ran out, `parse` on a crash, `upload` when the stored file is missing), `note` ("Corral couldn't finish reading it.") | **Reading stopped.** "Corral tried again on its own and still couldn't finish, so nothing from it is searchable yet. Your file is kept." At `upload`: "The file didn't reach storage, so there's nothing to try again. Upload it again." | Negative row; error banner; receipts stop at Indexing (`retries used up`); What happened, **open**: stopped at (stage + code), reason (the note), retries, your file (kept), last try (`processed_at`), `failure · failure_stage` | **Try again** (primary, `POST …/reread`); Replace instead in the footer. At `upload`: **Upload again** |
+
+Notes for Krak: (1) partial has no reason code, so `partialReason` reads the note ("scanned" → scans, else the limit; web → pages). A `skipped_reason` field would make this robust. (2) The try count isn't on `SourceOut`, so the copy says "ran out of tries", not a number. (3) `note` arrives with a straight `'`; the detail shows it with ’. (4) A failed source has `passage_count: 0` and its chunks deleted, so the copy says "nothing from it is searchable", never "the old version stays".
+
 ### Tests (added)
-`lib/kb/upload.test.ts`, `lib/kb/state.test.ts` (under the 90% coverage gate) and `components/app/kb/kb.test.tsx` (27 component tests: list sorting/filters, detail receipts for ready/partial/failed, upload validation and every failure, URL checks, tray, editor edit/save/save-error/Esc, review/stale/conflict resolution, remove + Undo), plus a `/app?view=knowledge&state=empty` case in `test/pages.test.tsx`. ENG-79 still owns e2e upload, a11y and visual baselines.
+`lib/kb/upload.test.ts`, `lib/kb/state.test.ts` (under the 90% coverage gate) and `components/app/kb/kb.test.tsx` (27 component tests: list sorting/filters, detail receipts for ready/partial/failed, upload validation and every failure, URL checks, tray, editor edit/save/save-error/Esc, review/stale/conflict resolution, remove + Undo), plus a `/app?view=knowledge&state=empty` case in `test/pages.test.tsx`. M10b adds 12: the PR #67 contract (the server's failure list, `recoveryOf`, `partialReason`, `skippedPages`), receipts for the new failures, and detail tests for partial (scans, limit, web), unreadable (damaged, timeout), interrupted (retries, at upload), Remove-only failures, the page strip, and the two new review states. ENG-79 still owns e2e upload, a11y and visual baselines.
 
 ### Open questions
 1. Are 25 MB per file and 20 files per drop the real limits? Any per-KB cap (pages, passages)?
 2. Supported types: PDF, DOCX, Markdown and URLs only? Plain .txt, .pptx and Google Docs links are the next most likely asks.
-3. OCR for scanned pages: the design treats them as skipped (partial). If ENG-66 adds OCR, partial becomes rarer but the state stays.
+3. ~~OCR for scanned pages~~ PR #67: no OCR; a page under 20 characters is a scan and skipped (`partial`); a file with no text at all is `no-text`. The partial copy says so (M10b).
 4. Does the crawler support "Whole section" (a path prefix), and with what page cap? The design says "~40 pages".
 5. Duplicate detection: by content hash or file name? The copy says "Already in this knowledge base".
 6. A retrieval test ("Ask what Corral would say") is designed out of M2 and deferred.
@@ -1125,6 +1138,13 @@ Logic: `lib/marketing/site.ts` (`SITE_URL`, `LAUNCH`, `ROUTES`, `PUBLIC_ROUTES`,
 | 12 | PR stack: #16 (M8) → #22 (M9, HEAD 6424e57) → M10 on top | `next/m10/` | Krak | In review |
 | 13 | ENG-53–60 GitHub links point at `camposocial-client` (#167–169) | Linear | Krak | Check |
 | 14 | Remove `SAMPLE_NOTE` from public pages once 1–2 are done; re-shoot the share images | `lib/marketing/site.ts`, `m10-wip/og.mjs` | Bau | After 1–2 |
+
+### M10b addendum (Sep 30): KB source failures for PR #67
+- **States:** `unreadable` and `interrupted` added to `KB_REVIEW_STATES`; `partial` redesigned (counts, page strip, text-version fix). All three are indexed in `lib/states` as **partial** (the KB still works; one source needs you), so the knowledge surface now has 17 states. Details in §10 "Source failures".
+- **Copy:** `FAILURE.interrupted` is now the server's meaning ("Reading stopped", retries used up). The browser-side upload drop keeps "Upload stopped" as the client-only `dropped`.
+- **Detail rail:** banner actions sit under the words at every width (they were squeezing the copy to 3–4 words a line at 380). This applies to every KB failure banner.
+- **Checks:** typecheck, lint, 652 tests (+12, 55 files, coverage 99.4% / 98.1%), `next build` and the review build all pass; axe finds nothing on `state=unreadable|partial|interrupted|sources|failed` and `/styleguide` at 1440 and 390. Shots: `round3/shots/m10b/`.
+- **Launch readiness:** no new blocker. PR #67's limits and defaults (25 MiB, 200 sources / 1 GiB, no OCR, 40-page crawl, product-scoped SHA-256 dedupe) are Krak's assumptions pending Sean; the copy follows them and changes in one place (`lib/kb/upload.ts`) if they move.
 
 ### Open questions
 1. **For Aegon:** which landing is `/` at launch, Open Range or Fenceline? (Both are launch quality; the pages link home to `HOME`.)

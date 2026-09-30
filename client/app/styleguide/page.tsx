@@ -10,7 +10,7 @@ import { CopilotStatesDemo, ThreadViewDemo, UniboxTriageDemo } from "./M7Section
 import { HandoffDemo, IntegrationsDemo } from "./M8Sections";
 import { DevelopersDemo } from "./M9Sections";
 import { EveryStateDemo } from "./M10Sections";
-import { EditorDemo, KbShellDemo, SourceDetailDemo, SourceListDemo, UploadDemo } from "./M2Sections";
+import { EditorDemo, KbShellDemo, SourceDetailDemo, SourceFailuresDemo, SourceListDemo, UploadDemo } from "./M2Sections";
 import { AccountStatesDemo, CodeStatesDemo, CmdkDemo, ContrastDemo, FormDemo, OverlayDemo, SessionErrorDemo, ShellDemo, StatesDemo, TabsToastDemo } from "./M1Sections";
 import {
   Avatar, Button, ContextRail, Field, FilterBar, FitBar, Input, LEADS, Logo, MeetingCard, PersonCard, Receipt, Receipts,
@@ -46,7 +46,7 @@ export default function Styleguide() {
           <Link href="/app">/app</Link><Link href="/app?cmdk=1">/app?cmdk=1</Link><Link href="/app?state=api-down">/app?state=api-down</Link><Link href="/sign-in">/sign-in</Link><Link href="/sign-in?state=cancelled">?state=cancelled</Link><Link href="/sign-in?state=unavailable">?state=unavailable</Link><Link href="/onboarding">/onboarding</Link>
           <span className="sg-faint">Handoff: <code>round3/tokens/HANDOFF-ENG.md</code></span></nav>
         <nav className="sg-routes" aria-label="Marketing pages (M10)"><span className="sg-faint">Site (M10)</span>
-          <Link href="/open-range">/open-range</Link><Link href="/fenceline">/fenceline</Link><Link href="/pricing">/pricing</Link><Link href="/security">/security</Link><Link href="/mcp">/mcp</Link><Link href="/changelog">/changelog</Link><Link href="/legal/terms">/legal/terms</Link><Link href="/styleguide/share">/styleguide/share</Link><a href="#every-state">§46 Every state</a></nav>
+          <Link href="/open-range">/open-range</Link><Link href="/fenceline">/fenceline</Link><Link href="/pricing">/pricing</Link><Link href="/security">/security</Link><Link href="/mcp">/mcp</Link><Link href="/changelog">/changelog</Link><Link href="/legal/terms">/legal/terms</Link><Link href="/styleguide/share">/styleguide/share</Link><a href="#every-state">§46 Every state</a><a href="#source-failures">§22b Source failures</a></nav>
         <ul className="sg-rules">
           <li><b>One action colour.</b> Blue <code>--color-action</code> for the one thing to do next; near-black <code>--color-action-2</code> for the second.</li>
           <li><b>Two weights, one tracking.</b> Inter 400/500 at 12–24px, −0.15px everywhere.</li>
@@ -189,6 +189,11 @@ export default function Styleguide() {
       <Part wide n="22" title="Knowledge base · source detail" tokens={["rail 380", "pipeline as receipts: Uploaded → Checked → Read → Split → Searchable", "ink check done · action ring live · caution partial · negative failed"]}
         notes={<p>The detail shows its work: each pipeline step with the fact that proves it, which knowledge lines cite the source, and the passages retrieval actually sees. A partial read says which pages were skipped and why. A failed read says Corral is using nothing from it.</p>}>
         <SourceDetailDemo />
+      </Part>
+
+      <Part wide n="22b" title="Knowledge base · source failures (M10b, PR #67)" tokens={["failure: unreadable · interrupted · status partial", "caution partial + page strip · negative failed", "k-why details: failure_stage, note, processed_at", "Try again primary only where a retry can work"]}
+        notes={<><p>Three states the KB backend reports, beside the password, no-text, blocked and unreachable ones. <b>unreadable</b>: the file is damaged or took too long to open; Corral uses nothing from it, and the one fix is Replace file. <b>partial</b>: Corral used some pages and skipped the scanned ones, because they&rsquo;re images with no text and there&rsquo;s no OCR yet; the banner gives both counts, the strip shows where they fell, and the fix is a text version. <b>interrupted</b>: Corral ran out of automatic retries; the file is kept, so <b>Try again</b> is the primary, with what happened open underneath.</p><p style={{ marginTop: 8 }}>Names and fields are PR #67&rsquo;s: <code>failure</code>, <code>failure_stage</code>, <code>note</code>, <code>pages_read</code>, <code>pages_total</code>, <code>skipped</code>. Interrupted at <code>upload</code> means the stored file is gone, so it asks for the file instead of offering a retry that can&rsquo;t work.</p></>}>
+        <div id="source-failures"><SourceFailuresDemo /></div>
       </Part>
 
       <Part wide n="23" title="Knowledge base · the knowledge page" tokens={["doc column 604 + sidenotes 220", "32/38 title · 15/24 body", "section numbers mono 01–07", "caution-50 attention box"]}

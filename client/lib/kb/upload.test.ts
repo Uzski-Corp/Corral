@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FAILURE, MAX_FILE_BYTES, STAGES, checkFile, checkUrl, extOf, formatBytes, overallPercent, queueSummary, stageLabel, takeDrop } from "./upload";
+import { FAILURE, SERVER_FAILURES, partialReason, recoveryOf, skippedPages, MAX_FILE_BYTES, STAGES, checkFile, checkUrl, extOf, formatBytes, overallPercent, queueSummary, stageLabel, takeDrop } from "./upload";
 
 describe("extOf", () => {
   it("reads the last extension, lower-cased, ignoring folders and dotfiles", () => {
@@ -84,6 +84,39 @@ describe("pipeline", () => {
   });
   it("gives every failure a title and a fix", () => {
     for (const f of Object.values(FAILURE)) { expect(f.title).toBeTruthy(); expect(f.fix).toMatch(/\.$/); }
+  });
+});
+
+describe("PR #67 contract (M10b)", () => {
+  it("names the server's failure codes exactly, and copies each", () => {
+    // server/app/kb/errors.py Failure and models/knowledge.py FAILURES, in their order
+    expect(SERVER_FAILURES).toEqual(["interrupted", "encrypted", "no-text", "rejected", "unreadable", "unreachable", "blocked"]);
+    for (const f of SERVER_FAILURES) expect(FAILURE[f].title).toBeTruthy();
+    expect(Object.keys(FAILURE).sort()).toEqual([...SERVER_FAILURES, "duplicate", "dropped"].sort());
+  });
+  it("recovers by retry only where a retry can work", () => {
+    expect(recoveryOf("interrupted", "embed")).toBe("retry");
+    expect(recoveryOf("interrupted", "upload")).toBe("replace");
+    expect(recoveryOf("unreadable", "parse")).toBe("replace");
+    expect(recoveryOf("blocked")).toBe("remove");
+    expect(recoveryOf("dropped")).toBe("retry");
+  });
+  it("reads why a partial source skipped pages", () => {
+    expect(partialReason("7 pages are scanned images with no text layer.", "pdf")).toBe("scanned");
+    expect(partialReason("1 page is a scanned image with no text layer.", "pdf")).toBe("scanned");
+    expect(partialReason("Only the first 500 pages were read (size limit).", "pdf")).toBe("limit");
+    expect(partialReason(undefined, "docx")).toBe("limit");
+    expect(partialReason("3 of 40 pages couldn't be read.", "url")).toBe("pages");
+  });
+  it("parses the server's skipped label into page numbers", () => {
+    expect(skippedPages("page 2")).toEqual([2]);
+    expect(skippedPages("pages 12–18")).toEqual([12, 13, 14, 15, 16, 17, 18]);
+    expect(skippedPages("pages 2, 5–7, 9", 8)).toEqual([2, 5, 6, 7]);
+    expect(skippedPages("pages 2-3")).toEqual([2, 3]);
+    expect(skippedPages("the end of the document")).toBeNull();
+    expect(skippedPages("pages 1, 3, 5, 7…")).toBeNull();
+    expect(skippedPages("/blog/a, /blog/b")).toBeNull();
+    expect(skippedPages(undefined)).toBeNull();
   });
 });
 
