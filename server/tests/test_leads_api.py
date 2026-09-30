@@ -4,9 +4,11 @@ import uuid
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from app.models import Lead, Segment
+from tests.conftest import FRONTEND_URL
 from tests.tenancy_helpers import provision
 from tests.workos_fakes import WorkOSHarness, user_payload
 
@@ -25,7 +27,9 @@ async def tenants(db_engine: AsyncEngine, workos: WorkOSHarness) -> dict[str, st
 
 
 def act_as(client: AsyncClient, cookie: str) -> AsyncClient:
+    """Sign the client in as a tenant; it sends the frontend's Origin like a browser would."""
     client.cookies.set(SESSION_COOKIE, cookie)
+    client.headers["Origin"] = FRONTEND_URL
     return client
 
 
@@ -140,3 +144,33 @@ async def test_list_endpoints_are_org_scoped(
 
     rows_b = (await act_as(db_client, tenants["b"]).get(f"/api/v1/{resource}")).json()
     assert [r[field] for r in rows_b] == ["belongs to B"]
+
+
+@pytest.mark.parametrize(
+    "origin", [None, "https://evil.example", "null", "http://evil.frontend.test"]
+)
+async def test_lead_writes_need_a_trusted_origin(
+    db_client: AsyncClient, tenants: dict[str, str], db_engine: AsyncEngine, origin: str | None
+) -> None:
+    c = act_as(db_client, tenants["a"])
+    lead_id = (await c.post("/api/v1/leads", json={"email": "keep@a.io"})).json()["id"]
+    headers = {} if origin is None else {"Origin": origin}
+    del c.headers["Origin"]
+    calls = [
+        c.post("/api/v1/leads", json={"email": "new@a.io"}, headers=headers),
+        c.patch(f"/api/v1/leads/{lead_id}", json={"first_name": "x"}, headers=headers),
+        c.delete(f"/api/v1/leads/{lead_id}", headers=headers),
+    ]
+    for call in calls:
+        res = await call
+        assert (res.status_code, res.json()) == (403, {"detail": "Origin not allowed"})
+    async with AsyncSession(db_engine) as s:
+        lead = await s.get(Lead, uuid.UUID(lead_id))
+        assert lead is not None and lead.first_name is None
+        assert len((await s.execute(select(Lead))).scalars().all()) == 1
+
+
+async def test_reads_do_not_need_an_origin(db_client: AsyncClient, tenants: dict[str, str]) -> None:
+    c = act_as(db_client, tenants["a"])
+    del c.headers["Origin"]
+    assert (await c.get("/api/v1/leads")).status_code == 200
