@@ -1,13 +1,15 @@
 import { expect, test } from "@playwright/test";
 import { SETTINGS_REVIEW_STATES } from "../lib/integrations/state";
+import { MCP_REVIEW_STATES } from "../lib/mcp/state";
 import { audit, WIDTHS } from "./axe";
 
 /**
- * axe on the M8 Settings → Integrations page (Cal.com, Phoenix ERP, AutoSend: connect, health, logs,
- * mapping, permissions): /app?view=settings live and its 18 review states (HANDOFF-ENG.md §16), at 1440 and 390.
- * Review project: `?state=` is off in production builds and there is no integrations API yet (ENG-86).
+ * axe on Settings, at 1440 and 390: /app?view=settings live, the 18 M8 Integrations states (Cal.com, Phoenix ERP,
+ * AutoSend: connect, health, logs, mapping, permissions; HANDOFF-ENG.md §16) and the 25 M9 Developers states
+ * (MCP connections, API keys and in-app docs: the mcp-, keys- / key- and docs- states; §17), on the same `?view=settings&state=` route.
+ * Review project: `?state=` is off in production builds and there is no integrations or MCP API yet (ENG-86, ENG-88).
  */
-const ROUTES = ["/app?view=settings", ...SETTINGS_REVIEW_STATES.map((s) => `/app?view=settings&state=${s}`)];
+const ROUTES = ["/app?view=settings", ...[...SETTINGS_REVIEW_STATES, ...MCP_REVIEW_STATES].map((s) => `/app?view=settings&state=${s}`)];
 
 for (const { name, viewport } of WIDTHS) {
   test.describe(`at ${name}`, () => {
