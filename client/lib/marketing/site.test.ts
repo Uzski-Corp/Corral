@@ -48,14 +48,15 @@ describe("marketing site data", () => {
 });
 
 describe("sitemap (ENG-87)", () => {
-  it("lists / as home and the shared pages, not sign-in, the /open-range alias, Fenceline or the legal stubs", () => {
+  it("lists / as home and the shared pages, not sign-in, Fenceline or the legal stubs", () => {
     expect(sitemapRoutes()).toEqual(["/", "/pricing", "/security", "/mcp", "/changelog"]);
   });
   it("adds the legal pages once counsel's text is confirmed", () => {
     expect(sitemapRoutes(true)).toEqual(["/", "/pricing", "/security", "/mcp", "/changelog", "/legal/terms", "/legal/privacy", "/legal/dpa"]);
   });
-  it("drops whichever landing isn't home", () => {
-    expect(sitemapRoutes(false, "fenceline")).toEqual(["/", "/fenceline", "/pricing", "/security", "/mcp", "/changelog"]);
+  it("has no /open-range: / is the only address of the Open Range landing", () => {
+    expect(PUBLIC_ROUTES).not.toContain("/open-range");
+    expect(Object.keys(ROUTES)).not.toContain("openRange");
   });
 });
 
@@ -79,7 +80,7 @@ describe("plans", () => {
 
 describe("share images", () => {
   it("one card per public page, each in an app/ folder, with alt text that reads as a sentence", () => {
-    expect(SHARE_CARDS.map((c) => c.dir)).toEqual(["app", "app/open-range", "app/fenceline", "app/pricing", "app/security", "app/mcp", "app/changelog"]);
+    expect(SHARE_CARDS.map((c) => c.dir)).toEqual(["app", "app/fenceline", "app/pricing", "app/security", "app/mcp", "app/changelog"]);
     for (const c of SHARE_CARDS) { expect(c.alt.length).toBeGreaterThan(40); expect(c.alt.endsWith(".")).toBe(true); }
     expect(homeOf("fenceline")).toBe(ROUTES.fenceline);
   });

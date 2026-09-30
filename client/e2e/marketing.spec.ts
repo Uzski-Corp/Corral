@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test";
  * noindex on the legal stubs and the 404, robots.txt, sitemap.xml and the shared site navigation.
  */
 const SHARED = ["/pricing", "/security", "/mcp", "/changelog"] as const;
-const OG = ["/", "/open-range", "/fenceline", ...SHARED] as const;
+const OG = ["/", "/fenceline", ...SHARED] as const;
 const LEGAL = ["/legal/terms", "/legal/privacy", "/legal/dpa"] as const;
 
 /** A meta tag's content, or null when the page doesn't have it (no waiting). */
@@ -68,12 +68,13 @@ test.describe("marketing site", () => {
     }
   });
 
-  test("the landings keep their absolute titles; / is Open Range and its canonical copy", async ({ page }) => {
-    for (const path of ["/", "/open-range"]) {
-      await page.goto(path);
-      await expect(page).toHaveTitle("Corral · The right fifty, already read.");
-      expect(await page.locator('link[rel="canonical"]').getAttribute("href"), path).toMatch(/^https?:\/\/[^/]+\/?$/);
-    }
+  test("the landings keep their absolute titles; / is Open Range, its only address", async ({ page }) => {
+    await page.goto("/");
+    await expect(page).toHaveTitle("Corral · The right fifty, already read.");
+    expect(await page.locator('link[rel="canonical"]').getAttribute("href")).toMatch(/^https?:\/\/[^/]+\/?$/);
+    // /open-range was removed (ENG-87): the 404, not a copy or a redirect.
+    expect((await page.goto("/open-range"))?.status()).toBe(404);
+    await expect(page.getByRole("heading", { level: 1, name: "Nothing here fits." })).toBeVisible();
     await page.goto("/fenceline");
     await expect(page).toHaveTitle("Corral · Gather the few who fit.");
     // Open Range is home (ENG-87): Fenceline stays live, out of search (HANDOFF §18).

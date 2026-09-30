@@ -17,7 +17,7 @@ describe("decide", () => {
   });
 
   it("leaves public routes alone", () => {
-    for (const pathname of ["/", "/sign-in", "/styleguide", "/open-range"]) expect(run({ pathname })).toEqual({ type: "next" });
+    for (const pathname of ["/", "/sign-in", "/styleguide", "/fenceline"]) expect(run({ pathname })).toEqual({ type: "next" });
     expect(run({ pathname: "/", returnTo: "/app" })).toEqual({ type: "next" });
   });
 
