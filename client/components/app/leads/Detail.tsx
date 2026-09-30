@@ -45,7 +45,7 @@ export function LeadDetail({ lead, onClose, onStatus, onEnroll, onMerge, onKeepB
   const pending = !!lead.scoring || fitPending(lead.enrich);
   const noone = e === "no-people" || e === "below-bar" || e === "unreadable" || !lead.person;
   const waitWhy = enrichBusy(lead.enrich) ? `Corral is still ${e === "verifying" ? "verifying the email" : e === "finding" ? "finding people" : "reading the site"}.`
-    : e === "unreadable" ? "Corral couldn't read the website, so there's no fit or contact yet."
+    : e === "unreadable" ? "Corral couldn’t read the website, so there's no fit or contact yet."
     : e === "below-bar" ? `Fit is under ${lead.enrich && "bar" in lead.enrich ? lead.enrich.bar : 70}, so Corral didn't spend credits finding people.`
     : e === "no-people" ? "Corral didn't find a decision-maker with a work email." : null;
   return (

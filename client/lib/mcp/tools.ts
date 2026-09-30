@@ -51,7 +51,7 @@ export const TOOLS: Tool[] = [
     args: [{ name: "thread_id", type: "string", required: true, note: "th_…" }, { name: "guidance", type: "string", note: "e.g. “shorter, offer the pilot”" }],
     example: { ask: "Draft Brian a shorter reply that offers the pilot.", args: { thread_id: "th_brian", guidance: "shorter, offer the pilot" }, result: { draft_id: "dr_31c", cites: 2, left_out: ["No price: the knowledge base has $35 and $39"] } } },
   { name: "send_reply", area: "unibox", kind: "send", scope: "unibox:send", does: "Send a saved draft from the thread’s mailbox.",
-    guard: "Goes through the same 10-second undo and Never-say checks as the Send button. Refused with 409 if someone wrote in the thread since the draft.",
+    guard: "Signed-in MCP connections only: an API key gets 403 key_cannot_send. Goes through the same 10-second undo and Never-say checks as the Send button. Refused with 409 if someone wrote in the thread since the draft.",
     args: [{ name: "draft_id", type: "string", required: true, note: "dr_… from draft_reply" }],
     example: { ask: "Send it.", args: { draft_id: "dr_31c" }, result: { status: "undo", from: "tomas@coldtrace.io", undo_until: "09:44:10 EAT", sent: false } } },
   { name: "search_knowledge", area: "knowledge", kind: "read", scope: "knowledge:read", does: "Search the knowledge base and Never say; each hit names its source line.",
@@ -90,6 +90,8 @@ export function callBody(t: Tool, id = 1): string {
   return JSON.stringify({ jsonrpc: "2.0", id, method: "tools/call", params: { name: t.name, arguments: t.example.args } }, null, 2);
 }
 /** The same call over plain HTTP, with an API key. */
+/** Whether a key can call this tool at all (send is for signed-in connections only). */
+export const keyMayCall = (t: Tool) => t.kind !== "send";
 export function curlFor(t: Tool, key = "$CORRAL_API_KEY"): string {
   return [`curl ${MCP_URL} \\`, `  -H "Authorization: Bearer ${key}" \\`, `  -H "Content-Type: application/json" \\`, `  -H "Accept: application/json, text/event-stream" \\`,
     `  -d '${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: t.name, arguments: t.example.args } })}'`].join("\n");
@@ -100,6 +102,7 @@ export type McpError = { status: number; code: string; means: string; fix: strin
 export const ERRORS: McpError[] = [
   { status: 401, code: "invalid_token", means: "The key or sign-in is wrong, expired or revoked.", fix: "Sign in again from the client, or use a key that’s Active." },
   { status: 403, code: "insufficient_scope", means: "The tool needs a scope this connection wasn’t given.", fix: "Reconnect and allow it, or give the key that area." },
+  { status: 403, code: "key_cannot_send", means: "An API key called send_reply. Keys draft; only a person’s signed-in connection sends.", fix: "Save the draft with the key, and send it from the Unibox or a signed-in client." },
   { status: 409, code: "thread_changed", means: "Someone wrote in the thread after the draft was made.", fix: "Read the thread again and redraft; nothing was sent." },
   { status: 422, code: "never_say", means: "The reply says something on your Never-say list.", fix: "Change the text; the error names the rule." },
   { status: 429, code: "rate_limited", means: "Over the limit for this key or connection.", fix: "Wait for Retry-After seconds. Reads and writes count separately." },

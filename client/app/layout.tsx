@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Inter_Tight, Newsreader, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { SITE_URL } from "@/lib/marketing/site";
 
 // App UI face (Open Range language, used everywhere product UI appears)
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
@@ -17,8 +18,11 @@ const newsreader = Newsreader({
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Corral",
+  metadataBase: new URL(SITE_URL),
+  title: { default: "Corral", template: "%s · Corral" },
   description: "Corral reads your market against what you sell and puts a real person at the end of every row.",
+  openGraph: { siteName: "Corral", type: "website", locale: "en" },
+  twitter: { card: "summary_large_image" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

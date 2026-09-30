@@ -33,14 +33,14 @@ describe("FitBar", () => {
       <FitBar value={53} confidence="low" /><FitBar value={84} delta={26} /><FitBar value={83} by="you" /><FitBar value={81} delta={-9} /></>);
     expect(screen.getByRole("img", { name: "Fit: rescoring" })).toHaveTextContent("Rescoring");
     expect(screen.getByRole("img", { name: "Fit: not scored yet" })).toHaveTextContent("Not scored yet");
-    expect(screen.getByRole("img", { name: "Fit: couldn't score" })).toHaveTextContent("Failed");
-    expect(screen.getByRole("img", { name: "Fit 85 of 100, the last score; couldn't rescore" })).toHaveTextContent("85");
+    expect(screen.getByRole("img", { name: "Fit: couldn’t score" })).toHaveTextContent("Failed");
+    expect(screen.getByRole("img", { name: "Fit 85 of 100, the last score; couldn’t rescore" })).toHaveTextContent("85");
     expect(screen.getByRole("img", { name: "Fit 53 of 100, low confidence" })).toHaveClass("is-unsure");
     expect(screen.getByRole("img", { name: "Fit 84 of 100, up 26 since the last score" })).toHaveTextContent("84↑26");
     expect(screen.getByRole("img", { name: "Fit 81 of 100, down 9 since the last score" })).toHaveTextContent("81↓9");
     expect(screen.getByRole("img", { name: "Fit 83 of 100, set by you" })).toHaveClass("is-yours");
     render(<FitBar value={0} state="error" />);
-    expect(screen.getAllByRole("img", { name: "Fit: couldn't score" })[1]).toHaveTextContent("Couldn't score");
+    expect(screen.getAllByRole("img", { name: "Fit: couldn’t score" })[1]).toHaveTextContent("Couldn’t score");
   });
 });
 
@@ -156,7 +156,7 @@ describe("fit in the Companies table and detail", () => {
     expect(within(d).getByRole("img", { name: "Fit: in line to be scored" })).toBeInTheDocument();
     unmount();
     const r = leads("fit-error");
-    expect(screen.getByRole("img", { name: "Fit: couldn't score" })).toHaveTextContent("Failed");
+    expect(screen.getByRole("img", { name: "Fit: couldn’t score" })).toHaveTextContent("Failed");
     r.unmount();
     leads("fit-changed");
     expect(screen.getAllByRole("img", { name: "Fit 84 of 100, up 26 since the last score" }).length).toBeGreaterThan(0);

@@ -9,6 +9,7 @@ import { PoolDemo, SequenceDemo, StepEditorDemo } from "./M6Sections";
 import { CopilotStatesDemo, ThreadViewDemo, UniboxTriageDemo } from "./M7Sections";
 import { HandoffDemo, IntegrationsDemo } from "./M8Sections";
 import { DevelopersDemo } from "./M9Sections";
+import { EveryStateDemo } from "./M10Sections";
 import { EditorDemo, KbShellDemo, SourceDetailDemo, SourceListDemo, UploadDemo } from "./M2Sections";
 import { AccountStatesDemo, CodeStatesDemo, CmdkDemo, ContrastDemo, FormDemo, OverlayDemo, SessionErrorDemo, ShellDemo, StatesDemo, TabsToastDemo } from "./M1Sections";
 import {
@@ -16,7 +17,7 @@ import {
   ReadingPane, ReplyCard, SegmentTable, SegmentWindow, Segmented, Tag, THREADS, ThreadList, Toast, Toggle, Mark,
 } from "@/components/app";
 
-export const metadata: Metadata = { title: "Corral — App language (Open Range)" };
+export const metadata: Metadata = { title: "App language (Open Range)", robots: { index: false } };
 
 function Part({ n, title, notes, tokens, children, wide }: { n: string; title: string; notes: ReactNode; tokens: string[]; children: ReactNode; wide?: boolean }) {
   return (
@@ -44,6 +45,8 @@ export default function Styleguide() {
         <nav className="sg-routes" aria-label="M1 screens"><span className="sg-faint">M1 screens</span>
           <Link href="/app">/app</Link><Link href="/app?cmdk=1">/app?cmdk=1</Link><Link href="/app?state=api-down">/app?state=api-down</Link><Link href="/sign-in">/sign-in</Link><Link href="/sign-in?state=cancelled">?state=cancelled</Link><Link href="/sign-in?state=unavailable">?state=unavailable</Link><Link href="/onboarding">/onboarding</Link>
           <span className="sg-faint">Handoff: <code>round3/tokens/HANDOFF-ENG.md</code></span></nav>
+        <nav className="sg-routes" aria-label="Marketing pages (M10)"><span className="sg-faint">Site (M10)</span>
+          <Link href="/open-range">/open-range</Link><Link href="/fenceline">/fenceline</Link><Link href="/pricing">/pricing</Link><Link href="/security">/security</Link><Link href="/mcp">/mcp</Link><Link href="/changelog">/changelog</Link><Link href="/legal/terms">/legal/terms</Link><Link href="/styleguide/share">/styleguide/share</Link><a href="#every-state">§46 Every state</a></nav>
         <ul className="sg-rules">
           <li><b>One action colour.</b> Blue <code>--color-action</code> for the one thing to do next; near-black <code>--color-action-2</code> for the second.</li>
           <li><b>Two weights, one tracking.</b> Inter 400/500 at 12–24px, −0.15px everywhere.</li>
@@ -294,8 +297,8 @@ export default function Styleguide() {
         <IntegrationsDemo />
       </Part>
 
-      <Part wide n="44" title="Developers" tokens={["m-code: surface-muted, mono 12/18, one Copy; the secret on canvas, 14/22", "m-access: area · what the level allows · None / Read / Write (/ Send)", "m-status: dot + word; m-scope: mono tag, write = info-50, send = caution-50", "m-docs: 30/36 title, numbered sections, sticky On this page"]}
-        notes={<p>A developer surface in Corral&rsquo;s own voice. MCP comes first: an AI client signs in as a person and gets only the areas they allow, and every call it makes is listed with what came back. API keys are for jobs that run without a person; the secret shows once, each key says what it can reach and when it was last used, rotating keeps the old one for 24 hours, and an expired key that something still calls says so. The docs are written like a page: how to connect each client, the fifteen tools with a real call from this workspace, and the guardrails that hold whoever calls.</p>}>
+      <Part wide n="44" title="Developers" tokens={["m-code: surface-muted, mono 12/18, one Copy; the secret on canvas, 14/22", "m-access: area · what the level allows · None / Read / Write (/ Send, signed-in only)", "m-status: dot + word; m-scope: mono tag, write = info-50, send = caution-50", "m-ro: Read-only tag + disabled actions with who can", "m-docs: 30/36 title, numbered sections, sticky On this page"]}
+        notes={<p>A developer surface in Corral&rsquo;s own voice. MCP comes first: an AI client signs in as a person and gets only the areas they allow, and every call it makes is listed with what came back. API keys are for jobs that run without a person, so they draft but never send: sending needs a signed-in connection. Owners manage every key and members their own; someone else&rsquo;s key is read-only with who can change it. The secret shows once, each key says what it can reach and when it was last used, rotating keeps the old one for 24 hours, and an expired key that something still calls says so. The docs are written like a page: how to connect each client, the fifteen tools with a real call from this workspace, and the guardrails that hold whoever calls.</p>}>
         <DevelopersDemo />
       </Part>
 
@@ -307,6 +310,11 @@ export default function Styleguide() {
             <div className="sg-faces">{["wanjiru", "kamau", "amara", "grace", "reza", "sofia"].map((a, i) => <Avatar key={a} id={a} size={([48, 36, 28, 24, 20, 20] as const)[i]} />)}</div></div>
         </div>
       </Part>
+      <Part wide n="46" title="Every state" tokens={["lib/states: SURFACES · kindOf · gaps · allStates", "Skeleton / SkeletonTable / SkeletonThreads / AppSkeleton", "EmptyState: title, one line, one action", "ErrorState: title, nothing lost, Try again, GET … · status"]}
+        notes={<><p>Every review state in the app, from one index, by the kind of moment it is. Each surface has an empty, a loading and an error state, or says why it doesn&rsquo;t; the test in <code>lib/states</code> fails if one goes missing. Click any state to open it.</p><p>One voice: an empty state says what goes here and the one thing to do; an error says what failed, that nothing was lost, <em>Try again</em> in blue, and the request in mono (<code>GET /api/v1/… · 503</code>). Titles use ’, never &apos;. One skeleton system at real row heights; nothing spins where a skeleton fits.</p></>}>
+        <div id="every-state"><EveryStateDemo /></div>
+      </Part>
+
       <footer className="sg-foot">Sample content: people, companies and numbers are illustrative. Photos from Unsplash and Pexels, reference only.</footer>
     </main>
   );

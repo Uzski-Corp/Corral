@@ -49,7 +49,7 @@ function ItemEditor({ item, sources, save, onSave, onCancel, section }: {
   const addable = sources.filter((s) => s.status.s !== "failed" && !cites.some((c) => c.src === s.id));
   return (
     <div ref={wrap} className="k-edit" onKeyDown={onKey}>
-      {save === "error" && <Banner tone="error" title="Couldn't save this line." action={<Button onClick={submit}>Try again</Button>}>Your edit is still here. Corral keeps using the previous version until it saves.</Banner>}
+      {save === "error" && <Banner tone="error" title="Couldn’t save this line." action={<Button onClick={submit}>Try again</Button>}>Your edit is still here. Corral keeps using the previous version until it saves.</Banner>}
       {isObj && <FormField label="When they say"><TextInput value={q} onChange={(e) => setQ(e.target.value)} placeholder="We already use data loggers." /></FormField>}
       <FormField label={isObj ? "Corral answers" : "What Corral can say"}>
         <Textarea rows={3} value={body} onChange={(e) => setBody(e.target.value)} />

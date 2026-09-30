@@ -248,7 +248,7 @@ export function Consent({ onDone }: { onDone?: (ok: boolean) => void }) {
         <div className="m-consent__pair" aria-hidden="true"><Mark label="CC" tone="claude-code" /><span className="m-consent__link" /><span className="m-mark is-corral">C</span></div>
         <h1>Claude Code wants to use Corral</h1>
         <p className="m-consent__who">As <b>Tomás Ibarra</b> (tomas@coldtrace.io) in <b>ColdTrace</b>. It sends you back to <span className="c-mono">http://localhost:33418/callback</span>.</p>
-        <RadioGroup label="What it may do" variant="cards" value={preset} onChange={pickPreset} options={PRESETS.map((p) => ({ value: p.id, label: p.label, description: p.hint }))} />
+        <RadioGroup label="What it may do" variant="cards" value={preset} onChange={pickPreset} options={PRESETS.map((p) => ({ value: p.id, label: p.label, description: p.id === "custom" ? "Set each area yourself, including sending replies." : p.hint }))} />
         <AccessPicker value={access} onChange={(a) => { setAccess(a); setPreset("custom"); }} />
         {access.unibox === "send" && <Banner tone="caution" title="It can send replies as you.">Each still waits out the 10-second undo and the Never-say check, from the thread’s mailbox. You see every one in the Unibox.</Banner>}
         <div className="m-consent__never"><span className="m-label">Never, whatever you pick</span>

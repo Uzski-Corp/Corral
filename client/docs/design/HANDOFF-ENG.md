@@ -22,8 +22,13 @@ cd client && pnpm install && pnpm dev     # pnpm 12 (see packageManager)
 | `/app?view=settings` | Settings (M8): the sub-nav (Workspace, Team, Mailboxes →, **Integrations**, Billing; **Developers** since M9) with **Integrations** designed: Cal.com, Phoenix ERP and AutoSend, the handoff flow, connect / reconnect / disconnect, per-integration logs, Phoenix field mapping and permissions (live: connect each, disconnect with Reconnect, open and filter logs, replay, remap fields) | `&state=integrations` · `none` · `connect-cal` · `connecting` · `connect-erp` · `connect-erp-failed` · `connect-autosend` · `connected` · `reauth` · `error` · `disconnect` · `logs` · `mapping` · `mapping-errors` · `scopes` · `autosend` · `loading` · `load-error` (see §16) |
 | `/app?view=settings` → Developers | Settings → Developers (M9): **MCP** (connect Cursor, Claude, Claude Code, VS Code or any client with a copyable config; connected clients, what each may do, every call, errors, disconnect; the OAuth consent page), **API keys** (create with scopes per area, the secret once, last used, rotate with a 24 h overlap, revoke, an expired key still being called) and **Docs** (the MCP server and API: connect, 15 tools with calls and results, guardrails, errors, limits) (live: create / rotate / revoke / replace keys, connect → waiting → connected, disconnect, search and open tools) | `&state=mcp` · `mcp-empty` · `mcp-connect` · `mcp-connect-claude` · `mcp-connect-key` · `mcp-consent` · `mcp-waiting` · `mcp-connected` · `mcp-activity` · `mcp-error` · `mcp-revoke` · `mcp-loading` · `keys` · `keys-empty` · `key-create` · `key-create-errors` · `key-reveal` · `key-rotate` · `key-rotated` · `key-revoke` · `key-expired` · `keys-error` · `docs` · `docs-tool` · `docs-search-empty` (see §17) |
 | `/app?view=segments` | A saved segment (live rules, same table) and the segment builder | `&state=builder` · `builder-empty` · `builder-error` · `loading` · `error` · `selected` · `detail` (see §11) |
+| `/app?view=contacts` | Contacts (M10 states): the table, with its loading, empty and error states | `&state=loading` · `empty` · `error` (see §18) |
+| `/open-range` · `/fenceline` | The two landings (M10: real app screens and components, not mock-ups; which one is `/` at launch is open) | — |
+| `/pricing` · `/security` · `/mcp` · `/changelog` · `/legal/terms` · `/legal/privacy` · `/legal/dpa` | The marketing pages (M10, §18). Legal is an outline, `noindex` until Counsel's text lands | — |
+| any unknown URL | The 404 (`app/not-found.tsx`) | — |
+| `/styleguide/share` | The seven 1200×630 share images, composed from live components; screenshotted to each route's `opengraph-image.jpg` (M10) | — |
 | `/onboarding` | 5-step workspace setup with progress and skip | `?step=1…6` (6 = done) · `?skipped=3,4,5` · `?crawl=done` · `?mailbox=1` |
-| `/styleguide` | Every component, live, where it is used (sections 01–45; knowledge base is 20–24, leads 25–29, discovery and provenance 30–33, fit score 34–35, sequences and the mailbox pool 36–38, Unibox, thread and draft states 39–41, handoffs and integrations 42–43, developers 44) | — |
+| `/styleguide` | Every component, live, where it is used (sections 01–46; **§46 Every state** (M10) indexes every review state; knowledge base is 20–24, leads 25–29, discovery and provenance 30–33, fit score 34–35, sequences and the mailbox pool 36–38, Unibox, thread and draft states 39–41, handoffs and integrations 42–43, developers 44) | — |
 
 Keyboard in `/app`: ⌘K / Ctrl+K palette · `[` collapse sidebar · `G` then `I C D P S Q R K ,` to jump (`D` = Discovery, M4) · `J`/`K` next/previous thread · `E` archive (with Undo toast) · Esc closes the top layer. Unibox (M7) adds `↵` open · `1`–`6` triage · `T` triage menu · `R` reply · `⌘↵` send · `⌘Z` undo send · `H` snooze · `?` the shortcuts sheet (§15).
 
@@ -39,6 +44,8 @@ components/app/*.tsx               React components (barrel: import { … } from
 components/app/data.ts             sample data. Replace with real queries; the shapes are a starting contract
 components/app/AppDemo.tsx         the /app composition (views, commands, enroll dialog). Copy the wiring, not the data
 components/marketing/*             marketing only. Never import marketing tokens into product UI
+components/marketing/site/*        M10: the shared site (nav, footer, pages, ProductFrame, Screen, pieces). Import deep paths, never the app barrel (§18 decision 8)
+lib/marketing/*, lib/states/*      M10: what the site says (routes, plans, claims, share cards) and the index of every state
 ```
 
 All component CSS sits in `@layer components`, so Tailwind utilities in `className` always win over it. That is how you adjust layout around a component without forking it.
@@ -944,25 +951,29 @@ Everything is Tomás Ibarra in ColdTrace, **Wed 30 Sep, 09:45 EAT**. The server 
 |---|---|
 | `keys` (and **API keys** in the nav) | "For scripts and tools that can't sign in… AI clients like Cursor or Claude should connect through MCP instead." Banners: **Zapier (old) expired Sep 21 and is still being called** (12 refused, last 08:02, **See the calls**) and **Metabase reporting expires in 4 days** (**Rotate now**, the old secret keeps working 24 h). Table: name (test tag, made by, when), key `crl_live_…7Qa2`, **Can reach** (top scope per area), **Last used** (12 min ago · n8n Cloud; Never used; *12 refused since*), **Expires** (Nov 10 · ● in 4 days · ● Expired · Never expires · ● Old secret until 09:45 tomorrow), a row menu (Details and last calls · Rotate · Revoke; an expired key: See the refused calls · Delete). Footer: only a hash and the last four are kept; one revoked in 30 days. |
 | `keys-empty` | **No API keys yet**: make one for something that runs without you; use MCP sign-in for a person's AI client; keys expire in 90 days unless you choose. **Create key** · Read the docs. |
-| `key-create` · `key-create-errors` | **Create API key**: Name ("name it after what uses it"), Environment Live / Test, Expires (30 days · **90 days** · 1 year · Never, "allowed, not advised"; the date and a week's warning), **What it may do**: presets as cards, then the per-area picker; "N scopes. Unibox Send is never preset…". Errors: "Two things before this key can exist: a name and at least one area.", the name field's message, the picker outlined red. A taken name: "A key called … already exists. Rotate that one, or pick another name." |
+| `key-create` · `key-create-errors` | **Create API key**: Name ("name it after what uses it"), Environment Live / Test, Expires (30 days · **90 days** · 1 year · Never, "allowed, not advised"; the date and a week's warning), **What it may do**: presets as cards, then the per-area picker, where the Unibox offers None / Read / Write only, with a lock line: "Keys can draft but can't send. Sending needs a signed-in MCP connection." The count reads "N scopes. Keys can draft but can't send: the Unibox stops at Write. Sending needs a signed-in MCP connection." (M10: Send is gone from keys entirely, decision 15.) Errors: "Two things before this key can exist: a name and at least one area.", the name field's message, the picker outlined red. A taken name: "A key called … already exists. Rotate that one, or pick another name." |
 | `key-reveal` | **HubSpot sync is ready** · "Copy it now. This is the only time Corral shows it." The secret large, **Copy** primary; "Corral keeps a hash and the last four (…6uGa)… Lose it and you rotate."; the same as a `CORRAL_API_KEY=` line; what it can reach and when it expires; **Done, I've stored it**. The new row is highlighted behind. |
 | `key-rotate` · `key-rotated` | **Rotate n8n lead sync?** The old secret **Keeps working for 24 hours** (until 09:45 tomorrow, to swap it in n8n Cloud without a gap) or **Stops now** (if it leaked); last used and calls this week. Then **New secret for n8n lead sync**, once, with "The old secret (…7Qa2) works until 09:45 tomorrow"; the row reads ● Old secret until 09:45 tomorrow. |
 | `key-revoke` | **Revoke n8n lead sync?** (danger, no undo): **In use: last call 12 min ago from n8n Cloud** (1,204 this week; "if you're replacing it, rotate instead"); calls get `401 invalid_token`; what it already did stays. |
 | `key-expired` | Zapier (old)'s page: ● Expired Sep 21; "Something still calls with this key: 12 calls refused since it expired", from where; facts (can reach, made, expires, last good call, limits); **Refused calls** (three `401 invalid_token`); **Make a replacement** (same name and scopes, new secret, 90 days → the reveal). |
-| `keys-error` | "Couldn't load your API keys" `GET /api/v1/keys · 503`: "No key was changed or revoked, and calls with them still work." **Try again**. |
+| `keys-error` | "Couldn’t load your API keys" `GET /api/v1/keys · 503`: "No key was changed or revoked, and calls with them still work." **Try again**. |
+| `keys-loading` (M10) | Skeleton banner and rows, "Loading API keys" for screen readers. |
+| `keys-owner` (M10) | Tomás as a workspace **owner**: a line under the header, "You're an owner: you manage every key, whoever made it. Members manage only their own." A new **Owner** column (between Key and Can reach): *You* + the name, or the person's name. Every row menu has Rotate and Revoke. |
+| `keys-member` (M10) | Amara Njoroge as a **member**: "You're a member: you manage the keys you made. The others are read-only; their owner or a workspace owner manages them." Her own key (Metabase reporting) has the full menu. Everyone else's rows are dimmed with a **Read-only** lock tag; their menu keeps **Details and last calls**, then a heading "Only Tomás or an owner" over **Rotate** and **Revoke**, both disabled. A banner about someone else's key (Rotate now) says who can act instead of offering the button. |
+| `keys-member-key` (M10) | Amara opens n8n lead sync (Tomás's): the facts, scopes and last calls as usual; in place of Revoke / Replace, a note: "Made by Tomás. Only Tomás or an owner can rotate or revoke it." |
 
 **Docs**
 
 | `?state=` | What shows |
 |---|---|
 | `docs` (and **Docs** in the nav) | An editorial page: kicker, **Corral, from the tools you already work in**, a lead paragraph, the facts (server, transport, sign-in, version 2026-09). Numbered sections **01 Connect** (client tabs: steps and the config per client; or connect from Settings → MCP), **02 Sign-in and keys** (two cards: for a person's AI client / for a job that runs without you; scopes explained), **03 Tools** (search; grouped by area; each row: name, Read / Write / Sends email, what it does, its scope; open: arguments, its guardrail, "Ask your client", the call as MCP `tools/call` or `curl`, the result, credits), **04 Guardrails**, **05 Errors** (401 invalid_token · 403 insufficient_scope · 409 thread_changed · 422 never_say · 429 rate_limited, with what to do), **06 Limits**, **07 Changes**. A sticky **On this page** with **Connect a client** at 1440. |
-| `docs-tool` | Lands on `send_reply` open: the guardrail (same 10 s undo and Never say; 409 if anyone wrote since the draft), its argument, the call and the result (`status: "undo"`, `sent: false`). |
+| `docs-tool` | Lands on `send_reply` open: the guardrail (same 10 s undo and Never say; 409 if anyone wrote since the draft; **signed-in connections only, a key gets `403 key_cannot_send`**), its argument, the call as MCP `tools/call` and the result (`status: "undo"`, `sent: false`). Its curl tab says there's no curl for this one: API keys can't send. |
 | `docs-search-empty` | Search "invoice": **No tool for "invoice"**: "Billing, team and mailbox settings stay in the app, on purpose." **Show all 15**. |
 
 No state is live-only: create, reveal, copy, rotate (either way), revoke, delete, replace, the row menu, connect → waiting → connected, client and sign-in switching, disconnect, the consent's presets, per-area levels and Allow / Deny, and the docs' tabs, search and tools all work.
 
 ### Decisions
-1. **One scope model for keys and MCP.** Six areas (companies and contacts, segments, sequences, Unibox, knowledge base, scoring), each None / Read / Write; the Unibox alone has **Send**. Write implies read, send implies write (`scopesOf`, `accessOf`, `hasScope`). Scopes are `area:read`, `area:write`, `unibox:send`. Three starting points: **Read only** (default), **Read and draft** (triage, drafts, segments; sends nothing), **Choose per area**. Send is never preset.
+1. **One scope model for keys and MCP.** Six areas (companies and contacts, segments, sequences, Unibox, knowledge base, scoring), each None / Read / Write; the Unibox alone has **Send**, and only for a signed-in connection (decision 15). Write implies read, send implies write (`scopesOf`, `accessOf`, `hasScope`). Scopes are `area:read`, `area:write`, `unibox:send`. Three starting points: **Read only** (default), **Read and draft** (triage, drafts, segments; sends nothing), **Choose per area**. Send is never preset.
 2. **A client only sees the tools its scopes allow** (`toolsFor`): MCP's `tools/list` leaves the rest out, so a client never learns about a tool it can't call. If it calls one anyway, `403 insufficient_scope`, logged, and the connection shows **Missing a scope**.
 3. **MCP is sign-in first.** OAuth 2.1 with PKCE via the consent page; the client acts as that person (their Unibox, mailboxes and Never say). Changing access means reconnecting through consent; a client can't widen its own access. API keys are for jobs without a person, and for clients without OAuth, as a Bearer header.
 4. **The 15 tools** (ENG-75), by area: `search_companies`, `get_company`, `update_lead_status`; `list_segments`, `create_segment`; `list_sequences`, `enroll_in_sequence`; `list_threads`, `get_thread`, `draft_reply`, `send_reply`; `search_knowledge`, `add_knowledge_source`; `explain_fit`, `score_company` (1 credit). Examples use this workspace's data.
@@ -977,14 +988,21 @@ No state is live-only: create, reveal, copy, rotate (either way), revoke, delete
 13. **Mobile (390):** the settings nav keeps the page you're on in view (Developers sits past Billing); tables become stacked rows with the row menu top right; connection rows put scopes and the action under the text; the connect dialog's clients wrap to three; the access picker stacks the level under the area; the docs lose the side contents, and the facts become a list.
 14. **Also in this batch:** the Unibox **`conflict-lead`** state (§15), the no-show triggers (§16 decision 17), and §16's open questions answered (decisions 16–19).
 
+### Decisions recorded in M10 (answers to the §17 open questions; Krak's PR #22 review)
+15. **Sending only on a signed-in MCP connection, never on an API key.** Keys can draft but can't send; sending needs a signed-in MCP connection (a person behind it, their 10 s undo). The picker enforces it: `AccessPicker holder="key"` offers None / Read / Write on the Unibox with the lock line, `levelsFor(area, holder)`, `clampFor(access, holder)` turns a pasted `send` into `write`, `validateKey` refuses `unibox: "send"` with `KEY_SEND_REFUSED`, and `keyScopesOf` never yields `unibox:send`. The server does the same: `send_reply` with a key → **403 `key_cannot_send`** (`ERRORS`, `keyMayCall`), and a key's `tools/list` leaves `send_reply` out. Copy everywhere (key-create, key-create-errors, rotate, the docs, `/mcp`, the changelog): "Keys can draft but can't send. Sending needs a signed-in MCP connection." The consent page is unchanged: a signed-in client can still be given Send, never preset, with its caution.
+16. **Owners manage every key; members manage their own.** `Role` (`owner` | `member`), `Viewer`, `canManageKey(viewer, key)`, `manageNote(key)`. Both see the whole workspace's keys (so nobody makes a duplicate or wonders what's calling); a member sees other people's keys read-only, actions disabled with who can act, never hidden. Owners get the **Owner** column and every action. Connections follow the same rule when ENG-77 adds disconnect-by-others. The real role comes from `/me` (§ M1 `account.role`); review states pick it with `devSeed(state).viewer`.
+17. **`score_company` costs 1 credit over MCP, the same as in the app.** Already in `TOOLS`; `/pricing` and the plans' compare table say so ("Scoring over MCP · 1 credit").
+
+For **Krak's settings.a11y spec**: `MCP_REVIEW_STATES` is now **29**; spread it as before and the four new states come with it: `keys-loading`, `keys-owner`, `keys-member`, `keys-member-key`. Things to assert beyond axe: in `keys-member` the other people's row menus hold **Rotate** / **Revoke** as disabled `menuitem`s (the shared `DropdownMenu` uses native `disabled`, so arrow keys skip them) after a heading line that names who can act, "Only Tomás or an owner"; the **Read-only** tag is text, not colour; the key page says who can act in words (`manageNote`); `keys-owner` has a real `columnheader` "Owner". (If you'd rather screen readers land on the disabled items, switch `DropdownMenu` to `aria-disabled` and keep them focusable; that's a shared M1 change, so I left it.)
+
 ### Component APIs (`import { … } from "@/components/app"`)
 ```tsx
 <SettingsView state? developer? onSection? />  // developer: McpReviewState; onSection(label) keeps the crumb in step
 <Developer section="mcp" | "keys" | "docs" state? />   <McpConsent onDone?(ok) />
-<AccessPicker value onChange? invalid? />   <CopyBlock label text what where? secret? tall? />   <ScopeTags scopes max? />
+<AccessPicker value onChange? invalid? holder?: "oauth" | "key" />   // M10: holder "key" stops the Unibox at Write   <CopyBlock label text what where? secret? tall? />   <ScopeTags scopes max? />
 <AppDemo … developer?: McpReviewState />      // /app?view=settings&state=mcp…|key…|docs…
 ```
-Logic: `lib/mcp/keys.ts` (`Area`, `Access`, `AREAS`, `Scope`, `scopesOf`, `accessOf`, `hasScope`, `PRESETS`, `KEY_PREFIX`, `isKeyShaped`, `redact`, `EXPIRY`, `DEFAULT_EXPIRY`, `ROTATE_OVERLAP_HOURS`, `EXPIRING_DAYS`, `expiresOn`, `statusOf`, `works`, `STATUS_WORD`, `lastUsedWords`, `expiryWords`, `validateKey`, `isValid`, `rotate`, `RATE`), `lib/mcp/tools.ts` (`MCP_URL`, `API_URL`, `TOOLS`, `tool`, `byArea`, `searchTools`, `toolsFor`, `callBody`, `curlFor`, `ERRORS`, `errorFor`, `CLIENTS`, `client`, `configFor`, `stepsFor`, `cursorDeeplink`), `MCP_REVIEW_STATES` (25), `mcpReviewState(view, state, reviewStates)`, `sectionOf`, `SECTION_TITLE`. Demo data: `API_KEYS`, `MCP_CONNECTIONS`, `devSeed`, `DEV_NOW`. Unibox: `SendKind` gains `"conflict-lead"`; `DraftActions` gains `onRedraftBoth`; `UniboxSeed` gains `followUp?`; `FollowUpMessage`, `LEAD_FOLLOWUP`, `BRIAN_REDRAFT`. Handoffs: `CAL_TRIGGERS`, `statusForTrigger`. Icons: `copy`, `key`, `plug`, `code`, `eye`, `lock`.
+Logic: `lib/mcp/keys.ts` (`Area`, `Access`, `AREAS`, `Scope`, `scopesOf`, `accessOf`, `hasScope`, `PRESETS`, `KEY_PREFIX`, `isKeyShaped`, `redact`, `EXPIRY`, `DEFAULT_EXPIRY`, `ROTATE_OVERLAP_HOURS`, `EXPIRING_DAYS`, `expiresOn`, `statusOf`, `works`, `STATUS_WORD`, `lastUsedWords`, `expiryWords`, `validateKey`, `isValid`, `rotate`, `RATE`; M10: `Holder`, `maySend`, `levelsFor`, `clampFor`, `KEY_SEND_REFUSED`, `KeyScope`, `keyScopesOf`, `Role`, `Viewer`, `canManageKey`, `manageNote`), `lib/mcp/tools.ts` (`MCP_URL`, `API_URL`, `TOOLS`, `tool`, `byArea`, `searchTools`, `toolsFor`, `callBody`, `curlFor`, `ERRORS` (M10: + `403 key_cannot_send`), `errorFor`, `keyMayCall` (M10), `CLIENTS`, `client`, `configFor`, `stepsFor`, `cursorDeeplink`), `MCP_REVIEW_STATES` (29 since M10), `mcpReviewState(view, state, reviewStates)`, `sectionOf`, `SECTION_TITLE`. Demo data: `API_KEYS`, `MCP_CONNECTIONS`, `devSeed`, `DEV_NOW`. Unibox: `SendKind` gains `"conflict-lead"`; `DraftActions` gains `onRedraftBoth`; `UniboxSeed` gains `followUp?`; `FollowUpMessage`, `LEAD_FOLLOWUP`, `BRIAN_REDRAFT`. Handoffs: `CAL_TRIGGERS`, `statusForTrigger`. Icons: `copy`, `key`, `plug`, `code`, `eye`, `lock`.
 
 ### What Krak wires (ENG-88, backend ENG-75 / ENG-77)
 - **MCP server (ENG-75):** Streamable HTTP at `/mcp`; `tools/list` filtered by the caller's scopes (`toolsFor`); each tool from `TOOLS` (name, arguments, what it returns); errors as MCP results with `isError` and the codes in `ERRORS`; the guardrails in decision 5 enforced server-side, not in the client.
@@ -998,9 +1016,118 @@ Logic: `lib/mcp/keys.ts` (`Area`, `Access`, `AREAS`, `Scope`, `scopesOf`, `acces
 - For ENG-88 / ENG-98: the e2e **key flow** (create with scopes → copy the secret → call the server with it → rotate → the old one works inside the overlap → revoke → 401) and **connect flow** (connect a client → consent → first call lands in Activity → disconnect → 401); security tests (the secret never in a response after create, logs or the DOM after Done; a hashed lookup; a client asking for a tool outside its scopes gets 403 and isn't listed; send_reply → 409 after a newer message; rate limits); axe on every `?view=settings&state=` M9 state (Krak's unibox axe spec picks up `conflict-lead` from `UNIBOX_REVIEW_STATES`); visual baselines at 1440 and 390 (CI-only). **Existing baselines that change:** `/app?view=settings` (the nav gains Developers; the old API keys placeholder is gone), `/styleguide` (§44 Developers, §45 Things that float), the Cal.com page's Listens for.
 
 ### Open questions
-1. The server URL `https://mcp.corral.app/mcp` and key prefix `crl_live_` / `crl_test_` are my placeholders. Real host and prefix?
-2. Is there a Test environment (sample data, sends nothing) in ENG-77, or should keys be Live only?
-3. Should `unibox:send` be allowed on API keys at all, or only on signed-in MCP connections (a person behind it)? The design allows both, never preset.
-4. Credits for `score_company` over MCP: same 1 credit as the app?
-5. Who can manage keys and connections: owners only, or anyone, for their own? The design shows the whole workspace's, with who made each.
+1. **Still open, for Aegon:** the server URL `https://mcp.corral.app/mcp` and key prefix `crl_live_` / `crl_test_` are my placeholders. Real host and prefix? (`/mcp` shows *To confirm · Aegon* next to the host.)
+2. **Still open, for Aegon:** is there a Test environment (sample data, sends nothing) in ENG-77, or should keys be Live only? The design keeps Live / Test.
+3. ~~Should `unibox:send` be allowed on API keys?~~ No: sending only on a signed-in MCP connection (decision 15).
+4. ~~Credits for `score_company` over MCP?~~ 1 credit, the same as the app (decision 17).
+5. ~~Who can manage keys and connections?~~ Owners all, members their own; others' read-only with the reason (decision 16).
 6. ENG-59's GitHub link is `Uzski-Corp/camposocial-client` #168 (ENG-88: #197), like ENG-53–58. Right repo, or stale?
+
+## 18. Marketing site, share images, and every empty / error / loading state (M10, ENG-60 → build ENG-87, gate ENG-97)
+
+The public site at launch quality, built from the product rather than pictures of it, and one pass over every state in the app so nothing ships blank. Both landings now embed **real app screens and components** (`ProductFrame` + `Screen`, and single pieces like `FitPiece`), so a landing can't drift from the product. New pages: **/pricing**, **/security**, **/mcp**, **/changelog**, **/legal/terms · privacy · dpa** (outlines), a **404**, route-level **loading / error** files, and **share images** for every public route. Styleguide **§46 Every state** indexes every review state from one list (`lib/states`). Logic and data are plain modules with tests: `lib/marketing/site.ts` (routes, nav, footer, CTAs, changelog, the claims still to confirm), `lib/marketing/plans.ts` (plans, compare table, FAQ), `lib/marketing/share.ts` (the share cards and their alt text), `lib/states/index.ts` (the state index), `lib/contacts/state.ts`.
+
+**Baseline: built on worktree HEAD 6424e57** (`eng-59-mcp`: M4–M8 as before, M9 as 17a12cd, and Krak's M9 axe commit 6424e57; PR #22 stacked on #16), with the tree identical to it. It also carries Krak's PR #22 review notes (§17 decisions 15–17, the owner/member key states) and the five M3 target-size fixes.
+
+### Routes and states
+| Route | What it is |
+|---|---|
+| `/open-range` | The landing, rewritten on real components: hero with the Companies screen (Fit 80+ with Kilima's reasons open), the tally, **Every row is a person who decides** (`ProvenancePiece`: where Wanjiru's email came from), the fit bar signature with `FitPiece`, **Replies arrive sorted** (the Unibox on Brian's draft), **It writes at a human pace** (a sequence's Launch dialog), **When they say yes** (`HandoffPiece`: Grace booked, the deal, AutoSend), People, **Ask Cursor who replied** (the real Cursor config), pricing from `PLANS`, the footer from `FOOTER`. Anchors `#product #unibox #sequences #handoffs #pricing`. `HowItWorks.tsx` is gone (the flow sections replace it). |
+| `/fenceline` | The same product in the engraved theme: hero and Pl. II are the Companies and the F&B · East Africa segment screens, Pl. III is `FitPiece`, Pl. IV the Unibox on Brian's draft; the plans read the same `COMPARE` rows as /pricing; real links and the shared footer. |
+| `/pricing` | Plans ledger (Field $49 · **Range $149** · Territory, let's talk) with a reads meter, what a read is (receipts), the compare table (grouped like the product; at 390 each cell carries its plan name), and the FAQ as `details`. *To confirm · Aegon* on prices. |
+| `/security` | **What Corral can touch, and what it can't**, in five numbered sections: **Nothing replies without you** (drafts, the 10 s undo, Never say, API keys can't send), **Your mailboxes stay yours** (caps, warm-up, unsubscribes), **Who and what is signed in** (sign-in, roles, MCP clients and keys; a live frame of Settings → MCP Activity), **Your data** (a ledger where every unconfirmed fact is marked *Pending* / *To confirm · Krak or Counsel*), **Tell us** (security@corral.app). |
+| `/mcp` | The public face of §17: facts (server, transport, sign-in, tools, host *To confirm*), connect a client (the same steps and configs as Settings), sign-in vs keys side by side with the key's picker stopping at Write, the 15 tools by area (`send_reply`: *Signed-in clients only*; `score_company`: 1 credit), guardrails, errors (incl. `403 key_cannot_send`), limits. |
+| `/changelog` | Entries from `CHANGELOG`, newest first: 1.0 on Oct 7 with a live frame and what shipped per area. |
+| `/legal/[doc]` | `terms`, `privacy`, `dpa`: the section outline and a draft note, `noindex` and out of the sitemap until `claim("legal")` is confirmed; `dynamicParams = false`. |
+| unknown URL | `app/not-found.tsx`: **Nothing here fits.** "Corral read this address and found no page", the address as a receipt with a zero fit bar, then home and the nav. `noindex`. |
+| `/styleguide/share` | The seven 1200×630 cards (`SHARE_CARDS`), screenshotted into `opengraph-image.jpg` + `.alt.txt` in `app/`, `open-range`, `fenceline`, `pricing`, `security`, `mcp`, `changelog` (static files, Next's file convention). Re-shoot with `m10-wip/og.mjs` whenever a card or photo changes. |
+| `/app?view=contacts&state=` | `loading` (the table skeleton) · `empty` (**No contacts yet**: people arrive as Corral reads companies; **Find companies** → Discovery) · `error` (**Couldn't load contacts**, `GET /api/v1/contacts · 503`, nothing lost, **Try again**). |
+| `/app?view=settings&state=` | `keys-loading` · `keys-owner` · `keys-member` · `keys-member-key` (§17). |
+| route files | `app/app/loading.tsx` (`AppSkeleton`: the shell outline, sidebar, top bar and thread rows), `app/app/error.tsx` (a view threw: **Couldn't open this part of Corral**, Try again, Go to the Unibox, the digest in mono), `app/error.tsx` (a marketing page threw: nav and footer stay), `app/global-error.tsx` (the root layout threw: plain HTML, one button). |
+
+`robots.ts` disallows `/app`, `/onboarding`, `/styleguide`; `sitemap.ts` lists the public routes minus sign-in and the unconfirmed legal pages. The root layout sets `metadataBase` (`SITE_URL`), the title template `%s · Corral`, Open Graph and `summary_large_image`.
+
+### Decisions
+1. **The site shows the product, not a drawing of it.** `ProductFrame` holds a real `AppDemo` (contained, hotkeys off, a review state picked): it mounts when it scrolls within 900 px (or `eager` in a hero), shows `AppSkeleton` until then, and is **`inert` with `role="img"` and a label** until the visitor presses **Try it**; then it's a live region with a ring. `contain: layout paint` keeps a dialog inside the frame. Single pieces (`FitPiece`, `ProvenancePiece`, `HandoffPiece`, `KeyAccessPiece`, `McpConfigPiece`, `McpClientsPiece`) are the app components at their own size.
+2. **One source for what the site says.** Routes, nav, footer, CTAs, changelog, plans and the compare table live in `lib/marketing`; the landings, /pricing, the sitemap and the tests read them, so a price or a link changes in one place. No `href="#"` anywhere (tested).
+3. **Unconfirmed claims are visible, on purpose.** `CLAIMS` lists what someone must confirm before Oct 7 (prices → Aegon; data region, encryption, retention → Krak; subprocessors, legal text → Counsel; the MCP host, key prefix and Test keys → Aegon). Each shows a *To confirm · who* pill where it's used. Launch = every claim `confirmed: true` and the pills gone.
+4. **Keys draft, people send, on the public pages too** (§17 decision 15): /mcp, /security, the changelog and the MCP share card say it in the same words.
+5. **One state system, one voice** (the audit). Every view already used the shared `Skeleton` / `SkeletonTable` / `SkeletonThreads` / `EmptyState` / `ErrorState`; M10 adds `AppSkeleton` and fills the gaps (Contacts; keys loading; the route files). Rules, now true everywhere: an empty state says what goes here and the one thing to do; an error says what failed, that nothing was lost, **Try again** as the primary button, and the request last in mono as `GET /api/v1/<path> · <status>` (Discovery, Sequences and the Unibox now use the full path; Leads and the knowledge base drop "Service Unavailable" / "Bad Gateway" and make Try again primary); titles use ’ (Couldn't → Couldn’t across components, lib and the styleguide).
+6. **Every state is indexed** (`lib/states`): `SURFACES` (shell, knowledge, companies, segments, discovery, contacts, sequences, unibox, handoffs, integrations, developers, products) with their review-state lists, `kindOf` (empty / loading / error / partial / progress / view, by name with per-surface overrides), `gaps` (a surface missing empty, loading or error with no reason fails the test), `allStates()` with each state's URL, and `ROUTE_STATES`. Products has no states on purpose: it is still the M1 placeholder (launch blocker below).
+7. **Share images are composed, not drawn**: real pieces on the Open Range paper, the headline, a fit bar and the host. The alt text sits next to the card in `SHARE_CARDS` and is written into `.alt.txt` by the script.
+8. **Performance (lab, cheap):** marketing pages load no app code they don't show. The root `error.tsx` / `not-found.tsx` (which ship with every route) and all marketing modules import from deep paths, never the `@/components/app` barrel; `Screen` loads `AppDemo` with `next/dynamic` (`ssr: false`) only when a frame comes near. Measured below.
+9. **Target size (M3 findings, WCAG 2.2 AA 2.5.8, non-blocking per Krak but cheap):** the rule-chip remove button is 24×24 (`.l-chip__x`), and the styleguide's §27 builder stacks at 390 so no control is squeezed under 24 px.
+10. **Contrast (found by the new sweep):** Fenceline's `--mk-copy-muted` darkens to #6B645A (5.2:1 on paper) and `--mk-copy-faint` to #857E73 (large text only, 3.5:1); Open Range's tally grey to #8F8F8B (3.3:1 at 40 px).
+
+### Performance (Playwright + CDP, 4× CPU, Slow 4G 150 ms / 1.6 Mbps, cold cache, review build)
+| Width | Route | FCP | LCP | CLS | TBT | JS transferred* | Images |
+|---|---|---|---|---|---|---|---|
+| 390 | `/open-range` | 2.1 s | 2.1 s | 0 | 535 ms | 315 KB | 220 KB |
+| 390 | `/fenceline` | 2.3 s | 4.2 s | 0.016 | 108 ms | 315 KB | 137 KB |
+| 390 | `/pricing` | 1.8 s | 1.8 s | 0 | 107 ms | 206 KB | 0 KB |
+| 390 | `/security` | 1.7 s | 1.7 s | 0 | 316 ms | 221 KB | 0 KB |
+| 390 | `/mcp` | 1.9 s | 1.9 s | 0 | 127 ms | 221 KB | 0 KB |
+| 390 | `/changelog` | 1.9 s | 1.9 s | 0 | 223 ms | 337 KB | 0 KB |
+| 390 | `/legal/terms` | 1.9 s | 1.9 s | 0 | 106 ms | 206 KB | 0 KB |
+| 390 | `/no-such-page` | 1.4 s | 1.4 s | 0 | 116 ms | 243 KB | 0 KB |
+| 1440 | `/open-range` | 2.1 s | 2.1 s | 0 | 595 ms | 341 KB | 700 KB |
+| 1440 | `/fenceline` | 2.4 s | 3.7 s | 0.002 | 116 ms | 341 KB | 404 KB |
+| 1440 | `/pricing` | 1.9 s | 1.9 s | 0.001 | 113 ms | 243 KB | 0 KB |
+| 1440 | `/security` | 1.8 s | 1.8 s | 0 | 355 ms | 243 KB | 0 KB |
+| 1440 | `/mcp` | 1.8 s | 1.8 s | 0 | 359 ms | 243 KB | 0 KB |
+| 1440 | `/changelog` | 1.7 s | 1.7 s | 0.026 | 510 ms | 363 KB | 17 KB |
+| 1440 | `/legal/terms` | 1.8 s | 1.8 s | 0 | 111 ms | 243 KB | 0 KB |
+| 1440 | `/no-such-page` | 1.5 s | 1.5 s | 0 | 110 ms | 243 KB | 0 KB |
+
+\* JS transferred in the first ~3 s, including Next's prefetch of linked routes. First-load JS gzip, measured from the HTML's own scripts: text pages (`/pricing`, `/legal/*`) **185 KB** (the framework floor; the 404 **182 KB**), `/changelog` 196 KB, `/mcp` and `/security` ~230 KB, the landings **232 KB**, `/app` 361 KB. Before the deep-import fix every route, `/sign-in` included, carried the whole app (**~345 KB gz**) because the root `error.tsx` / `not-found.tsx` imported the barrel.
+
+Reading it: CLS is ~0 everywhere (frames reserve their height). Everything but Fenceline is under 2.5 s LCP on this profile. **Fenceline's LCP (3.7–4.2 s) is the engraved hero plate** (`land-plate.jpg`, 77 KB WebP at 750 w; hatching compresses badly), already `priority`; the licensed replacement (launch item 1) should be engraved coarser or served smaller. **Open Range's TBT (~540–600 ms) is the live hero screen** mounting straight after hydration; if ENG-87's budget is 300 ms, the cheap fix is to mount the hero `ProductFrame` on first interaction or idle and show its `AppSkeleton` (already the placeholder) until then. `/security`, `/mcp` and `/changelog` sit at 220–510 ms for the same reason, lower down the page.
+
+### Component APIs
+```tsx
+// components/marketing/site (import the page's own module plus "@/components/marketing/site/styles" in route files)
+<SitePage current? kicker title lede? aside? landing? theme? />   <Section n id? title wide? />   <ToConfirm who />
+<SiteNav current? landing? />   <SiteFooter landing? />
+<ProductFrame label caption? height? phone? tone?: "light" | "photo" eager? className?>{<Screen view unibox? leads? sequences? discovery? developer? />}</ProductFrame>
+<FitPiece /> <ProvenancePiece /> <HandoffPiece /> <KeyAccessPiece /> <McpConfigPiece /> <McpClientsPiece />
+<PricingPage /> <SecurityPage /> <McpPage /> <ChangelogPage /> <LegalPage doc /> <NotFoundBody />
+// components/app
+<AppSkeleton frame?: "viewport" | "contained" label? />   <SkeletonThreads rows? bare? />   <AppDemo … contacts?: ContactsReviewState />
+```
+Logic: `lib/marketing/site.ts` (`SITE_URL`, `LAUNCH`, `ROUTES`, `PUBLIC_ROUTES`, `HOME`, `homeOf`, `NAV`, `FOOTER`, `CTA`, `SAMPLE_NOTE`, `CHANGELOG`, `CLAIMS`, `claim`, `isConfirmed`), `lib/marketing/plans.ts` (`PLANS`, `priceWords`, `COMPARE`, `FAQ`), `lib/marketing/share.ts` (`SHARE_CARDS`), `lib/states/index.ts` (`SURFACES`, `KINDS`, `REQUIRED`, `kindOf`, `hrefOf`, `allStates`, `gaps`, `countsOf`, `ROUTE_STATES`), `lib/contacts/state.ts` (`CONTACTS_REVIEW_STATES`, `contactsReviewState`).
+
+### What Krak wires (ENG-87; gate ENG-97)
+- **CWV budgets** in CI on `/open-range`, `/fenceline`, `/pricing`, `/security`, `/mcp`, `/changelog` (and `/` once it's chosen): suggested LCP ≤ 2.5 s and CLS ≤ 0.1 at the Slow 4G / 4× profile above, TBT ≤ 300 ms, first-load JS ≤ 200 KB gz on the text pages and ≤ 250 KB on the landings. The table above is the starting point; Lighthouse CI will read a little differently.
+- **Visual baselines** at 1440 and 390 for every route in the table, `/styleguide` (§44 gains the key picker and the member view; **§46 Every state** is new) and the new states. **Existing baselines that change:** both landings (rewritten), `/styleguide` §27 builder at 390 and the leads rule chips (target size), every view's error state (the detail line and ’), Settings → API keys (the Owner column and role line), the key-create dialog (no Send), `docs-tool` (curl note), Fenceline's muted greys.
+- **axe**: add the marketing routes, the 404, `/app?view=contacts&state=…`, `/app?state=…` and the four key states. The simplest way is to walk `allStates()` from `lib/states` instead of each spec's own list. Scroll marketing pages to the end before scanning so every frame mounts.
+- **Real endpoints behind the states:** `GET /api/v1/contacts`; the role on `/me` (owner / member) for the key views; `403 key_cannot_send` on the server.
+- **Sign-up:** there is no self-serve sign-up route; every *Start* CTA goes to `/sign-in` (`CTA.start`). Change it in one place when there is one.
+- **Pick `/`:** `app/page.tsx` is still the design index linking both landings. At launch it should be the chosen landing (`HOME`), with the other removed or `noindex`.
+
+### Tests
+- Totals: 55 files, 640 tests, coverage 99.1% statements / 98.0% branches. Added: `lib/marketing/site.test.ts` (9: every link is a real route, the footer anchors exist on the home landing and /mcp, CTAs, changelog order and links, keys can't send, the claims and owners, plans and the compare table incl. 1 credit; the share cards), `lib/states/index.test.ts` (8: no surface without empty, loading and error or a reason; overrides and reasons are honest; the M10 states are indexed; kinds; links; route files; counts), `components/app/Contacts.test.tsx` (4), the key tests in §17 (owner and member views, `keys-member-key`, no Send on key-create, the lock line, the curl note), updated `leads`, `kb`, `discovery`, `sequences`, `fit` tests for ’ and the detail lines.
+- For ENG-87 / ENG-97: the budgets and baselines above; an e2e that every footer and nav link returns 200; `/robots.txt` and `/sitemap.xml` contents; each route's `og:image` resolves to a 1200×630 JPEG with its alt.
+
+### Launch readiness (Oct 7), across M1–M10
+| # | Item | Where | Owner | State |
+|---|---|---|---|---|
+| 1 | **Photographs**: every photo and app avatar is a reference stand-in, not model-released; replace or remove before any public page ships | `docs/design/IMAGE-SOURCES.md` (launch-blocker table) | Aegon → Bau | **Blocking** |
+| 2 | **Claims** in `CLAIMS`: prices; data region, encryption, retention; subprocessors; legal text; MCP host, key prefix, Test keys | `lib/marketing/site.ts` (pills on the pages) | Aegon · Krak · Counsel | **Blocking** |
+| 3 | **Legal pages**: real Terms, Privacy notice and DPA; then drop `noindex` and add them to the sitemap | `/legal/*` | Counsel | **Blocking** |
+| 4 | **Which landing is `/`** (Open Range is `HOME` today) | `app/page.tsx`, `HOME` | Aegon | Open |
+| 5 | **Sign-up route** (CTAs go to /sign-in) | `CTA.start` | Krak | Open |
+| 6 | **Host** (`SITE_URL` https://corral.app, `MCP_URL`), **security contact** (security@corral.app), walkthrough address (hello@corral.app) are placeholders | `lib/marketing/site.ts`, `lib/mcp/tools.ts` | Aegon | Open |
+| 7 | **Products view** is still the M1 placeholder ("designed in a later milestone"); it's in the nav | `AppDemo` `PendingView` | Aegon (scope) → Bau | **Decide**: design it or hide it for launch |
+| 8 | **Settings → Workspace, Team, Billing** are placeholders; Team is where owner / member is set (§17 decision 16), Billing where credits are | Settings sub-nav | Aegon (scope) → Bau | **Decide** |
+| 9 | **No offline state** (a dropped connection shows each view's error) | — | Bau, if wanted | Open |
+| 10 | Phoenix ERP's real stages, required fields and duplicate response | §16 open question 3 | Krak | Open |
+| 11 | Test environment for keys, and the real host and prefix | §17 open questions 1–2 | Aegon | Open |
+| 12 | PR stack: #16 (M8) → #22 (M9, HEAD 6424e57) → M10 on top | `next/m10/` | Krak | In review |
+| 13 | ENG-53–60 GitHub links point at `camposocial-client` (#167–169) | Linear | Krak | Check |
+| 14 | Remove `SAMPLE_NOTE` from public pages once 1–2 are done; re-shoot the share images | `lib/marketing/site.ts`, `m10-wip/og.mjs` | Bau | After 1–2 |
+
+### Open questions
+1. **For Aegon:** which landing is `/` at launch, Open Range or Fenceline? (Both are launch quality; the pages link home to `HOME`.)
+2. **For Aegon:** the real host and contact addresses (`corral.app`, security@, hello@) and the prices.
+3. **For Aegon:** Products, Team and Billing: design them before Oct 7, or hide Products and ship Settings with those three as "coming soon"?
+4. **For Krak:** is there a sign-up route coming, or does sign-in create the workspace (M1 onboarding)? The CTAs assume the latter.

@@ -26,7 +26,11 @@
  *   key-rotated       the new secret, once; the old one's cut-off time
  *   key-revoke        Revoke a key that was used 12 minutes ago: what breaks
  *   key-expired       an expired key that something still calls: the refused calls; make a replacement
- *   keys-error        the page couldn't load; no key changed
+ *   keys-error        the page couldn’t load; no key changed
+ *   keys-loading      skeleton rows (M10)
+ *   keys-owner        (M10) Tomás, an owner: the Owner column, and every key's actions, whoever made it
+ *   keys-member       (M10) Amara, a member: her key with every action; the others read-only, menus disabled, and why
+ *   keys-member-key   (M10) Amara opens Tomás's n8n key: its details, no Revoke, and who can
  * Docs
  *   docs              the MCP and API docs: connect, the tools by area, guardrails, errors, limits
  *   docs-tool         one tool open (send_reply): arguments, the guardrail, the call and what comes back
@@ -35,7 +39,7 @@
 export const MCP_REVIEW_STATES = [
   "mcp", "mcp-empty", "mcp-connect", "mcp-connect-claude", "mcp-connect-key", "mcp-consent", "mcp-waiting", "mcp-connected",
   "mcp-activity", "mcp-error", "mcp-revoke", "mcp-loading",
-  "keys", "keys-empty", "key-create", "key-create-errors", "key-reveal", "key-rotate", "key-rotated", "key-revoke", "key-expired", "keys-error",
+  "keys", "keys-empty", "key-create", "key-create-errors", "key-reveal", "key-rotate", "key-rotated", "key-revoke", "key-expired", "keys-error", "keys-loading", "keys-owner", "keys-member", "keys-member-key",
   "docs", "docs-tool", "docs-search-empty",
 ] as const;
 export type McpReviewState = (typeof MCP_REVIEW_STATES)[number];

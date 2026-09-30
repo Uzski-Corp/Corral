@@ -110,7 +110,7 @@ export function summaryLine(s: FitScore): string {
 export function fitLabel(o: { value?: number; state?: "scoring" | "none" | "error"; confidence?: "low"; delta?: number; by?: "you"; text?: string }): string {
   if (o.state === "scoring") return `Fit: ${(o.text ?? "Scoring").toLowerCase()}`;
   if (o.state === "none") return `Fit: ${(o.text ?? "Not scored yet").toLowerCase()}`;
-  if (o.state === "error") return "Fit: couldn't score";
+  if (o.state === "error") return "Fit: couldn’t score";
   const bits = [`Fit ${o.value} of 100`];
   if (o.by === "you") bits.push("set by you");
   if (o.confidence === "low") bits.push("low confidence");

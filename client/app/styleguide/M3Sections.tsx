@@ -85,7 +85,7 @@ export function ImportDemo() {
 }
 
 const STATES: [string, string, string][] = [
-  ["companies", "", "live: Fit 80+, sortable, selectable, detail on click"], ["companies", "loading", "skeleton rows at 40px"], ["companies", "error", "couldn't load, retry"],
+  ["companies", "", "live: Fit 80+, sortable, selectable, detail on click"], ["companies", "loading", "skeleton rows at 40px"], ["companies", "error", "couldn’t load, retry"],
   ["companies", "empty", "first run: import or find"], ["companies", "no-results", "filters match nothing, with the loosening hint"], ["companies", "partial", "212 of 1,284 still scoring"],
   ["companies", "selected", "3 selected: the bulk bar"], ["companies", "select-all", "all 1,284 selected"], ["companies", "bulk-confirm", "large enroll: what gets skipped"],
   ["companies", "bulk-running", "large enroll in the background"], ["companies", "status-menu", "set status for a selection"], ["companies", "detail", "Kilima Dairies open"],

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { OnboardingScreen } from "@/components/session/OnboardingScreen";
 
-export const metadata: Metadata = { title: "Set up your workspace · Corral" };
+export const metadata: Metadata = { title: "Set up your workspace" };
 
 /** /onboarding — five steps. Review states: ?step=1…6 (6 = done) · ?skipped=3,4 · ?crawl=done · ?mailbox=1 */
 export default async function OnboardingPage({ searchParams }: PageProps<"/onboarding">) {

@@ -56,7 +56,7 @@ export function SourceDetailDemo() {
   return (
     <div className="sg-kb__details">
       {pick("pitch", "gateway", "cert", "install").map((s) => (
-        <div key={s.id}><Label>{s.status.s === "ready" ? "ready" : s.status.s === "partial" ? "partly read" : s.status.s === "failed" ? "couldn't read" : "reading"}</Label>
+        <div key={s.id}><Label>{s.status.s === "ready" ? "ready" : s.status.s === "partial" ? "partly read" : s.status.s === "failed" ? "couldn’t read" : "reading"}</Label>
           <div className="sg-kb__detail c-app"><SourceDetail src={s} knowledge={KNOWLEDGE} /></div></div>
       ))}
     </div>
@@ -74,7 +74,7 @@ export function EditorDemo() {
 
 const KB_URLS: [string, string][] = [
   ["", "live: knowledge page, two sources still being read"], ["empty", "first run: the page is the drop zone"], ["drafting", "first source reading, page not drafted yet"],
-  ["loading", "skeleton at real sizes"], ["error", "couldn't load, nothing lost, retry"], ["sources", "ledger with live, partial and failed rows"],
+  ["loading", "skeleton at real sizes"], ["error", "couldn’t load, nothing lost, retry"], ["sources", "ledger with live, partial and failed rows"],
   ["source", "ready source in the detail panel"], ["partial", "31 of 38 pages read"], ["failed", "password-protected PDF"],
   ["upload", "Add sources mid-upload"], ["upload-errors", "stopped, unsupported, too large, password, duplicate"], ["dragging", "files over the page"],
   ["tray", "dialog closed, uploads continue"], ["editing", "a line open for editing"], ["save-error", "edit kept, retry"], ["conflict", "two sources disagree on price"],

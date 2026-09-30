@@ -35,7 +35,7 @@ describe("run progress", () => {
     expect(runHeadline({ ...base, status: "cancelled" })).toBe("Cancelled · 212 companies kept");
     expect(runHeadline({ ...base, status: "done", found: 0 })).toBe("Finished · no companies matched");
     expect(runHeadline({ ...base, status: "done", fits: 22 })).toBe("Finished · 212 companies, 22 fit 80+");
-    expect(runHeadline({ ...base, status: "partial", skipped: [["blocked", 7], ["timeout", 5]] })).toBe("Finished · 212 companies, 31 fit 80+ · 12 couldn't be read");
+    expect(runHeadline({ ...base, status: "partial", skipped: [["blocked", 7], ["timeout", 5]] })).toBe("Finished · 212 companies, 31 fit 80+ · 12 couldn’t be read");
     expect(plural(1, "run")).toBe("1 run");
     expect(plural(1200, "run")).toBe("1,200 runs");
   });
@@ -97,7 +97,7 @@ describe("enrichment state", () => {
     expect(["queued", "reading", "scoring", "finding", "verifying", "no-people"].map((kind) => enrichLabel({ kind } as never)))
       .toEqual(["Queued", "Reading site", "Scoring", "Finding people", "Verifying email", "No one found"]);
     expect(enrichLabel({ kind: "below-bar", bar: 70 })).toBe("No lookup · fit under 70");
-    expect(enrichLabel({ kind: "unreadable", why: "blocked" })).toBe("Couldn't read site");
+    expect(enrichLabel({ kind: "unreadable", why: "blocked" })).toBe("Couldn’t read site");
     expect(enrichBusy({ kind: "verifying" })).toBe(true);
     expect(enrichBusy({ kind: "no-people" })).toBe(false);
     expect(enrichBusy()).toBe(false);

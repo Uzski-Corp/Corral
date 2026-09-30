@@ -195,7 +195,7 @@ export function UniboxView({ threads, setThreads, active, setActive, tab, setTab
     </div>
   );
   if (load === "error") return (
-    <div className="c-view">{subbar}<div className="c-view c-view--center"><ErrorState title="Couldn’t load the Unibox" detail="GET /threads?tab=needs · 503"
+    <div className="c-view">{subbar}<div className="c-view c-view--center"><ErrorState title="Couldn’t load the Unibox" detail="GET /api/v1/threads?tab=needs · 503"
       actions={<Button variant="primary" onClick={() => setLoad(undefined)}><Icon name="refresh" />Try again</Button>}>
       Your mailboxes are fine and replies are still arriving; this is only the page failing to load them. Nothing was sent or archived.</ErrorState></div></div>
   );

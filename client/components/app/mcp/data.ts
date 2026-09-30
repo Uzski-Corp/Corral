@@ -1,5 +1,5 @@
 /* Settings → Developers (M9, ENG-59): the keys, the connected clients and their calls, and a seed per review state. */
-import { accessOf, PRESETS, type AccessMap, type ExpiryId, type KeyEnv } from "@/lib/mcp/keys";
+import { accessOf, PRESETS, type AccessMap, type ExpiryId, type KeyEnv, type Viewer } from "@/lib/mcp/keys";
 import type { Auth, ClientId } from "@/lib/mcp/tools";
 import type { McpReviewState } from "@/lib/mcp/state";
 
@@ -74,7 +74,11 @@ export const ZAPIER_CALLS: Call[] = [
 
 /* ------------------------------------------------------------ seeds */
 export type DevDialog = "connect" | "waiting" | "connected" | "revoke-conn" | "create" | "reveal" | "rotate" | "rotated" | "revoke-key";
+/** Who's looking. Tomás owns ColdTrace's workspace; Amara is a member (keys-member). */
+export const OWNER: Viewer = { name: "Tomás Ibarra", role: "owner" };
+export const MEMBER: Viewer = { name: "Amara Njoroge", role: "member" };
 export type DevSeed = {
+  viewer?: Viewer;
   load?: "loading" | "error"; empty?: boolean; dialog?: DevDialog; client?: ClientId; auth?: Auth;
   open?: string; errors?: boolean; problems?: boolean; key?: string; consent?: boolean;
   docTool?: string; docQuery?: string; draft?: { name: string; access: AccessMap; expiry: ExpiryId };
@@ -101,6 +105,10 @@ export function devSeed(s?: McpReviewState): DevSeed {
     case "key-revoke": return { dialog: "revoke-key", key: "key_n8n" };
     case "key-expired": return { open: "key_zapier" };
     case "keys-error": return { load: "error" };
+    case "keys-loading": return { load: "loading" };
+    case "keys-member": return { viewer: MEMBER };
+    case "keys-member-key": return { viewer: MEMBER, open: "key_n8n" };
+    case "keys-owner": return { viewer: OWNER };
     case "docs-tool": return { docTool: "send_reply" };
     case "docs-search-empty": return { docQuery: "invoice" };
   }

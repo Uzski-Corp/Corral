@@ -126,7 +126,7 @@ describe("lead table", () => {
     const { unmount } = render(<Host state="loading" />);
     expect(screen.getByRole("status", { name: "Loading companies" })).toBeInTheDocument(); unmount();
     const e = render(<Host state="error" />);
-    expect(screen.getByText("Couldn't load companies")).toBeInTheDocument();
+    expect(screen.getByText("Couldn’t load companies")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(screen.getByRole("status", { name: "Loading companies" })).toBeInTheDocument(); e.unmount();
     const f = render(<Host state="empty" />);

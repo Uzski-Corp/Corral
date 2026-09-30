@@ -147,6 +147,18 @@ button.c-toggle { border: 0; padding: 0; cursor: pointer; transition: background
 /* ---------- states */
 .c-skel { display: inline-block; flex-shrink: 0; background: linear-gradient(90deg, var(--color-border-subtle) 0 40%, #F7F7F6 50%, var(--color-border-subtle) 60% 100%); background-size: 200% 100%; animation: c-sheen 1.4s linear infinite; }
 .c-tr--skel:hover { background: transparent !important; }
+.c-appskel__side { width: 232px; flex-shrink: 0; padding: 14px 12px; display: flex; flex-direction: column; gap: 12px; }
+.c-appskel__ws { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.c-appskel__nav { display: flex; align-items: center; gap: 10px; height: 16px; padding-left: 6px; }
+.c-appskel__top { height: 48px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 16px; border-bottom: 1px solid var(--color-border-subtle); }
+.c-appskel__body { flex: 1; min-height: 0; display: flex; }
+.c-appskel__list { width: 360px; flex-shrink: 0; border-right: 1px solid var(--color-border-subtle); }
+.c-appskel__read { flex: 1; min-width: 0; padding: 24px 28px; display: flex; flex-direction: column; gap: 10px; }
+@container shell (max-width: 767px) {
+  .c-appskel__side, .c-appskel__read { display: none; }
+  .c-appskel .c-shell__main { margin: 0; border-radius: 0; box-shadow: none; }
+  .c-appskel__list { width: 100%; border-right: 0; }
+}
 .c-skel-threads { display: flex; flex-direction: column; gap: 2px; padding: 10px; }
 .c-skel-thread { display: flex; gap: 10px; padding: 12px; }
 .c-spin { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--color-border); border-top-color: var(--color-action); animation: c-spin .7s linear infinite; flex-shrink: 0; }
@@ -250,6 +262,9 @@ button.c-toggle { border: 0; padding: 0; cursor: pointer; transition: background
 /* views */
 .c-view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .c-view--center { align-items: center; justify-content: center; }
+/* app/app/error.tsx: a whole screen that failed, centred on the app background (M10). */
+.c-apperr { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 24px; background: var(--color-surface-muted); }
+.c-apperr .c-empty { max-width: 460px; }
 .c-view__scroll { flex: 1; min-height: 0; overflow: auto; }
 .c-subbar { height: 40px; flex-shrink: 0; display: flex; align-items: stretch; padding: 0 20px; border-bottom: 1px solid var(--color-border-subtle); overflow-x: auto; scrollbar-width: none; }
 .c-ux { flex: 1; min-height: 0; display: flex; }

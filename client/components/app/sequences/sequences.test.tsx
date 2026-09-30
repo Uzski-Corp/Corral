@@ -201,7 +201,7 @@ describe("SequencesView · launch, run, pause", () => {
     expect(screen.getByRole("status", { name: "Loading sequences" })).toBeInTheDocument();
     unmount();
     render(<Host state="error" />);
-    expect(screen.getByText("Couldn't load sequences")).toBeInTheDocument();
+    expect(screen.getByText("Couldn’t load sequences")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /Try again/ }));
     expect(screen.getByRole("heading", { name: "Cold-room pilot" })).toBeInTheDocument();
   });

@@ -184,7 +184,7 @@ describe("KnowledgeEditor", () => {
   });
   it("shows a failed save without losing the edit", () => {
     render(<Editor initialEditing="proof-kilima" failFirstSave />);
-    expect(screen.getByRole("alert")).toHaveTextContent("Couldn't save this line.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Couldn’t save this line.");
     expect((screen.getByRole("textbox", { name: "What Corral can say" }) as HTMLTextAreaElement).value).toMatch(/^Kilima Dairies cut spoilage/);
   });
   it("resolves a conflict, a removed source and a new line", async () => {
@@ -226,7 +226,7 @@ describe("KnowledgeBase", () => {
     vi.useFakeTimers();
     try {
       mount("error");
-      expect(screen.getByRole("alert")).toHaveTextContent("Couldn't load the knowledge base");
+      expect(screen.getByRole("alert")).toHaveTextContent("Couldn’t load the knowledge base");
       fireEvent.click(screen.getByRole("button", { name: /Try again/ }));
       act(() => { vi.advanceTimersByTime(800); });
       expect(screen.getByRole("heading", { level: 1, name: "ColdTrace Sensors" })).toBeInTheDocument();

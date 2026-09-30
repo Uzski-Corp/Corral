@@ -10,8 +10,9 @@ import { sequenceReviewState } from "@/lib/sequences/state";
 import { uniboxReviewState } from "@/lib/unibox/state";
 import { settingsReviewState } from "@/lib/integrations/state";
 import { mcpReviewState } from "@/lib/mcp/state";
+import { contactsReviewState } from "@/lib/contacts/state";
 
-export const metadata: Metadata = { title: "Corral · Unibox" };
+export const metadata: Metadata = { title: "Unibox" };
 const VIEWS: ViewId[] = ["unibox", "companies", "discovery", "contacts", "segments", "sequences", "products", "knowledge", "settings"];
 
 /**
@@ -39,7 +40,10 @@ const VIEWS: ViewId[] = ["unibox", "companies", "discovery", "contacts", "segmen
  * Settings → Developers (M9): ?view=settings&state=mcp | mcp-empty | mcp-connect | mcp-connect-claude | mcp-connect-key |
  *   mcp-consent | mcp-waiting | mcp-connected | mcp-activity | mcp-error | mcp-revoke | mcp-loading | keys | keys-empty |
  *   key-create | key-create-errors | key-reveal | key-rotate | key-rotated | key-revoke | key-expired | keys-error | docs |
- *   docs-tool | docs-search-empty  (see lib/mcp/state.ts)
+ *   docs-tool | docs-search-empty  (see lib/mcp/state.ts) · M10 adds keys-loading | keys-owner | keys-member |
+ *   keys-member-key (who manages which key)
+ * Contacts (M10): ?view=contacts&state=loading | empty | error  (see lib/contacts/state.ts)
+ * Every review state, by view and kind: lib/states/index.ts, shown at /styleguide#every-state (M10)
  */
 export default async function AppPage({ searchParams }: PageProps<"/app">) {
   const q = await searchParams;
@@ -54,5 +58,6 @@ export default async function AppPage({ searchParams }: PageProps<"/app">) {
   const unibox = uniboxReviewState(view, one("state"), reviewStates);
   const settings = settingsReviewState(view, one("state"), reviewStates);
   const developer = mcpReviewState(view, one("state"), reviewStates);
-  return <AppScreen key={`${preview ?? "live"}-${kb ?? ""}-${leads ?? ""}-${discovery ?? ""}-${sequences ?? ""}-${unibox ?? ""}-${settings ?? ""}-${developer ?? ""}`} preview={preview} kb={kb} leads={leads} discovery={discovery} sequences={sequences} unibox={unibox} settings={settings} developer={developer} initialView={view} cmdk={one("cmdk") === "1"} collapsed={one("collapsed") === "1"} drawer={one("nav") === "1"} dialog={one("dialog") === "enroll"} />;
+  const contacts = contactsReviewState(view, one("state"), reviewStates);
+  return <AppScreen key={`${preview ?? "live"}-${kb ?? ""}-${leads ?? ""}-${discovery ?? ""}-${sequences ?? ""}-${unibox ?? ""}-${settings ?? ""}-${developer ?? ""}-${contacts ?? ""}`} preview={preview} kb={kb} leads={leads} discovery={discovery} sequences={sequences} unibox={unibox} settings={settings} developer={developer} contacts={contacts} initialView={view} cmdk={one("cmdk") === "1"} collapsed={one("collapsed") === "1"} drawer={one("nav") === "1"} dialog={one("dialog") === "enroll"} />;
 }

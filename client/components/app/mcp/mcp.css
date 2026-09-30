@@ -58,6 +58,15 @@
 .m-table tbody tr:last-child td { border-bottom: 0; }
 .m-table .c-mono { font-size: 11.5px; color: var(--color-text-secondary); }
 .m-table--skel { display: flex; flex-direction: column; }
+.m-access__lock { display: inline-flex; align-items: center; gap: 5px; margin-top: 3px; font-size: 12px; line-height: 16px; color: var(--color-text-tertiary); }
+.m-keys__owner { font-size: 13px; }
+.m-keys__owner b { display: block; font-weight: 500; color: var(--color-text); }
+.m-keys__owner .c-muted { font-size: 12px; }
+.m-ro { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; color: var(--color-text-quaternary); }
+.m-keys tr.is-readonly .m-keys__key, .m-keys tr.is-readonly .m-keys__owner { color: var(--color-text-tertiary); }
+.m-role { display: flex; align-items: center; gap: 6px; margin: 8px 0 0; font-size: var(--text-meta); color: var(--color-text-secondary); }
+.m-role--inline { margin: 0; max-width: 300px; color: var(--color-text-tertiary); }
+.m-tool__nokey { margin-top: 8px; }
 .m-skelrow { display: grid; grid-template-columns: 1.4fr 1fr 1.6fr .8fr; gap: 16px; align-items: center; padding: 14px 12px; border-bottom: 1px solid var(--color-border-subtle); }
 .m-keys td { vertical-align: middle; }
 .m-keys__name { min-width: 170px; }
@@ -274,6 +283,7 @@
   .m-keys td.m-keys__acts { position: absolute; top: 8px; right: 6px; width: auto; }
   .m-keys__name { padding-right: 36px !important; }
   .m-keys__used > span { display: inline; margin-right: 8px; }
+  .m-keys__owner b { display: inline; margin-right: 6px; }
   .m-keys tr.is-expired td:first-child, .m-keys tr.is-expiring td:first-child, .m-calls tr.is-bad td:first-child { box-shadow: none; }
   .m-keys tr.is-expired, .m-calls tr.is-bad { box-shadow: inset 2px 0 0 var(--color-negative-600); }
   .m-keys tr.is-expiring { box-shadow: inset 2px 0 0 var(--color-caution-600); }

@@ -29,7 +29,7 @@ describe("DiscoveryView", () => {
     const t = results();
     expect(within(t).getAllByText("Finding people").length).toBeGreaterThan(0);
     expect(within(t).getByText("Reading site")).toBeInTheDocument();
-    expect(within(t).getByText("Couldn't read site")).toBeInTheDocument();
+    expect(within(t).getByText("Couldn’t read site")).toBeInTheDocument();
     expect(within(t).getAllByText("Not looked up").length).toBeGreaterThan(0);
     await userEvent.click(screen.getByRole("tab", { name: /Needs you/ }));
     expect(within(results()).getAllByRole("row")).toHaveLength(2);
@@ -66,10 +66,10 @@ describe("DiscoveryView", () => {
     expect(await screen.findByText("Resumed Beverages · Tanzania")).toBeInTheDocument();
   });
 
-  it("lists sites that couldn't be read, by reason, and retries timeouts", async () => {
+  it("lists sites that couldn’t be read, by reason, and retries timeouts", async () => {
     const open = vi.fn();
     render(<Host state="partial" onOpenCompanies={open} />);
-    expect(screen.getByText("15 of 96 sites couldn't be read")).toBeInTheDocument();
+    expect(screen.getByText("15 of 96 sites couldn’t be read")).toBeInTheDocument();
     expect(screen.getByText("the site blocks automated visits")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Retry the 5 that timed out" }));
     expect(await screen.findByText("Retrying 5 sites that timed out")).toBeInTheDocument();

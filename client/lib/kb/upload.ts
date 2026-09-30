@@ -111,7 +111,7 @@ export const FAILURE: Record<Failure, { title: string; fix: string; action?: "re
   "no-text": { title: "No readable text", fix: "It looks like a scanned document. Add a version with selectable text.", action: "replace" },
   rejected: { title: "This file was blocked", fix: "It contains macros or embedded files Corral won't open.", action: "remove" },
   duplicate: { title: "Already in this knowledge base", fix: "Replace the old copy, or skip this one.", action: "replace" },
-  unreachable: { title: "Couldn't reach this page", fix: "It returned an error or timed out. Check it opens in a private window.", action: "retry" },
+  unreachable: { title: "Couldn’t reach this page", fix: "It returned an error or timed out. Check it opens in a private window.", action: "retry" },
   blocked: { title: "This site blocks readers", fix: "Save the page as PDF and add the file instead.", action: "remove" },
 };
 

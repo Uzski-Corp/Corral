@@ -8,7 +8,7 @@ import { TextInput } from "../Form";
 import { Tabs } from "../Tabs";
 import { EmptyState } from "../States";
 import { RATE, ROTATE_OVERLAP_HOURS } from "@/lib/mcp/keys";
-import { AREA_TITLE, CLIENTS, ERRORS, MCP_URL, TOOLS, byArea, callBody, client, configFor, curlFor, searchTools, stepsFor, type ClientId, type Tool } from "@/lib/mcp/tools";
+import { AREA_TITLE, CLIENTS, ERRORS, MCP_URL, TOOLS, byArea, callBody, client, configFor, curlFor, keyMayCall, searchTools, stepsFor, type ClientId, type Tool } from "@/lib/mcp/tools";
 import type { DevSeed } from "./data";
 import { CopyBlock } from "./Shared";
 
@@ -59,9 +59,9 @@ export function McpDocs({ seed }: { seed: DevSeed }) {
             <div className="m-docs__card"><span className="m-docs__cardk">For a person’s AI client</span><h4>Sign in with Corral</h4>
               <p>OAuth 2.1 with PKCE. The client acts as the person who signed in: their Unibox, their mailboxes, their Never say. No secret in a file. Disconnect it in Settings → MCP.</p></div>
             <div className="m-docs__card"><span className="m-docs__cardk">For a job that runs without you</span><h4>An API key</h4>
-              <p>A <span className="c-mono">crl_live_</span> key in an <span className="c-mono">Authorization: Bearer</span> header. Scoped per area, shown once, expires in 90 days by default. Rotating keeps the old one working {ROTATE_OVERLAP_HOURS} hours.</p></div>
+              <p>A <span className="c-mono">crl_live_</span> key in an <span className="c-mono">Authorization: Bearer</span> header. Scoped per area, shown once, expires in 90 days by default. Keys read and draft; they never send. Rotating keeps the old one working {ROTATE_OVERLAP_HOURS} hours.</p></div>
           </div>
-          <p>Both get the same scopes: <span className="c-mono">area:read</span>, <span className="c-mono">area:write</span>, and <span className="c-mono">unibox:send</span>, which is never given by default. A client only sees the tools its scopes allow; the others aren’t listed.</p>
+          <p>Both get the same scopes: <span className="c-mono">area:read</span>, <span className="c-mono">area:write</span>, and <span className="c-mono">unibox:send</span>, which is never given by default and only a signed-in connection can hold: a key stops at <span className="c-mono">unibox:write</span>. A client only sees the tools its scopes allow; the others aren’t listed.</p>
         </section>
 
         <section id="tools" className="m-docsec" aria-labelledby="d-tools">
@@ -82,7 +82,7 @@ export function McpDocs({ seed }: { seed: DevSeed }) {
           <h3 id="d-guard" className="m-docsec__h"><span className="m-docsec__n">04</span>Guardrails</h3>
           <p>A client is another way in, not a way around. Everything the app checks, MCP checks too.</p>
           <ul className="m-guards">
-            <li><b>Nothing sends by default.</b> Only <span className="c-mono">unibox:send</span> can send, and a send waits out the same 10-second undo and Never-say check as the button.</li>
+            <li><b>Nothing sends by default.</b> Only <span className="c-mono">unibox:send</span> can send, only a person’s signed-in connection gets it, and a send waits out the same 10-second undo and Never-say check as the button.</li>
             <li><b>Drafts cite, or say they can’t.</b> <span className="c-mono">draft_reply</span> uses only the knowledge base and lists what it left out, like the draft in the Unibox.</li>
             <li><b>Enrolling isn’t launching.</b> Step 1 waits for the sequence’s launch checks: mailbox health, the daily cap, Never say.</li>
             <li><b>New knowledge waits for you.</b> Sources a client adds sit in Review until you approve them.</li>
@@ -145,7 +145,8 @@ function ToolRow({ t, open, onToggle }: { t: Tool; open: boolean; onToggle: () =
         <p className="m-ask"><span className="m-label">Ask your client</span><q>{t.example.ask}</q></p>
         <div className="m-tool__io">
           <div><Tabs variant="pill" label={`${t.name} request`} value={how} onChange={setHow} tabs={[{ id: "mcp", label: "MCP call" }, { id: "curl", label: "curl" }]} />
-            <CopyBlock label={how === "mcp" ? "tools/call" : "curl with a key"} text={how === "mcp" ? callBody(t) : curlFor(t)} what="the example" /></div>
+            {how === "curl" && !keyMayCall(t) ? <p className="m-tool__guard m-tool__nokey"><Icon name="lock" size={12} /><span>No curl for this one: API keys can’t send. Call it from a client signed in as you; with a key it answers <span className="c-mono">403 key_cannot_send</span>.</span></p>
+              : <CopyBlock label={how === "mcp" ? "tools/call" : "curl with a key"} text={how === "mcp" ? callBody(t) : curlFor(t)} what="the example" />}</div>
           <div className="m-tool__res"><span className="m-label">Result</span><pre className="m-code__pre m-code__pre--plain" tabIndex={0} aria-label={`${t.name} result`}><code>{JSON.stringify(t.example.result, null, 2)}</code></pre>
             {t.credits && <span className="c-muted m-credit">Costs {t.credits} credit.</span>}</div>
         </div>

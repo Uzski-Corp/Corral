@@ -120,8 +120,8 @@ export function KnowledgeBase({ state, addOpen, onAddOpenChange, contained }: {
       {phase === "loading" && <KbSkeleton tab={tab} />}
       {phase === "error" && (
         <div className="c-view c-view--center">
-          <ErrorState title="Couldn't load the knowledge base" detail={`GET /api/v1/products/${PRODUCT.slug}/knowledge · 502 Bad Gateway`}
-            actions={<Button onClick={() => { setPhase("loading"); setTimeout(() => setPhase("ready"), 800); }}><Icon name="refresh" />Try again</Button>}>
+          <ErrorState title="Couldn’t load the knowledge base" detail={`GET /api/v1/products/${PRODUCT.slug}/knowledge · 502`}
+            actions={<Button variant="primary" onClick={() => { setPhase("loading"); setTimeout(() => setPhase("ready"), 800); }}><Icon name="refresh" />Try again</Button>}>
             Your sources and edits are safe; this is a connection problem. Corral keeps using the last saved version in emails meanwhile.
           </ErrorState>
         </div>

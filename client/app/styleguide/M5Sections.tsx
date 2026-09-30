@@ -34,7 +34,7 @@ export function FitBarDemo() {
     ["scoring", <FitBar key="g" value={0} state="scoring" />],
     ["rescoring", <FitBar key="h" value={86} state="scoring" text="Rescoring" />],
     ["not scored", <FitBar key="i" value={0} state="none" />],
-    ["couldn't score", <FitBar key="j" value={0} state="error" />],
+    ["couldn’t score", <FitBar key="j" value={0} state="error" />],
     ["failed, last kept", <FitBar key="k" value={85} state="error" />],
   ];
   return (

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AREAS, DEFAULT_EXPIRY, PRESETS, RATE, ROTATE_OVERLAP_HOURS, accessOf, expiresOn, expiryWords, hasScope, isKeyShaped, isValid, lastUsedWords, redact, rotate, scopesOf, statusOf, validateKey, works } from "./keys";
+import { AREAS, DEFAULT_EXPIRY, KEY_SEND_REFUSED, keyScopesOf, canManageKey, clampFor, levelsFor, manageNote, maySend, PRESETS, RATE, ROTATE_OVERLAP_HOURS, accessOf, expiresOn, expiryWords, hasScope, isKeyShaped, isValid, lastUsedWords, redact, rotate, scopesOf, statusOf, validateKey, works } from "./keys";
 
 const NOW = new Date("2026-09-30T09:45:00+03:00");
 const none = Object.fromEntries(AREAS.map((a) => [a.id, "none"])) as ReturnType<typeof accessOf>;
@@ -77,5 +77,27 @@ describe("validateKey", () => {
     expect(e.name).toMatch(/Name it after what uses it/); expect(e.scopes).toMatch(/at least one area/);
     expect(validateKey({ ...ok, name: "N8N Lead Sync" }, ["n8n lead sync"]).name).toMatch(/already exists/);
     expect(validateKey({ ...ok, name: "x".repeat(49) }, []).name).toMatch(/48/);
+  });
+});
+
+describe("who may send, who may manage (§17 decisions 15 and 16)", () => {
+  it("only a signed-in connection gets Send; a key stops at Write, and validation refuses a sending key", () => {
+    expect(maySend("oauth")).toBe(true); expect(maySend("key")).toBe(false);
+    expect(levelsFor("unibox", "oauth")).toEqual(["none", "read", "write", "send"]);
+    expect(levelsFor("unibox", "key")).toEqual(["none", "read", "write"]);
+    expect(levelsFor("leads", "oauth")).toEqual(["none", "read", "write"]);
+    expect(clampFor({ ...none, unibox: "send" }, "key").unibox).toBe("write");
+    expect(clampFor({ ...none, unibox: "send" }, "oauth").unibox).toBe("send");
+    expect(validateKey({ name: "Bot", access: { ...none, unibox: "send" }, expiry: "90" }, []).scopes).toBe(KEY_SEND_REFUSED);
+    expect(validateKey({ name: "Bot", access: { ...none, unibox: "write" }, expiry: "90" }, []).scopes).toBeUndefined();
+    expect(keyScopesOf({ ...none, unibox: "send" })).toEqual(["unibox:read", "unibox:write"]);
+    expect(KEY_SEND_REFUSED).toMatch(/can draft but can’t send/);
+  });
+  it("owners manage every key; members only their own", () => {
+    const owner = { name: "Tomás Ibarra", role: "owner" as const }, member = { name: "Amara Njoroge", role: "member" as const };
+    const tomas = { by: "Tomás Ibarra" }, amara = { by: "Amara Njoroge" };
+    expect(canManageKey(amara, owner)).toBe(true); expect(canManageKey(tomas, owner)).toBe(true);
+    expect(canManageKey(amara, member)).toBe(true); expect(canManageKey(tomas, member)).toBe(false);
+    expect(manageNote(tomas, member)).toMatch(/Only Tomás or an owner/); expect(manageNote(amara, member)).toBeUndefined();
   });
 });

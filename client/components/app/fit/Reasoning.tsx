@@ -50,7 +50,7 @@ export function FitReasoning({ status, company, domain, today, initialForm, busy
       {status.kind === "scoring" && <Scoring st={status} domain={domain} />}
       {status.kind === "none" && <NoneYet st={status} company={company} onRescore={a.onRescore} onSet={a.onOverride && (() => setForm("override"))} />}
       {status.kind === "error" && <>
-        <Banner tone="error" title={`Couldn't score ${company}`}>
+        <Banner tone="error" title={`Couldn’t score ${company}`}>
           The scoring model didn&rsquo;t answer{status.tries > 1 ? `, ${status.tries === 2 ? "twice" : `${status.tries} times`}` : ""}. Nothing changed: {status.last
             ? <>the last score, <b>{shownValue(status.last)}</b> from {fmtDay(status.last.at)}, still stands.</> : <>there&rsquo;s no score yet, so {company} stays out of fit filters.</>}
         </Banner>

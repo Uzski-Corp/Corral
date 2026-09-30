@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import { Button, Segmented, cx } from "../primitives";
 import { Icon } from "../icons";
 import { useToast } from "../Toaster";
-import { AREAS, accessOf, scopesOf, type Access, type AccessMap, type Area } from "@/lib/mcp/keys";
+import { AREAS, accessOf, levelsFor, maySend, scopesOf, type Access, type AccessMap, type Area, type Holder } from "@/lib/mcp/keys";
 
 /** Copy to the clipboard; says so either way (the clipboard can be blocked). */
 export function useCopy() {
@@ -32,17 +32,20 @@ export function CopyBlock({ label, where, text, what, secret, tall }: { label: s
 const WORD: Record<Access, string> = { none: "None", read: "Read", write: "Write", send: "Send" };
 const FROM_WORD: Record<string, Access> = { None: "none", Read: "read", Write: "write", Send: "send" };
 
-/** Per-area access: None, Read, Write (and Send, Unibox only). What each level lets it do, in words. */
-export function AccessPicker({ value, onChange, invalid }: { value: AccessMap; onChange?: (a: AccessMap) => void; invalid?: boolean }) {
+/** Per-area access: None, Read, Write (and Send, Unibox only, for a signed-in connection). What each level lets it do, in words.
+    holder="key": the Unibox stops at Write and says why (a job drafts; a person sends). */
+export function AccessPicker({ value, onChange, invalid, holder = "oauth" }: { value: AccessMap; onChange?: (a: AccessMap) => void; invalid?: boolean; holder?: Holder }) {
   return (
     <ul className={cx("m-access", invalid && "is-error")} aria-label="What it may do">
       {AREAS.map((a) => {
         const v = value[a.id];
-        const opts = ["None", "Read", "Write", ...(a.send ? ["Send"] : [])];
+        const opts = levelsFor(a.id, holder).map((l) => WORD[l]);
+        const locked = !!a.send && !maySend(holder);
         return (
           <li key={a.id} className={cx("m-access__row", v === "send" && "is-send")}>
             <div className="m-access__txt"><span className="c-strong">{a.label}</span>
-              <span className="m-access__what">{v === "none" ? "No access" : v === "read" ? a.read : v === "write" ? a.write : a.send}</span></div>
+              <span className="m-access__what">{v === "none" ? "No access" : v === "read" ? a.read : v === "write" ? a.write : a.send}</span>
+              {locked && <span className="m-access__lock"><Icon name="lock" size={11} />Keys can draft but can’t send. Sending needs a signed-in MCP connection.</span>}</div>
             <Segmented label={a.label} options={opts} value={WORD[v]} onChange={onChange ? (o) => onChange({ ...value, [a.id]: FROM_WORD[o] }) : undefined} />
           </li>
         );

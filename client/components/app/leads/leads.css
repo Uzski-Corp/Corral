@@ -22,8 +22,9 @@
 /* ------------------------------------------------------------ filters row */
 .l-filters { gap: 6px; }
 .l-chip { padding: 0; gap: 0; overflow: hidden; }
-.l-chip__main { height: 100%; padding: 0 8px; border: 0; background: transparent; font: inherit; color: var(--color-text); cursor: pointer; }
-.l-chip__x { height: 100%; width: 22px; display: inline-flex; align-items: center; justify-content: center; border: 0; margin-left: -4px; background: transparent; color: var(--color-text-quaternary); cursor: pointer; }
+.l-chip__main { height: 100%; padding: 0 4px 0 8px; border: 0; background: transparent; font: inherit; color: var(--color-text); cursor: pointer; }
+/* WCAG 2.2 target size: the × is its own 24×24 target, not tucked under the label button. */
+.l-chip__x { height: 100%; min-height: 24px; width: 24px; display: inline-flex; align-items: center; justify-content: center; border: 0; margin-left: 0; background: transparent; color: var(--color-text-quaternary); cursor: pointer; }
 .l-chip__x:hover, .l-chip__main:hover { color: var(--color-text); background: rgb(0 0 0 / .04); }
 .l-filters__end { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; padding-left: 16px; font-size: var(--text-meta); }
 .l-banner { padding: 0 20px 12px; }

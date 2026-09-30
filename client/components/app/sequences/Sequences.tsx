@@ -107,7 +107,7 @@ export function SequencesView({ state, tab, onTabChange, pool, onPoolChange, new
     </div></div>
   );
   if (phase === "error") return (
-    <div className="c-view q-view">{poolTab}<div className="c-view c-view--center"><ErrorState title="Couldn't load sequences" detail="GET /sequences · 503"
+    <div className="c-view q-view">{poolTab}<div className="c-view c-view--center"><ErrorState title="Couldn’t load sequences" detail="GET /api/v1/sequences · 503"
       actions={<Button variant="primary" onClick={() => setPhase("ready")}><Icon name="refresh" />Try again</Button>}>
       Sequences keep sending on the server; this is only the page failing to load them.</ErrorState></div></div>
   );

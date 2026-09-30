@@ -195,7 +195,8 @@
 .sg-m3-menu { position: relative; height: 440px; }
 .sg-m3-details { display: grid; grid-template-columns: repeat(3, 400px); gap: 24px; overflow-x: auto; padding-bottom: 8px; }
 .sg-m3-detail { height: 760px; overflow-y: auto; border-radius: var(--radius-card); background: #FCFCFC; box-shadow: 0 0 0 1px var(--color-border); }
-.sg-m3-builder { max-width: 1060px; border-radius: var(--radius-card); overflow: hidden; box-shadow: 0 0 0 1px var(--color-border); }
+/* The builder's layout answers to the app's shell container; give the demo the same container so it stacks at 390. */
+.sg-m3-builder { container: shell / inline-size; max-width: 1060px; border-radius: var(--radius-card); overflow: hidden; box-shadow: 0 0 0 1px var(--color-border); }
 .sg-m3-imp { width: 792px; }
 .sg-kb__row .sg-m3-imp { width: 100%; }
 @media (max-width: 900px) { .sg-m3-tags { grid-template-columns: minmax(0, 1fr); } .sg-m3-details { grid-template-columns: minmax(0, 1fr); } .sg-m3-imp { width: 100%; } }
@@ -265,3 +266,28 @@
 @media (max-width: 900px) { .sg-m8 { grid-template-columns: minmax(0, 1fr); } }
 .sg-m9-consent { height: 720px; }
 .sg-m9-consent .m-consent { height: 100%; }
+
+/* M10 · Every state */
+.sg-m10 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.sg-m10-index { grid-column: 1 / -1; overflow-x: auto; }
+.sg-m10-table { width: 100%; border-collapse: collapse; margin: 8px 0 20px; font-size: 13px; }
+.sg-m10-table th, .sg-m10-table td { padding: 8px 10px; border-bottom: 1px solid var(--color-border-subtle); text-align: left; vertical-align: top; }
+.sg-m10-table thead th { font-size: 12px; font-weight: 500; color: var(--color-text-tertiary); text-transform: capitalize; }
+.sg-m10-table .c-num { text-align: right; width: 64px; font-variant-numeric: tabular-nums; }
+.sg-m10-table tbody th { width: 200px; font-weight: 400; }
+.sg-m10-table tbody th b { display: block; font-weight: 500; }
+.sg-m10-table tbody th .c-muted { font-size: 12px; }
+.sg-m10-na { font-size: 12px; color: var(--color-text-tertiary); text-decoration: underline dotted; cursor: help; }
+.sg-m10-states { display: flex; flex-wrap: wrap; gap: 4px; }
+.sg-m10-st { display: inline-flex; align-items: center; min-height: 24px; padding: 0 6px; border-radius: 5px; background: var(--color-surface-muted); color: var(--color-text-secondary); text-decoration: none; }
+.sg-m10-st code { font-size: 11.5px; }
+.sg-m10-st:hover { background: var(--color-surface-selected); color: var(--color-text); }
+.sg-m10-st.is-empty { box-shadow: inset 2px 0 0 var(--color-text-quaternary); }
+.sg-m10-st.is-loading { box-shadow: inset 2px 0 0 var(--color-info-600, var(--color-action)); }
+.sg-m10-st.is-error { box-shadow: inset 2px 0 0 var(--color-negative-600); }
+.sg-m10-st.is-partial { box-shadow: inset 2px 0 0 var(--color-caution-600); }
+.sg-m10-why { flex-basis: 100%; margin-top: 4px; font-size: 12px; color: var(--color-text-tertiary); }
+.sg-m10-skel { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 16px; }
+.sg-m10-table-skel { overflow: hidden; }
+.sg-m10-app { height: 280px; overflow: hidden; border-radius: var(--radius-card); box-shadow: 0 0 0 1px var(--color-border); container: shell / inline-size; }
+@media (max-width: 900px) { .sg-m10 { grid-template-columns: minmax(0, 1fr); } .sg-m10-table tbody th { width: auto; } }

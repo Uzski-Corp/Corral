@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AREAS, PRESETS, scopesOf } from "./keys";
-import { CLIENTS, ERRORS, MCP_URL, TOOLS, byArea, callBody, client, configFor, curlFor, cursorDeeplink, errorFor, searchTools, stepsFor, tool, toolsFor } from "./tools";
+import { CLIENTS, ERRORS, MCP_URL, TOOLS, byArea, callBody, client, configFor, curlFor, cursorDeeplink, errorFor, keyMayCall, searchTools, stepsFor, tool, toolsFor } from "./tools";
 
 describe("the tools", () => {
   it("covers every area, names are unique snake_case, each scope matches its kind", () => {
@@ -39,7 +39,7 @@ describe("the tools", () => {
     expect(c).toContain(`curl ${MCP_URL}`); expect(c).toContain("Bearer $CORRAL_API_KEY"); expect(c).toContain("text/event-stream");
   });
   it("names each error with what to do", () => {
-    expect(ERRORS.map((e) => e.status)).toEqual([401, 403, 409, 422, 429]);
+    expect(ERRORS.map((e) => e.status)).toEqual([401, 403, 403, 409, 422, 429]);
     expect(errorFor("thread_changed")!.fix).toMatch(/redraft/);
     expect(errorFor("nope")).toBeUndefined();
   });
@@ -71,5 +71,13 @@ describe("clients", () => {
     const link = cursorDeeplink();
     expect(link.startsWith("cursor://anysphere.cursor-deeplink/mcp/install?name=corral&config=")).toBe(true);
     expect(JSON.parse(atob(decodeURIComponent(link.split("config=")[1])))).toEqual({ url: MCP_URL });
+  });
+});
+
+describe("keys never send (§17 decision 15)", () => {
+  it("send_reply is the only tool a key can't call, and says so with its own error", () => {
+    expect(TOOLS.filter((t) => !keyMayCall(t)).map((t) => t.name)).toEqual(["send_reply"]);
+    expect(tool("send_reply")?.guard).toMatch(/key_cannot_send/);
+    expect(errorFor("key_cannot_send")?.status).toBe(403);
   });
 });

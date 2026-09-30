@@ -3,7 +3,7 @@ import { SignInScreen } from "@/components/session/SignInScreen";
 import { signInView } from "@/lib/auth/signInState";
 import { getConfig } from "@/lib/config";
 
-export const metadata: Metadata = { title: "Sign in · Corral" };
+export const metadata: Metadata = { title: "Sign in" };
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 

@@ -8,9 +8,9 @@ import { Dialog, DropdownMenu } from "../Overlays";
 import { FormField, RadioGroup, Select, TextInput } from "../Form";
 import { Banner, EmptyState, ErrorState, Skeleton } from "../States";
 import { useToast } from "../Toaster";
-import { DEFAULT_EXPIRY, EXPIRY, KEY_PREFIX, PRESETS, ROTATE_OVERLAP_HOURS, STATUS_WORD, addDays, dayWords, expiresOn, expiryWords, isValid, lastUsedWords, rotate, scopesOf, statusOf, validateKey,
-  type AccessMap, type ExpiryId, type KeyEnv, type KeyStatus } from "@/lib/mcp/keys";
-import { KEYS, NEW_KEY, NEW_SECRET, NOW, REVOKED_KEYS, ROTATED_SECRET, ZAPIER_CALLS, type ApiKey, type DevSeed } from "./data";
+import { DEFAULT_EXPIRY, EXPIRY, KEY_PREFIX, PRESETS, ROTATE_OVERLAP_HOURS, STATUS_WORD, addDays, canManageKey, keyScopesOf, dayWords, expiresOn, expiryWords, isValid, lastUsedWords, manageNote, rotate, statusOf, validateKey,
+  type AccessMap, type ExpiryId, type KeyEnv, type KeyStatus, type Viewer } from "@/lib/mcp/keys";
+import { KEYS, NEW_KEY, NEW_SECRET, NOW, OWNER, REVOKED_KEYS, ROTATED_SECRET, ZAPIER_CALLS, type ApiKey, type DevSeed } from "./data";
 import { AccessPicker, CopyBlock, Scopes, Status } from "./Shared";
 
 const TONE: Record<KeyStatus, "ok" | "caution" | "bad" | "off" | "live"> = { active: "ok", expiring: "caution", rotating: "live", expired: "bad", revoked: "off" };
@@ -29,6 +29,7 @@ export function ApiKeys({ seed }: { seed: DevSeed }) {
   const [secret, setSecret] = useState(seed.dialog === "reveal" ? NEW_SECRET : seed.dialog === "rotated" ? ROTATED_SECRET : "");
   const cur = keys.find((k) => k.id === keyId);
   const close = () => setDialog(undefined);
+  const viewer: Viewer = seed.viewer ?? OWNER;
 
   if (load === "error") return (
     <div className="i-page i-page--center"><ErrorState title="Couldn’t load your API keys" detail="GET /api/v1/keys · 503"
@@ -37,7 +38,7 @@ export function ApiKeys({ seed }: { seed: DevSeed }) {
   );
 
   const created = (d: Draft) => {
-    const k: ApiKey = { id: "key_new", name: d.name.trim(), env: d.env, last4: NEW_SECRET.slice(-4), scopes: scopesOf(d.access), by: "Tomás Ibarra", created: NOW.toISOString(),
+    const k: ApiKey = { id: "key_new", name: d.name.trim(), env: d.env, last4: NEW_SECRET.slice(-4), scopes: keyScopesOf(d.access), by: viewer.name, created: NOW.toISOString(),
       expires: expiresOn(NOW, d.expiry)?.toISOString() ?? null, calls7d: 0 };
     setKeys((l) => [k, ...l]); setKeyId(k.id); setSecret(NEW_SECRET); setDialog("reveal");
   };
@@ -61,8 +62,8 @@ export function ApiKeys({ seed }: { seed: DevSeed }) {
   return (
     <>
       {load === "loading" ? <KeysLoading />
-        : openKey ? <KeyPage k={openKey} onBack={() => setOpen(undefined)} onReplace={() => replace(openKey)} onRevoke={() => { setKeyId(openKey.id); setDialog("revoke-key"); }} />
-        : <KeyList keys={keys} onCreate={() => setDialog("create")} onOpen={setOpen}
+        : openKey ? <KeyPage k={openKey} viewer={viewer} onBack={() => setOpen(undefined)} onReplace={() => replace(openKey)} onRevoke={() => { setKeyId(openKey.id); setDialog("revoke-key"); }} />
+        : <KeyList keys={keys} viewer={viewer} onCreate={() => setDialog("create")} onOpen={setOpen}
             onRotate={(id) => { setKeyId(id); setDialog("rotate"); }} onRevoke={(id) => { setKeyId(id); setDialog("revoke-key"); }} />}
       {dialog === "create" && <CreateKey seed={seed} taken={keys.map((k) => k.name)} onClose={close} onCreate={created} />}
       {(dialog === "reveal" || dialog === "rotated") && <Reveal k={cur ?? NEW_KEY} secret={secret} rotated={dialog === "rotated"} onClose={() => { close(); setSecret(""); }} />}
@@ -79,14 +80,15 @@ function KeysLoading() {
   );
 }
 
-function KeyList({ keys, onCreate, onOpen, onRotate, onRevoke }: { keys: ApiKey[]; onCreate: () => void; onOpen: (id: string) => void; onRotate: (id: string) => void; onRevoke: (id: string) => void }) {
+function KeyList({ keys, viewer, onCreate, onOpen, onRotate, onRevoke }: { keys: ApiKey[]; viewer: Viewer; onCreate: () => void; onOpen: (id: string) => void; onRotate: (id: string) => void; onRevoke: (id: string) => void }) {
   const expiring = keys.filter((k) => statusOf(k, NOW) === "expiring");
   const expired = keys.filter((k) => statusOf(k, NOW) === "expired" && k.refused);
   return (
     <div className="i-page m-page">
       <div className="m-head">
         <div className="i-head"><h2>API keys</h2>
-          <p>For scripts and tools that can’t sign in: n8n, Zapier, your own code. AI clients like Cursor or Claude should <a className="c-link" href="/app?view=settings&state=mcp">connect through MCP</a> instead; they sign in as a person, and you see what they did.</p></div>
+          <p>For scripts and tools that can’t sign in: n8n, Zapier, your own code. Keys can draft but can’t send; sending needs a signed-in MCP connection. AI clients like Cursor or Claude should <a className="c-link" href="/app?view=settings&state=mcp">connect through MCP</a> instead; they sign in as a person, and you see what they did.</p>
+          <p className="m-role"><Icon name="users" size={12} />{viewer.role === "member" ? "You’re a member: you can make keys, and rotate or revoke the ones you made. The others are read-only; their owner or a workspace owner manages them." : "You’re an owner: you manage every key, whoever made it. Members manage only their own."}</p></div>
         {keys.length > 0 && <Button variant="primary" onClick={onCreate}><Icon name="plus" />Create key</Button>}
       </div>
       {!keys.length ? (
@@ -100,17 +102,19 @@ function KeyList({ keys, onCreate, onOpen, onRotate, onRevoke }: { keys: ApiKey[
           {expired.map((k) => <Banner key={k.id} tone="error" title={`${k.name} expired ${dayWords(new Date(k.expires!))} and is still being called.`}
             action={<Button onClick={() => onOpen(k.id)}>See the calls</Button>}>{k.refused!.n} calls refused since, the last at {hhmm(k.refused!.last)} today from {k.refused!.from.split(" · ")[0]}. Make a replacement and paste it there.</Banner>)}
           {expiring.map((k) => <Banner key={k.id} tone="caution" icon="clock" title={`${k.name} ${expiryWords(k.expires, NOW).toLowerCase()}.`}
-            action={<Button onClick={() => onRotate(k.id)}>Rotate now</Button>}>Used {lastUsedWords(k.lastUsed, NOW).toLowerCase()} by {k.lastFrom?.split(" · ")[0]}. Rotate before then and the old secret keeps working for {ROTATE_OVERLAP_HOURS} hours while you swap it.</Banner>)}
+            action={canManageKey(k, viewer) ? <Button onClick={() => onRotate(k.id)}>Rotate now</Button> : undefined}>{manageNote(k, viewer) && <>{manageNote(k, viewer)} </>}Used {lastUsedWords(k.lastUsed, NOW).toLowerCase()} by {k.lastFrom?.split(" · ")[0]}. Rotate before then and the old secret keeps working for {ROTATE_OVERLAP_HOURS} hours while you swap it.</Banner>)}
         </div>}
         <table className="m-table m-keys">
-          <thead><tr><th scope="col">Name</th><th scope="col">Key</th><th scope="col">Can reach</th><th scope="col">Last used</th><th scope="col">Expires</th><th scope="col"><span className="u-sr">Actions</span></th></tr></thead>
+          <thead><tr><th scope="col">Name</th><th scope="col">Key</th><th scope="col">Owner</th><th scope="col">Can reach</th><th scope="col">Last used</th><th scope="col">Expires</th><th scope="col"><span className="u-sr">Actions</span></th></tr></thead>
           <tbody>{keys.map((k) => {
             const s = statusOf(k, NOW);
+            const mine = canManageKey(k, viewer);
             return (
-              <tr key={k.id} className={cx(`is-${s}`, k.id === "key_new" && "is-new")}>
+              <tr key={k.id} className={cx(`is-${s}`, k.id === "key_new" && "is-new", !mine && "is-readonly")}>
                 <td className="m-keys__name"><button type="button" className="m-rowlink" onClick={() => onOpen(k.id)}>{k.name}</button>
-                  <span className="m-keys__sub">{k.env === "test" && <span className="m-env">Test</span>}by {k.by.split(" ")[0]} · {dayWords(new Date(k.created))}</span></td>
+                  <span className="m-keys__sub">{k.env === "test" && <span className="m-env">Test</span>}{dayWords(new Date(k.created))}{!mine && <span className="m-ro"><Icon name="lock" size={10} />Read-only</span>}</span></td>
                 <td><span className="c-mono m-keys__key">{masked(k)}</span></td>
+                <td className="m-keys__owner">{k.by === viewer.name ? <><b>You</b><span className="c-muted">{k.by}</span></> : <span>{k.by}</span>}</td>
                 <td><Scopes scopes={k.scopes} max={3} /></td>
                 <td className="m-keys__used"><span>{lastUsedWords(k.lastUsed, NOW)}</span>{k.lastFrom && s !== "expired" && <span className="c-mono">{k.lastFrom.split(" · ")[0]}</span>}
                   {k.refused && <span className="m-keys__bad">{k.refused.n} refused since</span>}</td>
@@ -118,7 +122,8 @@ function KeyList({ keys, onCreate, onOpen, onRotate, onRevoke }: { keys: ApiKey[
                   : <Status tone={TONE[s]}>{s === "rotating" ? `Old secret until ${hhmm(k.oldUntil!)} tomorrow` : s === "expiring" ? expiryWords(k.expires, NOW).replace("Expires ", "") : STATUS_WORD[s]}</Status>}</td>
                 <td className="m-keys__acts">
                   <DropdownMenu align="end" width={200} label={`${k.name} actions`} trigger={(p) => <button type="button" className="c-iconbtn" aria-label={`${k.name}: more`} {...p}><Icon name="more" /></button>}
-                    items={s === "expired" ? [{ label: "See the refused calls", icon: "eye", onSelect: () => onOpen(k.id) }, "separator", { label: "Delete", icon: "x", danger: true, onSelect: () => onRevoke(k.id) }]
+                    items={!mine ? [{ label: "Details and last calls", icon: "eye", onSelect: () => onOpen(k.id) }, "separator", { heading: `Only ${k.by.split(" ")[0]} or an owner` }, { label: "Rotate", icon: "refresh", disabled: true }, { label: "Revoke", icon: "x", disabled: true }]
+                      : s === "expired" ? [{ label: "See the refused calls", icon: "eye", onSelect: () => onOpen(k.id) }, "separator", { label: "Delete", icon: "x", danger: true, onSelect: () => onRevoke(k.id) }]
                       : [{ label: "Details and last calls", icon: "eye", onSelect: () => onOpen(k.id) }, { label: "Rotate", icon: "refresh", onSelect: () => onRotate(k.id) }, "separator", { label: "Revoke", icon: "x", danger: true, onSelect: () => onRevoke(k.id) }]} />
                 </td>
               </tr>
@@ -132,15 +137,17 @@ function KeyList({ keys, onCreate, onOpen, onRotate, onRevoke }: { keys: ApiKey[
 }
 
 /** One key: what it can reach, where it was used from, and its calls. The expired one shows the refused calls. */
-function KeyPage({ k, onBack, onReplace, onRevoke }: { k: ApiKey; onBack: () => void; onReplace: () => void; onRevoke: () => void }) {
+function KeyPage({ k, viewer, onBack, onReplace, onRevoke }: { k: ApiKey; viewer: Viewer; onBack: () => void; onReplace: () => void; onRevoke: () => void }) {
   const s = statusOf(k, NOW);
   const bad = s === "expired";
+  const note = manageNote(k, viewer);
   return (
     <div className="i-page m-page">
       <button type="button" className="i-back" onClick={onBack}><Icon name="back" size={12} />API keys</button>
       <div className="m-dhead">
         <div><h2>{k.name}</h2><span className="m-dhead__sub"><span className="c-mono">{masked(k)}</span><Status tone={TONE[s]}>{s === "expired" ? `Expired ${dayWords(new Date(k.expires!))}` : STATUS_WORD[s]}</Status></span></div>
-        <div className="m-dhead__acts">{bad ? <Button variant="primary" onClick={onReplace}><Icon name="key" />Make a replacement</Button> : <Button onClick={onRevoke}>Revoke</Button>}</div>
+        <div className="m-dhead__acts">{note ? <span className="m-role m-role--inline"><Icon name="lock" size={12} />{note}</span>
+          : bad ? <Button variant="primary" onClick={onReplace}><Icon name="key" />Make a replacement</Button> : <Button onClick={onRevoke}>Revoke</Button>}</div>
       </div>
       {bad && k.refused && <Banner tone="error" title={`Something still calls with this key: ${k.refused.n} calls refused since it expired.`}>
         The last at {hhmm(k.refused.last)} today, from {k.refused.from}. A replacement gets the same name and scopes and a new secret; paste it into {k.refused.from.split(" · ")[0]} and these stop.</Banner>}
@@ -197,9 +204,9 @@ function CreateKey({ seed, taken, onClose, onCreate }: { seed: DevSeed; taken: s
         </div>
         <div className="c-field"><div className="c-field__top"><span className="m-label" id="m-scope-l">What it may do</span></div>
           <RadioGroup label="Start from" variant="cards" value={d.preset} onChange={pickPreset} options={PRESETS.map((p) => ({ value: p.id, label: p.label, description: p.hint }))} />
-          <AccessPicker value={d.access} invalid={!!show.scopes} onChange={(a) => setD((x) => ({ ...x, access: a, preset: "custom" }))} />
+          <AccessPicker holder="key" value={d.access} invalid={!!show.scopes} onChange={(a) => setD((x) => ({ ...x, access: a, preset: "custom" }))} />
           {show.scopes ? <span className="c-field__hint is-error"><Icon name="alert" size={12} />{show.scopes}</span>
-            : <span className="c-field__hint">{scopesOf(d.access).length} scopes. Unibox Send is never preset; a key that sends still goes through the 10-second undo and Never say.</span>}
+            : <span className="c-field__hint">{keyScopesOf(d.access).length} scopes. Keys can draft but can’t send: the Unibox stops at Write. Sending needs a signed-in MCP connection.</span>}
         </div>
       </div>
     </Dialog>

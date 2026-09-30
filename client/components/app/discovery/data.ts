@@ -136,7 +136,7 @@ export function provOf(l: Lead, staleBy = 0): FieldProv[] {
     const email = emailOfPerson(l);
     const chain: Evidence[] = l.id === "kilima"
       ? [ev("site", "Listed on the Contact page", d("2026-09-26"), `${l.domain}/contact`), ev("hunter", "Found in 4 public sources", d("2026-09-26"), undefined, 96), ev("zerobounce", "Mailbox exists (SMTP check)", d("2026-09-28"))]
-      : csv ? [found, ev("zerobounce", l.email === "Verified" ? "Mailbox exists (SMTP check)" : "Couldn't confirm the mailbox", d("2026-09-29"))]
+      : csv ? [found, ev("zerobounce", l.email === "Verified" ? "Mailbox exists (SMTP check)" : "Couldn’t confirm the mailbox", d("2026-09-29"))]
       : l.email === "Catch-all" ? [ev("hunter", `Pattern first@${l.domain}`, d("2026-09-03"), undefined, 74), ev("zerobounce", "Domain accepts all mail: this mailbox can't be confirmed", d("2026-09-03"))]
       : l.email === "Unverified" ? [ev("dropcontact", `Pattern first@${l.domain}`, d("2026-09-03"), undefined, 61)]
       : l.email === "Bounced" ? [ev("hunter", `Pattern first@${l.domain}`, d("2026-08-11"), undefined, 88), ev("zerobounce", "Mailbox didn't exist when Corral sent (hard bounce)", d("2026-09-19"))]

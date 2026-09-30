@@ -207,8 +207,8 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
   if (phase === "loading") return <div className="c-view l-leads"><Subbar view={view} tab={tab} setTab={setTab} /><div className="c-view__scroll"><SkeletonTable rows={10} label={seg ? `Loading ${seg}` : "Loading companies"} /></div></div>;
   if (phase === "error") return (
     <div className="c-view c-view--center">
-      <ErrorState title={seg ? `Couldn't load ${seg}` : "Couldn't load companies"} detail="GET /api/v1/companies?view=fit · 503 Service Unavailable"
-        actions={<Button onClick={() => { setPhase("loading"); setTimeout(() => setPhase("ready"), 700); }}><Icon name="refresh" />Try again</Button>}>
+      <ErrorState title={seg ? `Couldn’t load ${seg}` : "Couldn’t load companies"} detail="GET /api/v1/companies?view=fit · 503"
+        actions={<Button variant="primary" onClick={() => { setPhase("loading"); setTimeout(() => setPhase("ready"), 700); }}><Icon name="refresh" />Try again</Button>}>
         Nothing changed. Sequences keep sending while this page is down.
       </ErrorState>
     </div>

@@ -75,7 +75,7 @@ export function runHeadline(r: Run): string {
     case "done": case "partial": {
       if (r.found === 0) return "Finished · no companies matched";
       const skipped = (r.skipped ?? []).reduce((a, [, n]) => a + n, 0);
-      return `Finished · ${plural(r.found, "company", "companies")}, ${f(r.fits)} fit 80+${skipped ? ` · ${f(skipped)} couldn't be read` : ""}`;
+      return `Finished · ${plural(r.found, "company", "companies")}, ${f(r.fits)} fit 80+${skipped ? ` · ${f(skipped)} couldn’t be read` : ""}`;
     }
     default: {
       const st = currentStage(r);
@@ -147,7 +147,7 @@ export function enrichLabel(e?: EnrichState): string | null {
     case "verifying": return "Verifying email";
     case "below-bar": return `No lookup · fit under ${e.bar}`;
     case "no-people": return "No one found";
-    case "unreadable": return "Couldn't read site";
+    case "unreadable": return "Couldn’t read site";
     default: return null;
   }
 }

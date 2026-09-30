@@ -22,9 +22,9 @@ export function SkeletonTable({ rows = 6, label = "Loading companies" }: { rows?
     </div>
   );
 }
-export function SkeletonThreads({ rows = 5 }: { rows?: number }) {
+export function SkeletonThreads({ rows = 5, bare }: { rows?: number; /** inside another status (AppSkeleton): no role of its own */ bare?: boolean }) {
   return (
-    <div className="c-skel-threads" role="status" aria-label="Loading conversations">
+    <div className="c-skel-threads" role={bare ? undefined : "status"} aria-label={bare ? undefined : "Loading conversations"}>
       {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="c-skel-thread"><Skeleton w={28} h={28} r={14} />
           <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8, paddingTop: 3 }}>
@@ -33,6 +33,30 @@ export function SkeletonThreads({ rows = 5 }: { rows?: number }) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+/* The whole app before anything has loaded (app/app/loading.tsx, and product frames on the marketing site before
+   they mount): the shell's outline at real sizes, the Unibox list in skeleton rows. Same sheen, same greys. */
+const NAV_W = [58, 74, 66, 70, 62, 72, 60, 84];
+export function AppSkeleton({ frame = "viewport", label = "Loading Corral" }: { frame?: "viewport" | "contained"; label?: string }) {
+  return (
+    <div className={cx("c-shellbox c-appskel", frame === "viewport" && "c-shellbox--viewport")} role="status" aria-label={label}>
+      <div className="c-shell" aria-hidden="true">
+        <div className="c-appskel__side">
+          <span className="c-appskel__ws"><Skeleton w={20} h={20} r={6} /><Skeleton w={84} /></span>
+          <Skeleton w="100%" h={28} r={6} />
+          {NAV_W.map((w, i) => <span key={i} className="c-appskel__nav"><Skeleton w={14} h={14} r={4} /><Skeleton w={w} /></span>)}
+        </div>
+        <div className="c-shell__main">
+          <div className="c-appskel__top"><Skeleton w={90} /><Skeleton w={52} /></div>
+          <div className="c-appskel__body">
+            <div className="c-appskel__list"><SkeletonThreads rows={6} bare /></div>
+            <div className="c-appskel__read"><Skeleton w="42%" h={14} /><Skeleton w="24%" /><Skeleton w="92%" style={{ marginTop: 18 }} /><Skeleton w="86%" /><Skeleton w="64%" /></div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

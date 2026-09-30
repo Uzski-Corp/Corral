@@ -12,7 +12,8 @@ import { CommandPalette, type Command } from "./CommandPalette";
 import { Dialog, DropdownMenu, Tooltip } from "./Overlays";
 import { Checkbox, DatePicker, FormField, RadioGroup, Select } from "./Form";
 import { Tabs } from "./Tabs";
-import { EmptyState, SkeletonTable } from "./States";
+import { EmptyState, ErrorState, SkeletonTable } from "./States";
+import type { ContactsReviewState } from "@/lib/contacts/state";
 import { ToastProvider, useToast } from "./Toaster";
 import { SessionUnavailable, type SessionUnavailableProps } from "./SessionUnavailable";
 import { KnowledgeBase, PRODUCT } from "./kb";
@@ -58,13 +59,26 @@ export function buildCommands(h: CommandHandlers) {
 }
 
 /* ------------------------------------------------------------ views */
-function ContactsView() {
-  const [ready, setReady] = useState(false);
-  useEffect(() => { const t = setTimeout(() => setReady(true), 900); return () => clearTimeout(t); }, []);
+function ContactsView({ state, onFind }: { state?: ContactsReviewState; onFind: () => void }) {
+  // M10: loading / empty / error, in the same voice and skeleton as every other table.
+  const [phase, setPhase] = useState<"loading" | "ready" | "empty" | "error">(state === "empty" ? "empty" : state === "error" ? "error" : "loading");
+  useEffect(() => {
+    if (phase !== "loading" || state === "loading") return;
+    const t = setTimeout(() => setPhase("ready"), 900); return () => clearTimeout(t);
+  }, [phase, state]);
+  const empty = phase === "empty";
   return (
     <div className="c-view">
-      <div className="c-subbar"><Tabs label="Contacts" value="dm" tabs={[{ id: "dm", label: "Decision-makers", count: 412 }, { id: "all", label: "Everyone", count: "3,902" }]} /></div>
-      <div className="c-view__scroll">{ready ? <SegmentTable selected={new Set()} /> : <SkeletonTable rows={9} label="Loading contacts" />}</div>
+      <div className="c-subbar"><Tabs label="Contacts" value="dm" tabs={[{ id: "dm", label: "Decision-makers", count: empty ? 0 : 412 }, { id: "all", label: "Everyone", count: empty ? 0 : "3,902" }]} /></div>
+      {phase === "ready" && <div className="c-view__scroll"><SegmentTable selected={new Set()} /></div>}
+      {phase === "loading" && <div className="c-view__scroll" style={{ overflow: "hidden" }} /* a skeleton never scrolls */><SkeletonTable rows={9} label="Loading contacts" /></div>}
+      {empty && <div className="c-view c-view--center"><EmptyState art="grass" title="No contacts yet" actions={<Button variant="primary" onClick={onFind}><Icon name="search" />Find companies</Button>}>
+        People arrive as Corral reads companies: the decision-makers it finds on each site, with where it found them.
+      </EmptyState></div>}
+      {phase === "error" && <div className="c-view c-view--center"><ErrorState title="Couldn’t load contacts" detail="GET /api/v1/contacts · 503"
+        actions={<Button variant="primary" onClick={() => setPhase("loading")}><Icon name="refresh" />Try again</Button>}>
+        Nothing is lost. Corral keeps reading companies and finding people while this page is down.
+      </ErrorState></div>}
     </div>
   );
 }
@@ -132,10 +146,12 @@ export type AppDemoProps = {
   settings?: SettingsReviewState;
   /** Settings → Developers review state (M9): MCP, API keys, Docs. /app?view=settings&state=… */
   developer?: McpReviewState;
+  /** Contacts review state (M10): /app?view=contacts&state=loading | empty | error */
+  contacts?: ContactsReviewState;
 };
 export function AppDemo(p: AppDemoProps) { return <ToastProvider><Demo {...p} /></ToastProvider>; }
 
-function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, drawer = false, dialog = false, frame = "viewport", hotkeys = true, className, account, onSignOut, sessionError, kb, leads, discovery, sequences, unibox, settings, developer }: AppDemoProps) {
+function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, drawer = false, dialog = false, frame = "viewport", hotkeys = true, className, account, onSignOut, sessionError, kb, leads, discovery, sequences, unibox, settings, developer, contacts }: AppDemoProps) {
   const router = useRouter();
   const [setSection, setSetSection] = useState(developer ? SECTION_TITLE[sectionOf(developer)] : "Integrations");
   const toast = useToast();
@@ -253,7 +269,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
           builderOpen={builderOpen} onBuilderOpenChange={setBuilderOpen} enrollAllSignal={enrollAll} onFind={findCompanies} onEnroll={(n, replied) => { setEnrollFor({ n, replied }); setEnroll(true); }} />}
         {view === "discovery" && <DiscoveryView key={discovery ?? "live"} state={discovery} setupOpen={setupOpen} onSetupOpenChange={setSetupOpen} onOpenCompanies={() => go("companies")} />}
         {view === "sequences" && <SequencesView key={sequences ?? "live"} state={sequences} tab={seqTab} onTabChange={setSeqTab} pool={pool} onPoolChange={setPool} newSignal={newSeq} />}
-        {view === "contacts" && <ContactsView />}
+        {view === "contacts" && <ContactsView state={contacts} onFind={() => setView("discovery")} />}
         {view === "settings" && <SettingsView key={settings ?? developer ?? "live"} state={settings} developer={developer} onSection={setSetSection} />}
         {view === "knowledge" && <KnowledgeBase state={kb} addOpen={kbAdd} onAddOpenChange={setKbAdd} contained={frame === "contained"} />}
         {!table && view !== "unibox" && view !== "contacts" && view !== "knowledge" && view !== "discovery" && view !== "sequences" && view !== "settings" && <PendingView id={view} onSearch={() => setPalette(true)} />}

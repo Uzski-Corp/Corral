@@ -60,7 +60,7 @@ describe("fit score model", () => {
     expect(fitLabel({ value: 53, confidence: "low", delta: -4 })).toBe("Fit 53 of 100, low confidence, down 4 since the last score");
     expect(fitLabel({ state: "scoring", text: "Rescoring" })).toBe("Fit: rescoring");
     expect(fitLabel({ state: "none" })).toBe("Fit: not scored yet");
-    expect(fitLabel({ state: "error" })).toBe("Fit: couldn't score");
+    expect(fitLabel({ state: "error" })).toBe("Fit: couldn’t score");
   });
 
   it("checks a number you type", () => {

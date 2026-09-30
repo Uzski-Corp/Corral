@@ -121,7 +121,7 @@ function StatusBanner({ run, countdown, onAction }: { run: Run; countdown?: numb
     const n = run.skipped.reduce((a, [, k]) => a + k, 0);
     const retry = run.skipped.find(([k]) => k === "timeout")?.[1] ?? 0;
     return (
-      <Banner tone="caution" title={`${f(n)} of ${f(run.found)} sites couldn't be read`} action={retry ? <Button onClick={() => onAction("retry-timeouts")}>Retry the {retry} that timed out</Button> : undefined}>
+      <Banner tone="caution" title={`${f(n)} of ${f(run.found)} sites couldn’t be read`} action={retry ? <Button onClick={() => onAction("retry-timeouts")}>Retry the {retry} that timed out</Button> : undefined}>
         <ul className="d-skips">{run.skipped.map(([k, m]) => <li key={k}><span className="c-num">{m}</span> {SKIP_TEXT[k]}</li>)}</ul>
         Their companies are kept without a fit. Blocked sites stay unread; add a contact by hand to score them.
       </Banner>

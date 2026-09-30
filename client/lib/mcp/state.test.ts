@@ -3,8 +3,8 @@ import { MCP_REVIEW_STATES, SECTION_TITLE, mcpReviewState, sectionOf } from "./s
 import { SETTINGS_REVIEW_STATES } from "../integrations/state";
 
 describe("developer review states", () => {
-  it("has 25, none clashing with Integrations on the same view", () => {
-    expect(MCP_REVIEW_STATES).toHaveLength(25);
+  it("has 29, none clashing with Integrations on the same view", () => {
+    expect(MCP_REVIEW_STATES).toHaveLength(29);
     expect(MCP_REVIEW_STATES.filter((s) => (SETTINGS_REVIEW_STATES as readonly string[]).includes(s))).toEqual([]);
   });
   it("only on settings, only where review states are", () => {

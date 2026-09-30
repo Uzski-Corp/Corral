@@ -49,7 +49,7 @@ export const hasScope = (scopes: readonly string[], need: Scope) => scopesOf(acc
 export const PRESETS: { id: "read" | "draft" | "custom"; label: string; hint: string; access: AccessMap }[] = [
   { id: "read", label: "Read only", hint: "Look things up. Changes nothing.", access: { leads: "read", segments: "read", sequences: "read", unibox: "read", knowledge: "read", scoring: "read" } },
   { id: "draft", label: "Read and draft", hint: "Also triage, save drafts, build segments. Sends nothing.", access: { leads: "write", segments: "write", sequences: "read", unibox: "write", knowledge: "read", scoring: "read" } },
-  { id: "custom", label: "Choose per area", hint: "Including sending replies.", access: { leads: "none", segments: "none", sequences: "none", unibox: "none", knowledge: "none", scoring: "none" } },
+  { id: "custom", label: "Choose per area", hint: "Set each area yourself.", access: { leads: "none", segments: "none", sequences: "none", unibox: "none", knowledge: "none", scoring: "none" } },
 ];
 
 /* ------------------------------------------------------------ the key itself */
@@ -120,6 +120,30 @@ export function expiryWords(iso: string | null | undefined, now: Date): string {
 /* ------------------------------------------------------------ create */
 export type KeyDraft = { name: string; access: AccessMap; expiry: ExpiryId };
 export type KeyErrors = { name?: string; scopes?: string };
+/* ------------------------------------------------------------ who may hold send (§17 decision 15) */
+/** A key belongs to a job; a signed-in MCP connection belongs to a person. Only a person's connection may send. */
+export type Holder = "key" | "oauth";
+export const maySend = (h: Holder) => h === "oauth";
+/** The levels an area offers this holder: keys stop at Write on the Unibox (a job drafts, a person sends). */
+export function levelsFor(area: Area, h: Holder): Access[] {
+  const a = AREAS.find((x) => x.id === area)!;
+  return ["none", "read", "write", ...(a.send && maySend(h) ? (["send"] as const) : [])];
+}
+/** Clamp an access map to what a holder may have: send becomes write for a key. */
+export const clampFor = (m: AccessMap, h: Holder): AccessMap => (maySend(h) || m.unibox !== "send" ? m : { ...m, unibox: "write" });
+export const KEY_SEND_REFUSED = "API keys can draft but can’t send. Sending needs a signed-in MCP connection.";
+/** A key's scopes: never unibox:send, whatever the map says (the picker doesn't offer it; this is the backstop). */
+export type KeyScope = Exclude<Scope, "unibox:send">;
+export const keyScopesOf = (a: Partial<AccessMap>): KeyScope[] => scopesOf({ ...a, unibox: a.unibox === "send" ? "write" : a.unibox }) as KeyScope[];
+
+/* ------------------------------------------------------------ who manages which key (§17 decision 16) */
+export type Role = "owner" | "member";
+export type Viewer = { name: string; role: Role };
+/** Owners manage every key. Members create keys, and rotate and revoke only the ones they made. */
+export const canManageKey = (k: { by: string }, v: Viewer) => v.role === "owner" || k.by === v.name;
+export const manageNote = (k: { by: string }, v: Viewer) =>
+  canManageKey(k, v) ? undefined : `Made by ${k.by.split(" ")[0]}. Only ${k.by.split(" ")[0]} or an owner can rotate or revoke it.`;
+
 export function validateKey(k: KeyDraft, taken: readonly string[]): KeyErrors {
   const e: KeyErrors = {};
   const n = k.name.trim();
@@ -127,6 +151,7 @@ export function validateKey(k: KeyDraft, taken: readonly string[]): KeyErrors {
   else if (n.length > 48) e.name = "Keep it under 48 characters.";
   else if (taken.some((t) => t.toLowerCase() === n.toLowerCase())) e.name = `A key called “${n}” already exists. Rotate that one, or pick another name.`;
   if (!scopesOf(k.access).length) e.scopes = "Pick at least one area. A key with no scopes can’t call anything.";
+  else if (k.access.unibox === "send") e.scopes = KEY_SEND_REFUSED;
   return e;
 }
 export const isValid = (e: KeyErrors) => !e.name && !e.scopes;

@@ -101,7 +101,7 @@ export function DiscoveryView({ state, setupOpen, onSetupOpenChange, onOpenCompa
     </div></div>
   );
   if (phase === "error") return (
-    <div className="c-view c-view--center d-view"><ErrorState title="Couldn't load discovery runs" detail="GET /discovery/runs · 503"
+    <div className="c-view c-view--center d-view"><ErrorState title="Couldn’t load discovery runs" detail="GET /api/v1/discovery/runs · 503"
       actions={<Button variant="primary" onClick={() => setPhase("ready")}><Icon name="refresh" />Try again</Button>}>
       Runs in progress keep going on the server; this is only the page failing to load them.</ErrorState></div>
   );

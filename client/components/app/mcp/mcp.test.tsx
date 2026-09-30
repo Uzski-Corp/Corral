@@ -81,8 +81,11 @@ describe("API keys", () => {
     await userEvent.type(within(d).getByRole("textbox", { name: "Name" }), "n8n lead sync");
     await userEvent.click(within(d).getByRole("button", { name: "Create key" }));
     expect(within(d).getByText(/already exists/)).toBeInTheDocument();
-    await userEvent.click(within(within(d).getByRole("radiogroup", { name: "Unibox" })).getByRole("radio", { name: "Send" }));
-    expect(within(d).getByText(/Send replies, through the same 10-second undo/)).toBeInTheDocument();
+    const unibox = within(within(d).getByRole("radiogroup", { name: "Unibox" }));
+    expect(unibox.queryByRole("radio", { name: "Send" })).not.toBeInTheDocument();
+    await userEvent.click(unibox.getByRole("radio", { name: "Write" }));
+    expect(within(d).getAllByText(/Sending needs a signed-in MCP connection/)[0]).toBeInTheDocument();
+    expect(within(d).getByText(/Keys can draft but can’t send: the Unibox stops at Write/)).toBeInTheDocument();
     await userEvent.click(within(within(d).getByRole("radiogroup", { name: "Environment" })).getByRole("radio", { name: "Test" }));
     expect(within(d).getByText(/sends nothing/)).toBeInTheDocument();
     await userEvent.click(within(d).getByRole("button", { name: "Cancel" }));
@@ -308,10 +311,13 @@ describe("the docs", () => {
     await userEvent.click(screen.getByRole("button", { name: /list_segments/ }));
     expect(screen.getByText("No arguments.")).toBeInTheDocument();
   });
-  it("docs-tool opens send_reply with its guardrail", () => {
+  it("docs-tool opens send_reply with its guardrail; there's no curl for it, since keys can't send", async () => {
     show("docs-tool");
     expect(screen.getByRole("button", { name: /send_reply/ })).toHaveAttribute("aria-expanded", "true");
     expect(screen.getAllByText(/Refused with 409/).length).toBeGreaterThan(0);
+    await userEvent.click(screen.getByRole("tab", { name: "curl" }));
+    expect(screen.getByText(/No curl for this one/)).toBeInTheDocument();
+    expect(screen.queryByLabelText("curl with a key")).not.toBeInTheDocument();
   });
   it("search narrows the tools; nothing found says what MCP doesn't do", async () => {
     show("docs-search-empty");
@@ -320,5 +326,43 @@ describe("the docs", () => {
     await userEvent.type(screen.getByRole("textbox", { name: "Search tools" }), "draft");
     expect(screen.getByRole("button", { name: /draft_reply/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /search_companies/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("API keys as a member (§17 decision 16)", () => {
+  it("keys-member: Amara manages the key she made; the others say who can", async () => {
+    show("keys-member");
+    expect(screen.getByText(/You’re a member/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "n8n lead sync: more" }));
+    expect(screen.getByRole("menuitem", { name: /Rotate/ })).toBeDisabled();
+    expect(screen.getByRole("menuitem", { name: /Revoke/ })).toBeDisabled();
+    expect(screen.getByText("Only Tomás or an owner")).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(screen.getByRole("button", { name: "Metabase reporting: more" }));
+    expect(screen.getByRole("menuitem", { name: /Rotate/ })).toBeEnabled();
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(screen.getByRole("button", { name: "n8n lead sync" }));
+    expect(screen.getByText(/Only Tomás or an owner can rotate or revoke it/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Revoke" })).not.toBeInTheDocument();
+  });
+  it("keys-loading shows skeleton rows and says so", () => {
+    show("keys-loading");
+    expect(screen.getByRole("status")).toHaveTextContent("Loading API keys");
+  });
+});
+
+describe("API keys, owner and member views (§17 decision 16)", () => {
+  it("keys-owner: an Owner column, and every key's actions", async () => {
+    show("keys-owner");
+    expect(screen.getByRole("columnheader", { name: "Owner" })).toBeInTheDocument();
+    expect(screen.getByText(/You’re an owner/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Metabase reporting: more" }));
+    expect(screen.getByRole("menuitem", { name: /Revoke/ })).toBeEnabled();
+  });
+  it("keys-member-key: another person's key is read-only, with who can change it", () => {
+    show("keys-member-key");
+    expect(screen.getByRole("heading", { name: "n8n lead sync" })).toBeInTheDocument();
+    expect(screen.getByText(/Only Tomás or an owner can rotate or revoke it/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Revoke" })).not.toBeInTheDocument();
   });
 });

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
-import { FitBar, Mark } from "@/components/app";
+import { FitBar } from "@/components/app/primitives";
+import { Mark } from "@/components/app/icons";
 
 const ROUTES = [
   { href: "/open-range", name: "Open Range", idea: "Your whole market as one clear field. Daylight open land, a white quiet product floating over it.", img: "/corral/or/range-wide.jpg", fit: 94 },

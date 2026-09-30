@@ -90,7 +90,7 @@ function EnrichNote({ e, slot }: { e?: EnrichState; slot: "person" | "fit" | "em
   const busy = (slot === "person" && k === "finding") || (slot === "email" && k === "verifying");
   const text = slot === "person"
     ? k === "finding" ? "Finding people" : k === "no-people" ? "No one found" : k === "below-bar" ? "Not looked up" : k === "unreadable" ? "—" : "Waits for fit"
-    : slot === "fit" ? "Couldn't read site"
+    : slot === "fit" ? "Couldn’t read site"
     : k === "verifying" ? "Verifying" : "—";
   const warn = (slot === "fit" && k === "unreadable") || (slot === "person" && k === "no-people");
   return <span className={cx("c-enrich", busy && "is-busy", warn && "is-warn")} title={slot === "person" && k === "below-bar" ? enrichLabel(e) ?? undefined : undefined}>{busy && <span className="c-enrich__dot" aria-hidden="true" />}{text}</span>;
