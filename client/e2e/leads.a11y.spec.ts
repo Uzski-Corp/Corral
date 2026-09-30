@@ -4,7 +4,8 @@ import { audit, WIDTHS } from "./axe";
 
 /**
  * axe on the M3 lead table, segment builder and CSV import, live and in every review state from
- * HANDOFF-ENG.md §11 (plus the M4 companies `stale` and `provenance` states, §12), at 1440 and 390.
+ * HANDOFF-ENG.md §11 (plus the M4 companies `stale` and `provenance` states, §12, and the 7 M8 handoff states
+ * on Nyota Beverages' lead, §16), at 1440 and 390.
  * Runs in the "review" project (NEXT_PUBLIC_DESIGN_REVIEW=1), because `?state=` is off in production
  * builds and there is no leads API yet (ENG-81). Reduced motion keeps entrance fades out of the contrast check.
  */
