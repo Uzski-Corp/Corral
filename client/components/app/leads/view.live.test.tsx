@@ -10,6 +10,7 @@ import type { LeadsReviewState } from "@/lib/leads/state";
 import { ToastProvider } from "../Toaster";
 import { LeadsView } from "./Leads";
 import { useLiveSegments } from "./live";
+import { LEAD_STATUSES, LIVE_STATUSES } from "./parts";
 
 let api: LeadsApi;
 beforeEach(() => { resetLeads(); server.use(...leadsHandlers); api = leadsApiFor(testConfig()); });
@@ -71,6 +72,27 @@ describe("LeadsView on the API", () => {
     await userEvent.click(screen.getByRole("menuitemcheckbox", { name: /Unsubscribed/ }));
     await waitFor(() => expect(leads.calls.map((c) => c.op)).toContain("POST /leads/l1/unsubscribe"));
     expect(await screen.findByText("Kilima Dairies set to Unsubscribed")).toBeInTheDocument();
+  });
+
+  it("doesn't offer Disqualified, which the API can't store, in the detail or the bulk bar", async () => {
+    render(<Host />);
+    await userEvent.click(await screen.findByRole("button", { name: "Kilima Dairies" }));
+    await userEvent.click(screen.getByRole("button", { name: "Status for Kilima Dairies: Interested" }));
+    expect(screen.getByRole("menuitemcheckbox", { name: /Not interested/ })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitemcheckbox", { name: /Disqualified/ })).toBeNull();
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Pwani Fresh" }));
+    await userEvent.click(screen.getByRole("button", { name: /Set status/ }));
+    expect(screen.getByRole("menuitem", { name: /Meeting booked/ })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: /Disqualified/ })).toBeNull();
+  });
+
+  it("an empty Fit 80+ tab with no filter set offers no filter actions", async () => {
+    resetLeads({ fits: {} });
+    render(<Host />);
+    expect(await screen.findByText("No companies match these filters")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Remove the last filter" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Clear filters" })).toBeNull();
   });
 
   it("sets status for a selection through the bulk bar", async () => {
@@ -176,6 +198,8 @@ describe("LeadsView on the API", () => {
   });
 
   it("keeps Bau's sample for review states", () => {
+    expect(LEAD_STATUSES).toContain("Disqualified");   // review fixtures keep the full list
+    expect(LIVE_STATUSES).toEqual(LEAD_STATUSES.filter((st) => st !== "Disqualified"));
     render(<Host state="empty" />);
     expect(screen.getByRole("heading", { name: "Bring in the companies you already know" })).toBeInTheDocument();
     expect(leads.calls).toEqual([]);

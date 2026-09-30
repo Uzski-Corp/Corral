@@ -13,7 +13,7 @@ import { useToast } from "../Toaster";
 import { SegmentBuilder, loosenHint, newRule } from "./Builder";
 import { LeadDetail } from "./Detail";
 import { ImportDialog, type ImportSeed } from "./Import";
-import { StatusMenu } from "./parts";
+import { LIVE_STATUSES, StatusMenu } from "./parts";
 import { EXISTING, FIT_80, LEAD_ROWS, TOTAL_COMPANIES, crmExportCsv, tradeShowCsv } from "./data";
 import { BULK_CONFIRM_AT, describeRule, filterLeads, nextSort, selectedCount, selectionLabel, sortLeads, type Match, type Rule, type Selection, type Sort } from "@/lib/leads/segment";
 import { guessMapping, parseCsv, type Mapping } from "@/lib/leads/import";
@@ -306,7 +306,7 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
           )}
           {shown.length === 0 ? (
             <EmptyState compact icon="filter" title="No companies match these filters"
-              actions={<><Button onClick={() => setRules(rules.slice(0, -1))}>Remove the last filter</Button><Button variant="quiet" onClick={() => setRules([])}>Clear filters</Button></>}>
+              actions={rules.length ? <><Button onClick={() => setRules(rules.slice(0, -1))}>Remove the last filter</Button><Button variant="quiet" onClick={() => setRules([])}>Clear filters</Button></> : undefined}>
               {loosenHint(lv ? data : rows.filter((l) => seg || inTab(l, tab)), rules, match) ?? "Try fewer filters, or switch the tab to All."}
             </EmptyState>
           ) : (
@@ -316,7 +316,7 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
           )}
           {shown.length > 0 && shown.length < total && <p className="l-more c-faint">Showing the first {f(shown.length)}. The rest load as you scroll.</p>}
         </div>
-        {lead && lv && <div className="l-split__detail"><LeadDetail lead={lead} onClose={() => setOpen(undefined)} detail={lv.detailOf(lead.id)} findLead={lv.findLead} today={new Date()}
+        {lead && lv && <div className="l-split__detail"><LeadDetail lead={lead} onClose={() => setOpen(undefined)} detail={lv.detailOf(lead.id)} findLead={lv.findLead} statuses={LIVE_STATUSES} today={new Date()}
           onStatus={(id, s, fld) => setStatus([id], s, fld)} onEnroll={() => onEnroll(1, false)} onOpenLead={setOpen} fit={lv.fitOf(lead.id)}
           onMerge={(id) => { void lv.merge(id).then((keep) => { if (keep) setOpen(keep); }); }} onKeepBoth={(id) => lv.keepBoth(id)} /></div>}
         {lead && !lv && <div className="l-split__detail"><LeadDetail lead={lead} onClose={() => setOpen(undefined)}
@@ -343,7 +343,7 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
             <span className="l-bulk__sep" aria-hidden="true" />
             <Button variant="primary" onClick={enroll}><Icon name="seq" />Enroll{n >= BULK_CONFIRM_AT ? ` ${f(n)}` : ""}</Button>
             <span className="l-bulk__more">
-              <StatusMenu label="Set status for the selection" side="top" defaultOpen={state === "status-menu"} onChange={(s) => setStatus(lv && sel.all ? "all" : selectedIds, s)} />
+              <StatusMenu label="Set status for the selection" side="top" defaultOpen={state === "status-menu"} options={lv ? LIVE_STATUSES : undefined} onChange={(s) => setStatus(lv && sel.all ? "all" : selectedIds, s)} />
               <DropdownMenu label="Add to segment" side="top" width={240} items={[{ heading: "Add to a segment" }, ...(live ? live.segments.list.map((s) => ({ label: s.name, meta: String(s.count), onSelect: () => lv?.addToSegment(s, sel.all ? "all" : [...sel.ids]) }))
                 : SAVED_SEGMENTS.map(([s, c]) => ({ label: s, meta: String(c), onSelect: () => toast({ tone: "success", icon: "layers", children: `Added ${f(n)} to ${s}`, meta: "pinned, even if rules change" }) }))),
                 "separator", { label: "New segment from selection", icon: "plus", onSelect: () => { if (!sel.all) setPins({ ids: [...sel.ids] }); setDraft({ rules: rules.length ? rules : [newRule("fit")], match, name: "" }); onBuilderOpenChange(true); } }]}

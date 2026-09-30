@@ -16,7 +16,7 @@ import { FitReasoning, type FitActions } from "../fit/Reasoning";
  * Lead detail: one company, the person Corral writes to, why it fits, where it is in a sequence, and
  * everything that happened. Opens beside the table (rail 400) or full screen on a phone.
  */
-export function LeadDetail({ lead, onClose, onStatus, onEnroll, onMerge, onKeepBoth, onOpenLead, prov, today, provOpen, onRecheck, rechecking, foundVia, backLabel = "All companies", fit, fitActions, fitForm, fitBusy, fitFocus, handoff, detail, findLead = leadById }: {
+export function LeadDetail({ lead, onClose, onStatus, onEnroll, onMerge, onKeepBoth, onOpenLead, prov, today, provOpen, onRecheck, rechecking, foundVia, backLabel = "All companies", fit, fitActions, fitForm, fitBusy, fitFocus, handoff, detail, findLead = leadById, statuses }: {
   lead: Lead; onClose: () => void; onStatus: (id: string, s: Status, field?: "reply" | "email") => void; onEnroll: (id: string) => void;
   onMerge?: (id: string) => void; onKeepBoth?: (id: string) => void; onOpenLead?: (id: string) => void;
   /** M4 provenance: every field with its evidence chain. `today` anchors freshness (the demo's fixed date). */
@@ -28,6 +28,7 @@ export function LeadDetail({ lead, onClose, onStatus, onEnroll, onMerge, onKeepB
   /** M8: the meeting and its handoffs (Cal.com, Phoenix ERP, AutoSend), shown before the sequence. */ handoff?: ReactNode;
   /** Live (ENG-81): people, notes and history from the API, and the rows to find a duplicate among. Default: the sample. */
   detail?: LeadDetailData; findLead?: (id: string) => Lead | undefined;
+  /** The statuses on offer (live: without Disqualified). Default: Bau's full list. */ statuses?: Status[];
 }) {
   const d = detail ?? detailOf(lead);
   const root = useRef<HTMLElement>(null);
@@ -77,7 +78,7 @@ export function LeadDetail({ lead, onClose, onStatus, onEnroll, onMerge, onKeepB
           : e === "unreadable" ? <span className="c-muted">Not scored: couldn&rsquo;t read the site</span>
           : useFit ? <><FitBar {...barOf(fit!)} size="md" /><button type="button" className="c-link k-linkbtn f-why-link" onClick={focusWhy}>Why?</button></>
           : <FitBar value={lead.fit} size="md" />}</dd></div>
-        <div><dt>Status</dt><dd><StatusMenu label={`Status for ${lead.company}`} value={lead.reply} onChange={(s) => onStatus(lead.id, s)} /></dd></div>
+        <div><dt>Status</dt><dd><StatusMenu label={`Status for ${lead.company}`} value={lead.reply} options={statuses} onChange={(s) => onStatus(lead.id, s)} /></dd></div>
         <div><dt>Email</dt><dd><StatusMenu label={`Email status for ${lead.person}`} value={lead.email} options={EMAIL_STATUSES} onChange={(s) => onStatus(lead.id, s, "email")} /></dd></div>
         <div><dt>Size</dt><dd><span>{lead.size ?? "—"}{lead.industry && <span className="c-muted">&nbsp;· {lead.industry}</span>}</span></dd></div>
         <div><dt>Added from</dt><dd>{lead.source ?? "Corral search"}</dd></div>
