@@ -1,0 +1,123 @@
+"""Request/response shapes for products and their knowledge base.
+
+``SourceOut`` maps 1:1 onto the client's ``Source``/``SourceStatus`` (components/app/kb/data.ts):
+``status`` is ``processing | ready | partial | failed``; ``processing`` carries ``stage``
+and ``stage_pct``; ``partial`` carries ``pages_read``/``pages_total``/``skipped``/``note``
+and the structured ``skipped_reason``; ``failed`` carries ``failure`` and ``failure_stage``.
+``attempts`` counts worker tries of the current read (0 queued, 2+ after a retry).
+"""
+
+import uuid
+from datetime import datetime
+from typing import Annotated, Literal
+
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+
+from app.kb.errors import Failure, SkipReason, SourceKind, Stage
+
+Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)]
+
+
+class ProductCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: Name
+    description: str | None = Field(default=None, max_length=5_000)
+
+
+class ProductUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: Name | None = None
+    description: str | None = Field(default=None, max_length=5_000)
+
+
+class ProductOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    description: str | None
+    source_count: int = Field(description="Sources in the knowledge base, removed ones excluded")
+    created_at: datetime
+    updated_at: datetime
+
+
+class Person(BaseModel):
+    """Who added a source: a current member of the workspace."""
+
+    id: uuid.UUID
+    name: str = Field(description="First and last name from the WorkOS profile, else the email")
+    avatar_url: str | None
+
+
+class UrlSourceCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    url: str = Field(min_length=1, max_length=2_048)
+    # "section" reads the page and the pages under its path (same site, bounded).
+    scope: Literal["page", "section"] = "page"
+
+
+class SourceOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    product_id: uuid.UUID
+    kind: SourceKind
+    name: str
+    url: str | None
+    scope: Literal["page", "section"] | None
+    byte_size: int | None
+    status: Literal["processing", "ready", "partial", "failed"]
+    stage: Stage | None
+    stage_pct: int
+    progress: int | None = Field(description="0-100 over all stages; null when failed")
+    failure: Failure | None
+    failure_stage: Stage | None
+    pages_total: int | None
+    pages_read: int | None
+    skipped: str | None
+    skipped_reason: SkipReason | None = Field(
+        description="Why pages are missing (set iff `skipped` is): scanned | size-limit | "
+        "unreadable | mixed"
+    )
+    note: str | None
+    passage_count: int
+    word_count: int | None = Field(description="Words in the text read; null until read")
+    heading_count: int | None = Field(description="Headings in the text read; 0 for PDFs")
+    attempts: int = Field(description="Worker tries of the current read; 0 while queued")
+    added_by_user_id: uuid.UUID | None
+    added_by: Person | None = Field(
+        description="Null when nobody is recorded or they are no longer in the workspace"
+    )
+    created_at: datetime
+    updated_at: datetime
+    processed_at: datetime | None
+    deleted_at: datetime | None
+
+
+class PassageOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    ordinal: int
+    loc: str | None
+    text: str
+
+
+class SearchRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    query: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2_000)]
+    limit: int = Field(default=8, ge=1, le=100)
+
+
+class SearchHit(BaseModel):
+    passage_id: uuid.UUID
+    source_id: uuid.UUID
+    source_name: str
+    source_kind: SourceKind
+    loc: str | None
+    text: str
+    score: float = Field(description="Cosine similarity, -1..1 (higher is closer)")

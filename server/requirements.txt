@@ -15,9 +15,27 @@ alembic==1.20.0
 httpx==0.28.1
 workos==10.5.0
 
+# Knowledge base: document parsing, safe XML, and pgvector types (no numpy needed)
+pypdf==6.19.0
+defusedxml==0.7.1
+pgvector==0.5.0
+
 # Background jobs
 arq==0.28.0
 redis==5.3.1  # arq requires redis<6
 
 # Logging
 structlog==26.1.0
+
+# Observability. opentelemetry-instrumentation-sqlalchemy declares sqlalchemy<2.1; it works
+# with 2.1 and is activated with skip_dep_check (see app/core/telemetry.py).
+opentelemetry-api==1.45.0
+opentelemetry-sdk==1.45.0
+opentelemetry-exporter-otlp-proto-http==1.45.0
+opentelemetry-instrumentation-fastapi==0.66b0
+opentelemetry-instrumentation-sqlalchemy==0.66b0
+prometheus-client==0.26.0
+
+# Used directly (session sealing / JWT errors); pinned to what workos resolves
+cryptography==50.0.1
+pyjwt==2.15.1

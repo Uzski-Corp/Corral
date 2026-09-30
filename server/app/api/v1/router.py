@@ -1,8 +1,32 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
-from app.api.v1.routes import inbox, knowledge, leads, segments, sequences
+from app.api.v1.routes import (
+    companies,
+    inbox,
+    kb,
+    knowledge,
+    lead_imports,
+    leads,
+    products,
+    segments,
+    sequences,
+)
 from app.auth import routes as auth
+from app.auth.deps import require_auth
 
 api_router = APIRouter(prefix="/api/v1")
-for module in (auth, leads, segments, sequences, inbox, knowledge):
-    api_router.include_router(module.router)
+# Auth routes decide per-endpoint; everything else is authenticated at the router level so
+# a new endpoint can't accidentally ship without auth.
+api_router.include_router(auth.router)
+for module in (
+    leads,
+    companies,
+    segments,
+    lead_imports,
+    sequences,
+    inbox,
+    knowledge,
+    products,
+    kb,
+):
+    api_router.include_router(module.router, dependencies=[Depends(require_auth)])

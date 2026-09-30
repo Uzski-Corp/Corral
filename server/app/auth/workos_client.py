@@ -1,14 +1,21 @@
-from functools import lru_cache
+"""WorkOS client construction. The client is owned by the app lifespan, never global."""
 
-from workos import WorkOSClient
+from workos import AsyncWorkOSClient
 
-from app.core.config import get_settings
+from app.core.config import Settings
 
 
-@lru_cache
-def get_workos() -> WorkOSClient:
-    """Created lazily so the app boots without WorkOS keys."""
-    s = get_settings()
-    if not s.workos_api_key or not s.workos_client_id:
-        raise RuntimeError("WORKOS_API_KEY and WORKOS_CLIENT_ID must be set")
-    return WorkOSClient(api_key=s.workos_api_key, client_id=s.workos_client_id)
+def build_workos_client(settings: Settings) -> AsyncWorkOSClient | None:
+    """Return a configured async client, or ``None`` when WorkOS is not configured.
+
+    Without keys the API still boots (auth endpoints answer 503) so local work on
+    unrelated features doesn't require WorkOS credentials. Deployed environments refuse
+    to start without them (see ``Settings``).
+    """
+    if not settings.workos_configured:
+        return None
+    return AsyncWorkOSClient(
+        api_key=settings.workos_api_key.get_secret_value(),
+        client_id=settings.workos_client_id,
+        request_timeout=settings.workos_request_timeout_s,
+    )
