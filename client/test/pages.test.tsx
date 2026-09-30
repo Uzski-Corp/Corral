@@ -70,6 +70,14 @@ describe("/onboarding and /app pages keep their review params", () => {
     expect(await screen.findByText("Find companies that fit ColdTrace Sensors")).toBeInTheDocument();
   });
 
+  it("opens a sequences review state (M6)", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DESIGN_REVIEW", "1");
+    resetConfigCache();
+    const page = await AppPage(params({ view: "sequences", state: "empty" }) as never);
+    render(AppLayout({ children: page, params: Promise.resolve({}) } as never));
+    expect(await screen.findByText("Write your first sequence")).toBeInTheDocument();
+  });
+
   it("wraps onboarding in the session layout", async () => {
     vi.stubEnv("NEXT_PUBLIC_DESIGN_REVIEW", "1");
     resetConfigCache();

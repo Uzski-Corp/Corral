@@ -22,6 +22,9 @@ import { LeadsView } from "./leads";
 import type { LeadsReviewState } from "@/lib/leads/state";
 import { CREDITS, DiscoveryView } from "./discovery";
 import type { DiscoveryReviewState } from "@/lib/discovery/state";
+import { SequencesView, seedFor, type SeqTab } from "./sequences";
+import type { SequenceReviewState } from "@/lib/sequences/state";
+import { poolSummary } from "@/lib/sequences/sequence";
 
 /** Fixed "today" for the demo so static renders are deterministic. Replace with new Date(). */
 export const DEMO_TODAY = new Date(2026, 8, 29);
@@ -144,10 +147,12 @@ export type AppDemoProps = {
   leads?: LeadsReviewState;
   /** Discovery review state (M4): /app?view=discovery&state=… */
   discovery?: DiscoveryReviewState;
+  /** Sequences / mailbox pool review state (M6): /app?view=sequences&state=… */
+  sequences?: SequenceReviewState;
 };
 export function AppDemo(p: AppDemoProps) { return <ToastProvider><Demo {...p} /></ToastProvider>; }
 
-function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, drawer = false, dialog = false, frame = "viewport", hotkeys = true, className, account, onSignOut, sessionError, kb, leads, discovery }: AppDemoProps) {
+function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, drawer = false, dialog = false, frame = "viewport", hotkeys = true, className, account, onSignOut, sessionError, kb, leads, discovery, sequences }: AppDemoProps) {
   const router = useRouter();
   const toast = useToast();
   const signOut = useCallback(() => {
@@ -171,6 +176,10 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
   const [enrollAll, setEnrollAll] = useState(0);
   const [setupOpen, setSetupOpen] = useState(false);
   const [kbAdd, setKbAdd] = useState(kb === "upload" || kb === "upload-errors");
+  const [seqTab, setSeqTab] = useState<SeqTab>(() => seedFor(sequences).tab);
+  const [pool, setPool] = useState(() => seedFor(sequences).pool);
+  const [newSeq, setNewSeq] = useState(0);
+  const poolNow = poolSummary(pool);
 
   const go = useCallback((v: ViewId) => { setView(v); setSegment(v === "segments" ? SAVED_SEGMENTS[0][0] : undefined); setBuilderOpen(false); }, []);
 
@@ -228,6 +237,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
   const ws = typeof account === "object" ? account.workspace : account === undefined ? "ColdTrace" : "Corral";
   const crumbs = view === "unibox" ? [ws, "Unibox", TABS.find((x) => x.id === tab)!.label]
     : view === "knowledge" ? [ws, "Knowledge base", PRODUCT.name]
+    : view === "sequences" && seqTab === "pool" ? [ws, "Sequences", "Mailbox pool"]
     : segment ? [ws, "Segments", segment] : [ws, label];
   const table = view === "companies" || view === "segments";
   const findCompanies = () => { go("discovery"); setSetupOpen(true); };
@@ -244,21 +254,26 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
     </>
     : view === "companies" ? <><Button onClick={() => setImportOpen(true)}><Icon name="upload" />Import CSV</Button><Button variant="primary" onClick={findCompanies}><Icon name="globe" />Find companies</Button></>
     : view === "discovery" ? <><span className="d-credits"><span className="c-num c-strong">{CREDITS.left.toLocaleString("en-US")}</span> credits left this month</span>{discovery !== "empty" && <Button variant="primary" onClick={() => setSetupOpen(true)}><Icon name="plus" />New run</Button>}</>
+    : view === "sequences" ? (seqTab === "pool"
+      ? <Button onClick={() => router.push("/onboarding?step=4")}><Icon name="plus" />Connect a mailbox</Button>
+      : sequences !== "empty" && sequences !== "loading" && sequences !== "error" ? <Button variant="primary" onClick={() => setNewSeq((x) => x + 1)}><Icon name="plus" />New sequence</Button> : null)
     : view === "segments" ? <><Button onClick={() => toast({ icon: "upload", children: `Exporting ${segment}`, meta: "CSV lands in your downloads" })}>Export</Button><Button variant="primary" onClick={() => setEnrollAll((x) => x + 1)}><Icon name="seq" />Enroll segment</Button></>
     : null;
 
   return (
     <>
       <AppShell frame={frame} className={className} active={view} onNavigate={go} crumbs={sessionError ? [ws, "Not connected"] : crumbs} actions={sessionError ? null : actions} collapsed={collapsed} onCollapsedChange={setCollapsed}
-        onSearch={() => setPalette(true)} segment={segment} onSegment={(s) => { setView("segments"); setSegment(s); setBuilderOpen(false); }} defaultDrawer={drawer} hotkeys={hotkeys} account={account} onSignOut={signOut}>
+        onSearch={() => setPalette(true)} segment={segment} onSegment={(s) => { setView("segments"); setSegment(s); setBuilderOpen(false); }} defaultDrawer={drawer} hotkeys={hotkeys} account={account} onSignOut={signOut}
+        pool={{ sent: poolNow.sent, cap: poolNow.cap, mailboxes: poolNow.total, attention: poolNow.attention }} onPool={() => { go("sequences"); setSeqTab("pool"); }}>
         {sessionError ? <SessionUnavailable {...sessionError} /> : <>
         {view === "unibox" && <UniboxView threads={threads} active={active} setActive={setActive} tab={tab} setTab={setTab} pane={pane} setPane={setPane} />}
         {table && <LeadsView key={`${view}-${segment ?? ""}`} view={view} state={leads} segment={segment} importOpen={importOpen} onImportOpenChange={setImportOpen}
           builderOpen={builderOpen} onBuilderOpenChange={setBuilderOpen} enrollAllSignal={enrollAll} onFind={findCompanies} onEnroll={(n, replied) => { setEnrollFor({ n, replied }); setEnroll(true); }} />}
         {view === "discovery" && <DiscoveryView key={discovery ?? "live"} state={discovery} setupOpen={setupOpen} onSetupOpenChange={setSetupOpen} onOpenCompanies={() => go("companies")} />}
+        {view === "sequences" && <SequencesView key={sequences ?? "live"} state={sequences} tab={seqTab} onTabChange={setSeqTab} pool={pool} onPoolChange={setPool} newSignal={newSeq} />}
         {view === "contacts" && <ContactsView />}
         {view === "knowledge" && <KnowledgeBase state={kb} addOpen={kbAdd} onAddOpenChange={setKbAdd} contained={frame === "contained"} />}
-        {!table && view !== "unibox" && view !== "contacts" && view !== "knowledge" && view !== "discovery" && <PendingView id={view} onSearch={() => setPalette(true)} />}
+        {!table && view !== "unibox" && view !== "contacts" && view !== "knowledge" && view !== "discovery" && view !== "sequences" && <PendingView id={view} onSearch={() => setPalette(true)} />}
         </>}
       </AppShell>
       {palette && <CommandPalette open onClose={() => setPalette(false)} {...cmds} />}

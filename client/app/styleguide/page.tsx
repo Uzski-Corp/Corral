@@ -5,6 +5,7 @@ import Link from "next/link";
 import { BuilderDemo, ImportDemo, LeadDetailDemo, LeadStatesDemo, LeadTableDemo, StatusTagsDemo } from "./M3Sections";
 import { DiscoveryShellDemo, EnrichDemo, RunStatesDemo, SetupDemo } from "./M4Sections";
 import { FitBarDemo, FitReasoningDemo } from "./M5Sections";
+import { PoolDemo, SequenceDemo, StepEditorDemo } from "./M6Sections";
 import { EditorDemo, KbShellDemo, SourceDetailDemo, SourceListDemo, UploadDemo } from "./M2Sections";
 import { AccountStatesDemo, CodeStatesDemo, CmdkDemo, ContrastDemo, FormDemo, OverlayDemo, SessionErrorDemo, ShellDemo, StatesDemo, TabsToastDemo } from "./M1Sections";
 import {
@@ -250,7 +251,22 @@ export default function Styleguide() {
         <FitReasoningDemo />
       </Part>
 
-      <Part n="36" title="Things that float" tokens={["--shadow-pop", "--radius-window 14", "--color-surface-inverse"]}
+      <Part wide n="36" title="Sequence builder" tokens={["q-step card · is-on ring --color-action", "q-gate: dashed thread line + wait · condition · otherwise", "q-tok info-50 mono 11 · q-var filled value", "d-runtag: draft · launching · running · paused"]}
+        notes={<p>A sequence reads top to bottom like the thread it will become: each email, then the rule that decides whether the next one goes. The rule is always a wait plus a condition, and a reply ends it for that person at any step, so there is no replied branch to build. Launch checks everything first and names what&rsquo;s wrong and where; running shows what each step did and what sends next; paused says who paused it and what&rsquo;s being held.</p>}>
+        <SequenceDemo />
+      </Part>
+
+      <Part wide n="37" title="Step editor and copilot" tokens={["write | preview at 760px of its own width, tabs below", "missing: negative-50 [key] · fallback: caution-50", "cites: action-subtle 14px markers → KB line", "provenance: source · what · age (M4)"]}
+        notes={<p>You write with variables and read the real email: pick any company in the audience and see exactly what it gets, with every filled-in value traced to where Corral found it. A variable that&rsquo;s empty for some companies says how many, and offers a fallback. Corral&rsquo;s draft uses only lines from the product&rsquo;s knowledge base, numbers each claim to its line, and says what it left out and why, such as the price while two sources disagree.</p>}>
+        <StepEditorDemo />
+      </Part>
+
+      <Part wide n="38" title="Mailbox pool" tokens={["q-box card · negative-200 / caution-200 outline for problems", "warm-up: 14 segments, info-600", "health dot: positive · caution · negative", "daily cap: c-seg 20 · 30 · 35"]}
+        notes={<p>Each mailbox is a card that answers four questions: is it sending, how much today, is it still warming up, and is its reputation healthy. Problems sort first and say what happened, what Corral already did about it, and the one action left, such as Reconnect. A bounce spike rests the mailbox until the next morning on its own; you can see the bounces or send again now.</p>}>
+        <PoolDemo />
+      </Part>
+
+      <Part n="39" title="Things that float" tokens={["--shadow-pop", "--radius-window 14", "--color-surface-inverse"]}
         notes={<p>Only moments float: a booked meeting, a reply worth seeing, a toast. Faces are film-graded photos in circles, one treatment for everyone.</p>}>
         <div className="sg-float">
           <MeetingCard />

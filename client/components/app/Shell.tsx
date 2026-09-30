@@ -101,9 +101,22 @@ export function AccountRow({ account, collapsed, ...rest }: { account?: ShellAcc
   );
 }
 
-export function SideNav({ active, onNavigate, collapsed, onSearch, segment, onSegment, account, onSignOut }: {
+/** The sidebar's mailbox-pool summary (M6). Omit for the sample numbers. */
+export type ShellPool = { sent: number; cap: number; mailboxes: number; attention: number };
+const SAMPLE_POOL: ShellPool = { sent: 184, cap: 210, mailboxes: 6, attention: 0 };
+function PoolWidget({ pool = SAMPLE_POOL, onPool }: { pool?: ShellPool; onPool?: () => void }) {
+  const on = pool.cap ? Math.round((pool.sent / pool.cap) * 21) : 0;
+  const body = <>
+    <div className="c-pool__top"><span className="c-strong">Mailbox pool</span><span className="c-faint">{pool.sent} / {pool.cap} today</span></div>
+    <span className="c-pool__bar" aria-hidden="true">{Array.from({ length: 21 }, (_, i) => <i key={i} className={i < on ? "on" : undefined} />)}</span>
+    {pool.attention > 0 ? <span className="c-pool__warn">{pool.mailboxes} mailboxes · {pool.attention} need you</span> : <span className="c-faint">{pool.mailboxes} mailboxes · all warm</span>}
+  </>;
+  return onPool ? <button type="button" className="c-pool c-pool--btn" title="Mailbox pool" onClick={onPool}>{body}</button> : <div className="c-pool" title="Mailbox pool">{body}</div>;
+}
+
+export function SideNav({ active, onNavigate, collapsed, onSearch, segment, onSegment, account, onSignOut, pool, onPool }: {
   active: ViewId; onNavigate?: (v: ViewId) => void; collapsed?: boolean; onSearch?: () => void; segment?: string; onSegment?: (s: string) => void;
-  account?: ShellAccountProp; onSignOut?: () => void;
+  account?: ShellAccountProp; onSignOut?: () => void; pool?: ShellPool; onPool?: () => void;
 }) {
   const router = useRouter();
   const signOut = onSignOut ?? (() => router.push("/sign-in"));
@@ -127,13 +140,7 @@ export function SideNav({ active, onNavigate, collapsed, onSearch, segment, onSe
         ))}
       </>}
       <div style={{ flex: 1 }} />
-      {!collapsed && !offline && (
-        <div className="c-pool" title="Mailbox pool">
-          <div className="c-pool__top"><span className="c-strong">Mailbox pool</span><span className="c-faint">184 / 210 today</span></div>
-          <span className="c-pool__bar" aria-hidden="true">{Array.from({ length: 21 }, (_, i) => <i key={i} className={i < 18 ? "on" : undefined} />)}</span>
-          <span className="c-faint">6 mailboxes · all warm</span>
-        </div>
-      )}
+      {!collapsed && !offline && <PoolWidget pool={pool} onPool={onPool} />}
       <NavRow icon={settings.icon} label={settings.label} active={active === "settings"} collapsed={collapsed} onClick={() => onNavigate?.("settings")} />
       <DropdownMenu side="top" width={232} label="Account" items={[
         ...(heading ? [{ heading }] : []),
@@ -173,11 +180,12 @@ export function TopBar({ crumbs, actions, onToggleSide, onMenu, onSearch, collap
 /* ------------------------------------------------------------ Shell
    Full app frame. Collapses to a 56px icon rail ([), and below 768px of its own width
    (container query) becomes a top bar + drawer. frame="viewport" fills the window. */
-export function AppShell({ active, onNavigate, crumbs, actions, children, collapsed: ctl, onCollapsedChange, defaultCollapsed = false, defaultDrawer = false, onSearch, frame = "viewport", segment, onSegment, hotkeys = true, className, account, onSignOut }: {
+export function AppShell({ active, onNavigate, crumbs, actions, children, collapsed: ctl, onCollapsedChange, defaultCollapsed = false, defaultDrawer = false, onSearch, frame = "viewport", segment, onSegment, hotkeys = true, className, account, onSignOut, pool, onPool }: {
   active: ViewId; onNavigate?: (v: ViewId) => void; crumbs: ReactNode[]; actions?: ReactNode; children: ReactNode;
   collapsed?: boolean; onCollapsedChange?: (v: boolean) => void; defaultCollapsed?: boolean; defaultDrawer?: boolean; onSearch?: () => void;
   frame?: "viewport" | "contained"; segment?: string; onSegment?: (s: string) => void; hotkeys?: boolean; className?: string;
   /** Signed-in person; omit for the sample person. */ account?: ShellAccountProp; /** Replaces the default "go to /sign-in". */ onSignOut?: () => void;
+  /** Sidebar pool summary (M6); omit for the sample. */ pool?: ShellPool; /** Makes the pool summary a button (opens the pool). */ onPool?: () => void;
 }) {
   const [own, setOwn] = useState(defaultCollapsed);
   const collapsed = ctl ?? own;
@@ -198,7 +206,7 @@ export function AppShell({ active, onNavigate, crumbs, actions, children, collap
     <div className={cx("c-shellbox", frame === "viewport" && "c-shellbox--viewport", className)}>
       <div className={cx("c-shell c-app", collapsed && "is-collapsed", drawer && "is-drawer")}>
         <div className="c-shell__side">
-          <SideNav active={active} onNavigate={go} collapsed={collapsed && !drawer} onSearch={() => { setDrawer(false); onSearch?.(); }} segment={segment} onSegment={(s) => { onSegment?.(s); setDrawer(false); }} account={account} onSignOut={onSignOut} />
+          <SideNav active={active} onNavigate={go} collapsed={collapsed && !drawer} onSearch={() => { setDrawer(false); onSearch?.(); }} segment={segment} onSegment={(s) => { onSegment?.(s); setDrawer(false); }} account={account} onSignOut={onSignOut} pool={pool} onPool={onPool ? () => { onPool(); setDrawer(false); } : undefined} />
         </div>
         {drawer && <div className="c-shell__scrim" onClick={() => setDrawer(false)} aria-hidden="true" />}
         <div className="c-shell__main">

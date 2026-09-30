@@ -6,6 +6,7 @@ import { getConfig } from "@/lib/config";
 import { kbReviewState } from "@/lib/kb/state";
 import { leadsReviewState } from "@/lib/leads/state";
 import { discoveryReviewState } from "@/lib/discovery/state";
+import { sequenceReviewState } from "@/lib/sequences/state";
 
 export const metadata: Metadata = { title: "Corral · Unibox" };
 const VIEWS: ViewId[] = ["unibox", "companies", "discovery", "contacts", "segments", "sequences", "products", "knowledge", "settings"];
@@ -22,6 +23,8 @@ const VIEWS: ViewId[] = ["unibox", "companies", "discovery", "contacts", "segmen
  *   (see lib/leads/state.ts) · M4 adds ?view=companies&state=stale | provenance
  * Discovery (M4): ?view=discovery&state=empty | loading | error | new | new-error | queued | running | done | partial | failed |
  *   rate-limited | zero | detail  (see lib/discovery/state.ts)
+ * Sequences (M6): ?view=sequences&state=empty | loading | error | draft | conditions | editor | copilot | errors | launch |
+ *   launching | running | paused | mailboxes  (see lib/sequences/state.ts)
  */
 export default async function AppPage({ searchParams }: PageProps<"/app">) {
   const q = await searchParams;
@@ -32,5 +35,6 @@ export default async function AppPage({ searchParams }: PageProps<"/app">) {
   const kb = kbReviewState(view, one("state"), reviewStates);
   const leads = leadsReviewState(view, one("state"), reviewStates);
   const discovery = discoveryReviewState(view, one("state"), reviewStates);
-  return <AppScreen key={`${preview ?? "live"}-${kb ?? ""}-${leads ?? ""}-${discovery ?? ""}`} preview={preview} kb={kb} leads={leads} discovery={discovery} initialView={view} cmdk={one("cmdk") === "1"} collapsed={one("collapsed") === "1"} drawer={one("nav") === "1"} dialog={one("dialog") === "enroll"} />;
+  const sequences = sequenceReviewState(view, one("state"), reviewStates);
+  return <AppScreen key={`${preview ?? "live"}-${kb ?? ""}-${leads ?? ""}-${discovery ?? ""}-${sequences ?? ""}`} preview={preview} kb={kb} leads={leads} discovery={discovery} sequences={sequences} initialView={view} cmdk={one("cmdk") === "1"} collapsed={one("collapsed") === "1"} drawer={one("nav") === "1"} dialog={one("dialog") === "enroll"} />;
 }
