@@ -7,8 +7,6 @@ export type ShareCard = { id: string; dir: string; kicker: string; title: string
 export const SHARE_CARDS: ShareCard[] = [
   { id: "home", dir: "app", kicker: "Corral", title: "The right fifty companies, already read.", piece: "fit",
     alt: "Corral: the right fifty companies, already read. Kilima Dairies scores 94 for ColdTrace Sensors, with each check and its evidence." },
-  { id: "open-range", dir: "app/open-range", kicker: "Corral", title: "The right fifty, already read.", piece: "prov",
-    alt: "Corral: the right fifty, already read. Where Wanjiru Mwangi’s email came from, with each source and when Corral checked it." },
   { id: "fenceline", dir: "app/fenceline", kicker: "Corral", title: "Gather the few who fit.", piece: "unibox",
     alt: "Corral: gather the few who fit. Brian Kamau’s reply in the Unibox with Corral’s draft, citing the knowledge base." },
   { id: "pricing", dir: "app/pricing", kicker: "Pricing", title: "Priced by how much of the field you read.", piece: "plans",

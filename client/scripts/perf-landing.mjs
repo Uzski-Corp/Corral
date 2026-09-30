@@ -4,10 +4,10 @@
 // Lighthouse). Each route runs N times per width; medians, because the pre-FCP layout task is bimodal.
 //
 //   pnpm build && pnpm start -p 3302 &     (or a review build: NEXT_PUBLIC_DESIGN_REVIEW=1)
-//   BASE=http://localhost:3302 node scripts/perf-landing.mjs /,/open-range,/pricing 8     (DEBUG=1 lists each run's long tasks)
+//   BASE=http://localhost:3302 node scripts/perf-landing.mjs /,/fenceline,/pricing 8     (DEBUG=1 lists each run's long tasks)
 import { chromium } from "@playwright/test";
 const base = process.env.BASE ?? "http://localhost:3302";
-const routes = (process.argv[2] ?? "/open-range").split(",");
+const routes = (process.argv[2] ?? "/").split(",");
 const N = Number(process.argv[3] ?? 5);
 const reduce = process.env.REDUCE === "1";
 const b = await chromium.launch({ channel: process.env.PLAYWRIGHT_CHANNEL || undefined });

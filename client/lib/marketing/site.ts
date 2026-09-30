@@ -8,7 +8,6 @@ export const LAUNCH = "2026-10-07";
 /** Every public marketing route. The sitemap, the nav, the footer and the tests read this. */
 export const ROUTES = {
   home: "/",
-  openRange: "/open-range",
   fenceline: "/fenceline",
   pricing: "/pricing",
   security: "/security",
@@ -22,18 +21,17 @@ export const ROUTES = {
 export type SiteRoute = (typeof ROUTES)[keyof typeof ROUTES];
 export const PUBLIC_ROUTES: SiteRoute[] = Object.values(ROUTES);
 
-/** Which landing is home. Open Range is `/` since ENG-87 (Aegon's call); /open-range stays as an alias with `/` as
-    canonical, and Fenceline stays live at /fenceline, noindex (HANDOFF §18 "Pick /"). */
+/** Which landing is home. Open Range is `/` since ENG-87 (Aegon's call) and has no other address (/open-range was
+    removed); Fenceline stays live at /fenceline, noindex (HANDOFF §18 "Pick /"). */
 export type Landing = "open-range" | "fenceline";
 export const HOME: Landing = "open-range";
 export const homeOf = (l: Landing = HOME) => (l === "open-range" ? ROUTES.home : ROUTES.fenceline);
 
-/** What the sitemap lists: every public page except sign-in, the /open-range alias (canonical `/`), the landing that
-    isn't home, and the legal stubs until counsel's text is in. */
-export function sitemapRoutes(legalConfirmed = isConfirmed("legal"), home: Landing = HOME): SiteRoute[] {
+/** What the sitemap lists: every public page except sign-in, Fenceline (live but noindex while Open Range is home),
+    and the legal stubs until counsel's text is in. */
+export function sitemapRoutes(legalConfirmed = isConfirmed("legal")): SiteRoute[] {
   const legal: string[] = [ROUTES.terms, ROUTES.privacy, ROUTES.dpa];
-  const other = home === "open-range" ? ROUTES.fenceline : ROUTES.openRange;
-  return PUBLIC_ROUTES.filter((r) => r !== ROUTES.signIn && r !== ROUTES.openRange && r !== other && (legalConfirmed || !legal.includes(r)));
+  return PUBLIC_ROUTES.filter((r) => r !== ROUTES.signIn && r !== ROUTES.fenceline && (legalConfirmed || !legal.includes(r)));
 }
 
 export const NAV: { label: string; href: SiteRoute }[] = [

@@ -4,7 +4,7 @@ import { OpenRangeHero } from "./Hero";
 import { People } from "./People";
 import { PricingFooter } from "./PricingFooter";
 
-/** The Open Range landing (M10), the public home page since ENG-87. `/` renders it; `/open-range` keeps it at its old address with `/` as canonical. */
+/** The Open Range landing (M10), the public home page since ENG-87. `/` renders it and is its only address (`/open-range` was removed). */
 export function OpenRangeLanding() {
   return (
     <main className="theme-open-range">
