@@ -31,11 +31,13 @@ def test_worker_kwargs_follow_settings() -> None:
             worker_max_tries=3,
             worker_shutdown_grace_s=9,
             kb_ingest_timeout_s=11,
+            leads_import_timeout_s=13,
         )
     )
-    job, ingest = kwargs["functions"]
+    job, ingest, lead_import = kwargs["functions"]
     assert (job.name, job.timeout_s, job.max_tries) == ("count_org_leads", 7, 3)
     assert (ingest.name, ingest.timeout_s, ingest.max_tries) == ("ingest_source", 11, 3)
+    assert (lead_import.name, lead_import.timeout_s) == ("import_leads", 13)
     assert kwargs["job_completion_wait"] == 9
     assert kwargs["queue_name"] == QUEUE_NAME
     assert kwargs["retry_jobs"] is True

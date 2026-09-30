@@ -59,7 +59,13 @@ async def test_authenticated_request_is_allowed(
 
 # POSTs that only read (a search body is too big for a query string). Everything else that
 # isn't GET/HEAD/OPTIONS changes state and must check the Origin (CSRF).
-READ_ONLY_POSTS = {"/api/v1/products/{product_id}/knowledge/search"}
+READ_ONLY_POSTS = {
+    "/api/v1/products/{product_id}/knowledge/search",
+    "/api/v1/companies/query",
+    "/api/v1/companies/enroll-plan",
+    "/api/v1/segments/preview",
+    "/api/v1/segments/{segment_id}/companies",
+}
 
 
 def state_changing_routes() -> list[tuple[str, str]]:

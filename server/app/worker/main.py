@@ -17,6 +17,7 @@ from app.core.logging import configure_logging
 from app.db.session import Database
 from app.kb.embeddings import Embedder, build_embedder
 from app.kb.ingest import ingest_source
+from app.leads.importer import import_leads
 from app.worker.jobs import count_org_leads
 from app.worker.queue import QUEUE_NAME
 
@@ -60,6 +61,12 @@ def build_worker_kwargs(settings: Settings) -> dict[str, Any]:
                 ingest_source,
                 name="ingest_source",
                 timeout=settings.kb_ingest_timeout_s,
+                max_tries=settings.worker_max_tries,
+            ),
+            func(
+                import_leads,
+                name="import_leads",
+                timeout=settings.leads_import_timeout_s,
                 max_tries=settings.worker_max_tries,
             ),
         ],

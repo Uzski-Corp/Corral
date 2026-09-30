@@ -15,6 +15,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 AppEnv = Literal["local", "test", "staging", "production"]
 EmbeddingProvider = Literal["hashing", "openai"]
 DedupeScope = Literal["product", "org", "off"]
+UnsubscribeScope = Literal["address", "company"]
 MIB = 1024 * 1024
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR"]
 
@@ -120,6 +121,33 @@ class Settings(BaseSettings):
     kb_url_user_agent: str = "CorralBot/0.1 (+https://corral.app/bot)"
     kb_respect_robots_txt: bool = True
 
+    # --- Lead CRM (companies, people, imports, segments). Open product questions are
+    # "Decisions for Sean" in the PR; every default here is one of them.
+    leads_import_max_bytes: int = Field(default=20 * MIB, ge=1_024, le=512 * MIB)
+    leads_import_max_rows: int = Field(default=50_000, ge=1)
+    leads_import_max_columns: int = Field(default=100, ge=2, le=2_000)
+    leads_import_max_field_chars: int = Field(default=10_000, ge=100, le=100_000)
+    # Used when a file isn't UTF-8 (Excel's "CSV" is often Windows-1252). "" rejects it.
+    leads_import_fallback_encoding: Literal["cp1252", "latin-1", ""] = "cp1252"
+    leads_imports_per_user: int = Field(default=20, ge=1)
+    leads_import_window_s: int = Field(default=3_600, ge=1)
+    leads_import_timeout_s: int = Field(default=600, ge=1)
+    leads_import_batch_rows: int = Field(default=1_000, ge=1, le=10_000)
+    leads_max_companies_per_org: int = Field(default=100_000, ge=1)
+    # Companies without a website are matched by exact (case/space-insensitive) name.
+    leads_match_company_by_name: bool = True
+    leads_query_max_limit: int = Field(default=200, ge=1, le=1_000)
+    leads_max_rules: int = Field(default=20, ge=1, le=100)
+    leads_bulk_max_ids: int = Field(default=1_000, ge=1)
+    leads_bulk_max_rows: int = Field(default=100_000, ge=1)
+    leads_bulk_confirm_at: int = Field(default=100, ge=1)  # the client's BULK_CONFIRM_AT
+    # "address": unsubscribing suppresses that email. "company": every person there.
+    leads_unsubscribe_scope: UnsubscribeScope = "address"
+    # Until mailboxes exist (ENG-56), the enroll dry run spreads sends at this pool rate.
+    leads_pool_sends_per_day: int = Field(default=210, ge=1)
+    leads_replied_window_days: int = Field(default=30, ge=0)
+    leads_enroll_allow_catch_all: bool = False
+
     @field_validator("workos_cookie_password")
     @classmethod
     def _cookie_password_is_fernet_key(cls, value: SecretStr) -> SecretStr:
@@ -152,6 +180,8 @@ class Settings(BaseSettings):
             and not self.kb_embedding_api_key.get_secret_value()
         ):
             raise ValueError("KB_EMBEDDING_API_KEY is required when KB_EMBEDDING_PROVIDER=openai")
+        if self.leads_bulk_max_ids > self.leads_bulk_max_rows:
+            raise ValueError("LEADS_BULK_MAX_IDS cannot exceed LEADS_BULK_MAX_ROWS")
         return self
 
     @model_validator(mode="after")

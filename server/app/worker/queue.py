@@ -54,5 +54,15 @@ class JobQueue:
             _defer_by=INGEST_DEFER_S,
         )
 
+    async def enqueue_import_leads(self, org_id: uuid.UUID, import_id: uuid.UUID) -> Job | None:
+        """Apply a stored CSV import. Enqueued inside the request transaction, like ingest."""
+        return await self.redis.enqueue_job(
+            "import_leads",
+            str(org_id),
+            str(import_id),
+            _job_id=f"import_leads:{import_id}",
+            _defer_by=INGEST_DEFER_S,
+        )
+
     async def close(self) -> None:
         await self.redis.aclose(close_connection_pool=True)

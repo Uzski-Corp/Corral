@@ -120,6 +120,38 @@ One knowledge base per product: `POST /api/v1/products`, then under
   dimensions. Changing the model means re-reading every source.
 - All limits are `KB_*` settings (see `.env.example` and `app/core/config.py`).
 
+## Lead CRM (companies, people, segments, CSV import)
+
+The lead table is **companies** (accounts) with their **primary person**; people live in
+`leads` and link to a company. Everything is org-scoped with RLS and composite
+`(id, org_id)` foreign keys, like the KB tables (migration `0005_lead_crm`).
+
+| Route | What it does |
+| --- | --- |
+| `GET /companies`, `POST /companies/query` | filter (`rules`, `match: all\|any`), sort (`company, person, fit, email, reply, last, created`), cursor page -> `{data, next_cursor, has_more, total}` |
+| `POST /companies` / `GET, PATCH, DELETE /companies/{id}` | CRUD; website normalised and unique per workspace (409 `duplicate` + `existing_id`) |
+| `POST /companies/{id}/merge` | `{duplicate_id}`: keep this one, fill its blanks, move people, fits and pins |
+| `POST /companies/bulk` | `set_reply_status`, `add_to_segment`, `remove_from_segment`, `delete` over `{ids}` or `{all, rules, match}`; `confirm` needed at `LEADS_BULK_CONFIRM_AT` |
+| `POST /companies/enroll-plan` | dry run for "Add to sequence": `{will_enroll, skipped[{reason,n}], sends_per_day, days}` |
+| `POST /leads/{id}/unsubscribe` | final; suppresses the address workspace-wide |
+| `GET, POST /segments`, `GET, PATCH, DELETE /segments/{id}` | saved rules + pinned companies (`company_ids`, `from_import_id`) |
+| `POST /segments/preview`, `POST /segments/{id}/companies` | live count + first four; the members, paged like the table |
+| `POST /lead-imports` | multipart `file`, `mapping` (JSON list, one field or `"skip"` per column), `policy` (`skip\|fill\|overwrite`), `dry_run`; `200` plan or `202` |
+| `GET /lead-imports[/{id}]`, `GET .../errors.csv` | progress and receipt; the rows left behind (spreadsheet-safe) |
+
+- Rules compile to one SQL predicate (people and fits through `EXISTS`), so a filter, a
+  count and a bulk action over 100k rows are each one statement. Unfinished rules are a
+  422, never silently ignored. Pagination is keyset: the cursor is opaque and bound to its
+  query (400 `invalid_cursor` otherwise).
+- Import runs in the worker (`import_leads`) in **one** transaction per file, serialized
+  per workspace, after the API has checked the file. Dedupe: email first, website when the
+  row has no email; repeats inside the file keep the first row. The upload is dropped when
+  the import finishes. Bodies over `LEADS_IMPORT_MAX_BYTES` are refused before they are read.
+- `POST .../query`, `.../enroll-plan`, `.../preview` and `/segments/{id}/companies` only
+  read; every other write requires an allow-listed `Origin` (CSRF).
+- All limits and policies are `LEADS_*` settings (see `.env.example` and
+  `app/core/config.py`).
+
 ## Background jobs & observability
 
 - Jobs live in `app/worker/jobs.py` and are registered in `app/worker/main.py`. Enqueue from
