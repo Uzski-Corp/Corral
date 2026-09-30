@@ -25,6 +25,12 @@ describe("every state, indexed", () => {
     for (const st of ["unreadable", "partial", "interrupted"]) expect(kb.find((x) => x.state === st)?.kind, st).toBe("partial");
     expect(kb.find((x) => x.state === "interrupted")?.href).toBe("/app?view=knowledge&state=interrupted");
   });
+  it("indexes the M10c marketing visitor states on /, and the new KB partial reasons", () => {
+    const all = allStates();
+    expect(all.filter((x) => x.surface === "marketing").map((x) => [x.state, x.kind, x.href])).toEqual([
+      ["signed-out", "view", "/?state=signed-out"], ["signed-in", "view", "/?state=signed-in"], ["signed-in-initials", "partial", "/?state=signed-in-initials"]]);
+    for (const st of ["partial-limit", "partial-web", "partial-mixed"]) expect(all.find((x) => x.surface === "knowledge" && x.state === st)?.kind, st).toBe("partial");
+  });
   it("names map to kinds", () => {
     expect(kindOf("mcp-empty")).toBe("empty");
     expect(kindOf("builder-error")).toBe("error");

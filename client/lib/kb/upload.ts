@@ -129,14 +129,22 @@ export function recoveryOf(failure: Failure, stage?: Stage): "retry" | "replace"
   return FAILURE[failure].action ?? "remove";
 }
 
-/** Why a partial read skipped what it skipped. The server sends prose (`note`) and a label (`skipped`),
- *  not a reason code, so this reads the note PR #67 writes: scanned pages, the page/text limit, or web
- *  pages in a section that couldn't be read. Ask for a `skipped_reason` if the prose changes. */
-export type PartialReason = "scanned" | "limit" | "pages";
-export function partialReason(note: string | undefined, kind: SourceKind): PartialReason {
-  if (kind === "url") return "pages";
-  if (note && /scanned/i.test(note)) return "scanned";
-  return "limit";
+/** Why a partial source is missing pages: SourceOut `skipped_reason` (PR #67, 2f66f91; server
+ *  app/kb/errors.py `SkipReason`), set exactly when `skipped` is. Each reason has its own copy and fix. */
+export const SKIP_REASONS = ["scanned", "size-limit", "unreadable", "mixed"] as const;
+export type SkipReason = (typeof SKIP_REASONS)[number];
+export const SKIP: Record<SkipReason, { key: string; fix: "text-version" | "split" | "reread" }> = {
+  scanned: { key: "images, no text", fix: "text-version" },
+  "size-limit": { key: "past the limit", fix: "split" },
+  unreadable: { key: "didn’t load", fix: "reread" },
+  mixed: { key: "scans and the limit", fix: "text-version" },
+};
+
+/** "Tried 3 times" from SourceOut `attempts` (worker tries of the current read: 0 queued, 1 first read,
+ *  2+ after retries, reset to 0 by a re-read). Undefined when nothing has run yet. */
+export function triedLabel(attempts: number | undefined): string | undefined {
+  if (!attempts) return undefined;
+  return attempts === 1 ? "Tried once" : attempts === 2 ? "Tried twice" : `Tried ${attempts} times`;
 }
 
 /** Page numbers from the server's `skipped` label ("page 3", "pages 2, 5–7"). Null when it isn't a
@@ -160,4 +168,42 @@ export function queueSummary(items: { state: "queued" | "active" | "done" | "err
   if (!items.length) return "Nothing added yet";
   if (busy) return `Adding ${done + 1} of ${items.length - bad}${bad ? ` · ${bad} ${bad === 1 ? "needs" : "need"} attention` : ""}`;
   return [`${done} added`, bad && `${bad} ${bad === 1 ? "needs" : "need"} attention`].filter(Boolean).join(" · ");
+}
+
+/* ------------------------------------------------------------ M11: refusals, toasts, search */
+/** Queue-row copy for an API refusal the client can't pre-check (codes from lib/api/kb.ts). The server's
+ *  sentence is kept as the detail only where our copy can't say more. `actions` are queue actions. */
+export type Refusal = { title: string; fix: string; actions: ("retry" | "replace" | "skip")[] };
+export function refusalCopy(code: string | undefined, kind: SourceKind, server: string): Refusal {
+  switch (code) {
+    case "kb_full": return { title: "This knowledge base is full", fix: `${server} Remove a source you no longer need, then retry.`, actions: ["retry", "skip"] };
+    case "url_not_public": return { title: "That page isn’t public", fix: "Corral can only read pages anyone can open without signing in. Add the public version of the page instead.", actions: ["skip"] };
+    case "url_invalid": return { title: "That isn’t a page Corral can open", fix: "Check the address, like coldtrace.io/pricing, and add it again.", actions: ["skip"] };
+    case "type_mismatch": return { title: "This file isn’t what its name says", fix: "Its contents don’t match its type. Save it again as PDF, DOCX or Markdown, then replace it.", actions: ["replace", "skip"] };
+    default: return kind === "url"
+      ? { title: "Couldn’t read this page", fix: server, actions: ["retry", "skip"] }
+      : { title: "Couldn’t add this file", fix: server, actions: ["retry", "skip"] };
+  }
+}
+
+/** Toasts for source actions that failed. Each says what's true now, and the action is the recovery. */
+export const ACTION_FAILED = {
+  reread: (name: string) => ({ text: `Couldn’t re-read ${name}. The current version stays searchable.`, action: "Try again" }),
+  remove: (name: string) => ({ text: `Couldn’t remove ${name}. It’s still in your sources.`, action: "Try again" }),
+  restore: (name: string) => ({ text: `Couldn’t bring back ${name}. It’s still removed.`, action: "Try again" }),
+} as const;
+
+/** KB search (POST …/search, `limit`): 8 hits first, "Show more" once to the API's 20. */
+export const SEARCH_LIMIT = 8;
+export const SEARCH_MAX = 20;
+/** Queries shorter than this don't search (one letter matches everything). */
+export const SEARCH_MIN = 2;
+
+/** Markdown meta line. SourceOut has only `byte_size` for markdown today; words and headings are a Krak ask. */
+export function mdMeta(bytes: number, o: { words?: number; headings?: number } = {}): string {
+  const parts = ["Markdown"];
+  if (o.words) parts.push(`${o.words.toLocaleString("en-GB")} words`);
+  if (o.headings) parts.push(`${o.headings} ${o.headings === 1 ? "section" : "sections"}`);
+  parts.push(formatBytes(bytes));
+  return parts.join(" · ");
 }

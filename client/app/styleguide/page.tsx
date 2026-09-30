@@ -10,6 +10,8 @@ import { CopilotStatesDemo, ThreadViewDemo, UniboxTriageDemo } from "./M7Section
 import { HandoffDemo, IntegrationsDemo } from "./M8Sections";
 import { DevelopersDemo } from "./M9Sections";
 import { EveryStateDemo } from "./M10Sections";
+import { VisitorNavDemo } from "./M10cSections";
+import { KbWiringDemo } from "./M11Sections";
 import { EditorDemo, KbShellDemo, SourceDetailDemo, SourceFailuresDemo, SourceListDemo, UploadDemo } from "./M2Sections";
 import { AccountStatesDemo, CodeStatesDemo, CmdkDemo, ContrastDemo, FormDemo, OverlayDemo, SessionErrorDemo, ShellDemo, StatesDemo, TabsToastDemo } from "./M1Sections";
 import {
@@ -46,7 +48,7 @@ export default function Styleguide() {
           <Link href="/app">/app</Link><Link href="/app?cmdk=1">/app?cmdk=1</Link><Link href="/app?state=api-down">/app?state=api-down</Link><Link href="/sign-in">/sign-in</Link><Link href="/sign-in?state=cancelled">?state=cancelled</Link><Link href="/sign-in?state=unavailable">?state=unavailable</Link><Link href="/onboarding">/onboarding</Link>
           <span className="sg-faint">Handoff: <code>round3/tokens/HANDOFF-ENG.md</code></span></nav>
         <nav className="sg-routes" aria-label="Marketing pages (M10)"><span className="sg-faint">Site (M10)</span>
-          <Link href="/">/ (Open Range)</Link><Link href="/styleguide/landings">/styleguide/landings</Link><Link href="/fenceline">/fenceline</Link><Link href="/pricing">/pricing</Link><Link href="/security">/security</Link><Link href="/mcp">/mcp</Link><Link href="/changelog">/changelog</Link><Link href="/legal/terms">/legal/terms</Link><Link href="/styleguide/share">/styleguide/share</Link><a href="#every-state">§46 Every state</a><a href="#source-failures">§22b Source failures</a></nav>
+          <Link href="/">/ (Open Range)</Link><Link href="/styleguide/landings">/styleguide/landings</Link><Link href="/fenceline">/fenceline</Link><Link href="/pricing">/pricing</Link><Link href="/security">/security</Link><Link href="/mcp">/mcp</Link><Link href="/changelog">/changelog</Link><Link href="/legal/terms">/legal/terms</Link><Link href="/styleguide/share">/styleguide/share</Link><a href="#every-state">§46 Every state</a><a href="#signed-in-visitor">§47 Signed-in visitor</a><a href="#kb-wiring">§48 Knowledge on the API</a><a href="#source-failures">§22b Source failures</a></nav>
         <ul className="sg-rules">
           <li><b>One action colour.</b> Blue <code>--color-action</code> for the one thing to do next; near-black <code>--color-action-2</code> for the second.</li>
           <li><b>Two weights, one tracking.</b> Inter 400/500 at 12–24px, −0.15px everywhere.</li>
@@ -318,6 +320,14 @@ export default function Styleguide() {
       <Part wide n="46" title="Every state" tokens={["lib/states: SURFACES · kindOf · gaps · allStates", "Skeleton / SkeletonTable / SkeletonThreads / AppSkeleton", "EmptyState: title, one line, one action", "ErrorState: title, nothing lost, Try again, GET … · status"]}
         notes={<><p>Every review state in the app, from one index, by the kind of moment it is. Each surface has an empty, a loading and an error state, or says why it doesn&rsquo;t; the test in <code>lib/states</code> fails if one goes missing. Click any state to open it.</p><p>One voice: an empty state says what goes here and the one thing to do; an error says what failed, that nothing was lost, <em>Try again</em> in blue, and the request in mono (<code>GET /api/v1/… · 503</code>). Titles use ’, never &apos;. One skeleton system at real row heights; nothing spins where a skeleton fits.</p></>}>
         <div id="every-state"><EveryStateDemo /></div>
+      </Part>
+      <Part wide n="47" title="Signed-in visitor on marketing" tokens={["lib/marketing/visitor: corral_visitor hint · visitorFor · SAMPLE_VISITORS", "?state=signed-out | signed-in | signed-in-initials (review builds)", "mk-me 28: picture, or initials on neutral-200 / neutral-600", "Open app → /app; each nav keeps its own primary"]}
+        notes={<><p>Someone already signed in who comes back to <code>/</code> to read pricing or security, or opens a shared link, gets the same marketing page. Only the nav changes: <em>Sign in</em> and <em>Start</em> give way to their picture (or initials) and <b>Open app</b>. Nobody is redirected.</p><p>The page stays static. The real session is the API&rsquo;s HttpOnly cookie, so the app leaves a small first-party hint (name and picture, no email) that the nav reads after hydration. A stale hint costs one sign-in at <code>/app</code>, never access.</p></>}>
+        <div id="signed-in-visitor"><VisitorNavDemo /></div>
+      </Part>
+      <Part wide n="48" title="Knowledge base on the API" tokens={["lib/kb/passages: passageLabel · cleanPassage · plainPassage", "lib/kb/upload: refusalCopy · ACTION_FAILED · SEARCH_LIMIT 8 / SEARCH_MAX 20 · mdMeta", "lib/kb/products: productRows", "KbSearch · PassageItem · PersonMark · FirstProductField · ReplacingCard", "?state=not-drafted | first-product | markdown | replace | search | search-loading | search-none | search-error"]}
+        notes={<><p>What Krak found wiring the knowledge base to the API (PR #73), designed against the shapes it returns and nothing more. Search is the same passage search Corral uses when it writes: 8 closest first, <em>Show more</em> to 20. A markdown passage is located by its heading, so the heading gets its own mono line (ellipsis, full text on hover and focus) and the passage loses its <code>#</code> markers.</p><p>Nothing is drafted on the API yet, so the Knowledge tab says so and points at what works (search, sources), and the page opens on Sources. Web pages are read when added and re-read by hand; nothing promises a schedule.</p></>}>
+        <div id="kb-wiring"><KbWiringDemo /></div>
       </Part>
 
       <footer className="sg-foot">Sample content: people, companies and numbers are illustrative. Photos from Unsplash and Pexels, reference only.</footer>

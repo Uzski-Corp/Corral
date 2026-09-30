@@ -3,9 +3,12 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Mark } from "@/components/app/icons"; // deep import: the 404 and error pages load this on every route
-import { CTA, FOOTER, HOME, NAV, ROUTES, SAMPLE_NOTE, homeOf, type Landing } from "@/lib/marketing/site";
+import { FOOTER, HOME, NAV, ROUTES, SAMPLE_NOTE, homeOf, type Landing } from "@/lib/marketing/site";
+import { AuthLink, SiteNavAccount } from "./Visitor";
+import type { Visitor } from "@/lib/marketing/visitor";
 
-export function SiteNav({ current, landing = HOME }: { current?: string; landing?: Landing }) {
+/** `visitor` pins the account slot (styleguide); pages leave it out and the slot reads this browser. */
+export function SiteNav({ current, landing = HOME, visitor }: { current?: string; landing?: Landing; visitor?: Visitor | null }) {
   return (
     <header className="sn-nav">
       <div className="sn-wrap sn-nav__in">
@@ -13,15 +16,13 @@ export function SiteNav({ current, landing = HOME }: { current?: string; landing
         <nav className="sn-nav__links" aria-label="Main">
           {NAV.map((n) => <Link key={n.href} href={n.href} aria-current={current === n.href ? "page" : undefined}>{n.label}</Link>)}
         </nav>
-        <div className="sn-nav__cta">
-          <Link className="sn-nav__signin" href={ROUTES.signIn}>Sign in</Link>
-          <Link className="c-btn c-btn--primary c-btn--lg" href={CTA.start}>Start with one product</Link>
-        </div>
+        <SiteNavAccount visitor={visitor} />
         <details className="sn-menu">
           <summary>Menu</summary>
           <nav aria-label="Main, small screens"><ul>
             {NAV.map((n) => <li key={n.href}><Link href={n.href} aria-current={current === n.href ? "page" : undefined}>{n.label}</Link></li>)}
-            <li><Link href={ROUTES.signIn}>Sign in</Link></li>
+            {/* Signed in, "Open app" is already in the bar at every width, so the menu drops its Sign in. */}
+            <AuthLink visitor={visitor} hideSignedIn item />
           </ul></nav>
         </details>
       </div>
@@ -40,7 +41,7 @@ export function SiteFooter({ landing = HOME }: { landing?: Landing }) {
           </div>
           <div className="sn-foot__cols">
             {FOOTER.map((c) => (
-              <div key={c.title}><h2>{c.title}</h2><ul>{c.links.map((l) => <li key={l.label}><Link href={l.href}>{l.label}</Link></li>)}</ul></div>
+              <div key={c.title}><h2>{c.title}</h2><ul>{c.links.map((l) => <li key={l.label}>{l.href === ROUTES.signIn ? <AuthLink /> : <Link href={l.href}>{l.label}</Link>}</li>)}</ul></div>
             ))}
           </div>
         </div>

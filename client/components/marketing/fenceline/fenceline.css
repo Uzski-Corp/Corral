@@ -23,6 +23,9 @@
 .fl-logo { display: inline-flex; align-items: center; gap: 10px; color: var(--mk-ink); text-decoration: none; font: 400 25px/1 var(--mk-font-display); letter-spacing: -0.02em; }
 .fl-nav__links { display: flex; gap: 26px; white-space: nowrap; }
 .fl-nav__links a { font: 500 14px/1 var(--font-sans); color: var(--mk-ink); text-decoration: none; letter-spacing: -0.01em; }
+.fl-nav:has(.fl-nav__me) .fl-nav__links { margin-left: auto; }
+.fl-nav__me { display: flex; align-items: center; gap: 12px; }
+.fl-btn--sm { height: 32px; padding: 0 14px; font-size: 14px; }
 .fl-hero__copy { margin-top: 128px; }
 .fl-hero h1 { font-size: var(--mk-text-folio); line-height: 0.96; letter-spacing: -0.03em; }
 .fl-hero h1 em { font-style: italic; }

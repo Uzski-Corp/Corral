@@ -2,8 +2,9 @@
    A server component: only the address it read is client-side, so the 404 (loaded with every route) stays small. */
 import Link from "next/link";
 import { CurrentPath } from "./CurrentPath";
+import { AuthLink } from "./Visitor";
 import { FitBar, Receipt, Receipts } from "@/components/app/primitives"; // deep import, see Chrome.tsx
-import { HOME, NAV, ROUTES, homeOf } from "@/lib/marketing/site";
+import { HOME, NAV, homeOf } from "@/lib/marketing/site";
 
 export function NotFoundBody() {
   return (
@@ -20,7 +21,7 @@ export function NotFoundBody() {
       <nav className="sn-404__go" aria-label="Where to next">
         <Link className="c-btn c-btn--primary c-btn--lg" href={homeOf(HOME)}>Go to the home page</Link>
         {NAV.map((n) => <Link key={n.href} className="sn-link" href={n.href}>{n.label}</Link>)}
-        <Link className="sn-link" href={ROUTES.signIn}>Sign in</Link>
+        <AuthLink className="sn-link" />
       </nav>
     </div>
   );

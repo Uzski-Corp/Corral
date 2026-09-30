@@ -6,7 +6,8 @@ import { Dialog } from "../Overlays";
 import { Button, Segmented, cx } from "../primitives";
 import { FormField, TextInput } from "../Form";
 import { Spinner } from "../States";
-import { FileTile, Progress, useTicker } from "./parts";
+import { FileTile, Progress, kindMeta, useTicker } from "./parts";
+import type { Source } from "./data";
 
 /* ------------------------------------------------------------ queue model */
 export type QueueError = { title: string; fix: string; actions: ("retry" | "replace" | "skip")[] };
@@ -105,7 +106,7 @@ export function UrlAdder({ onAdd, defaultValue = "", defaultError }: { onAdd: (h
     onAdd(r.host, r.path, whole === "Whole section"); setV(""); setErr(undefined);
   };
   return (
-    <FormField label="Or add a web page" error={err} help={err ? undefined : "Corral re-reads web pages every week, so the knowledge stays current."}
+    <FormField label="Or add a web page" error={err} help={err ? undefined : "Corral reads the page when you add it. When the page changes, choose Re-read on its row."}
       action={<Segmented label="How much to read" options={["This page", "Whole section"]} value={whole} onChange={setWhole} />}>
       <form className="k-url" onSubmit={(e) => { e.preventDefault(); submit(); }}>
         <TextInput icon="globe" placeholder="coldtrace.io/pricing" value={v} onChange={(e) => { setV(e.target.value); if (err) setErr(undefined); }} inputMode="url" autoComplete="url" />
@@ -147,13 +148,48 @@ export function QueueRow({ it, onRetry, onDismiss, onReplace }: { it: QueueItem;
 }
 
 /* ------------------------------------------------------------ dialog */
-export function UploadDialog({ open, onClose, q, product, existing = [], inline, onReplace }: {
+/* First product (M11, gap 7): no product yet, so the first file creates one. Instead of silently naming it
+   after the workspace, one inline field, prefilled with the workspace name, sits with the first upload.
+   Skip keeps the prefill and folds the field to a line; the name is only used when the first file lands. */
+export type FirstProduct = { name: string; workspace: string; setName: (n: string) => void };
+export function FirstProductField({ fp }: { fp: FirstProduct }) {
+  const [folded, setFolded] = useState(false);
+  const name = fp.name.trim() || fp.workspace;
+  if (folded) return (
+    <p className="k-fp k-fp--folded"><Icon name="box" size={13} /><span>Adding to <b>{name}</b></span>
+      <button type="button" className="c-link k-fp__edit" onClick={() => setFolded(false)}>Rename</button></p>
+  );
+  return (
+    <div className="k-fp">
+      <FormField label="What do you sell?" help="Sources go into this product. You can rename it later." action={<button type="button" className="c-link k-fp__skip" onClick={() => setFolded(true)}>Skip</button>}>
+        <TextInput icon="box" value={fp.name} placeholder={fp.workspace} onChange={(e) => fp.setName(e.target.value)} onBlur={() => { if (!fp.name.trim()) fp.setName(fp.workspace); }} maxLength={120} autoComplete="off" />
+      </FormField>
+    </div>
+  );
+}
+
+/* Replace file (M11, gap 11): say which source is being replaced, with its type and meta. */
+export function ReplacingCard({ src }: { src: Source }) {
+  return (
+    <div className="k-replacing">
+      <FileTile kind={src.kind} size={36} />
+      <span className="k-replacing__txt"><span className="k-eyebrow">Replacing</span><b>{src.name}</b><span>{kindMeta(src)}{src.passages ? ` · ${src.passages} passages` : ""}</span></span>
+    </div>
+  );
+}
+
+export function UploadDialog({ open, onClose, q, product, existing = [], inline, onReplace, replacing, firstProduct }: {
   open: boolean; onClose: () => void; q: UploadQueue; product: string; existing?: string[]; inline?: boolean; onReplace?: (it: QueueItem) => void;
+  /** "Replace file": the source the next file replaces (the dialog takes one file, no web pages). */
+  replacing?: Source;
+  /** No product yet: name it with the first upload. */
+  firstProduct?: FirstProduct;
 }) {
   const bad = q.items.filter((i) => i.state === "error").length;
   return (
-    <Dialog open={open} onClose={onClose} inline={inline} width={600} title="Add sources"
-      description={<>Corral reads each one, splits it into passages it can search, and drafts what it learns into <b className="k-strong">{product}</b>.</>}
+    <Dialog open={open} onClose={onClose} inline={inline} width={600} title={replacing ? "Replace file" : "Add sources"}
+      description={replacing ? <>The new file takes this one&rsquo;s place. The old copy stays searchable until the new one is read.</>
+        : <>Corral reads each one and splits it into passages it can search{firstProduct ? "" : <>, for <b className="k-strong">{product}</b></>}.</>}
       footer={<>
         <span className="k-foot-sum" role="status">
           <span>{queueSummary(q.items)}</span>
@@ -162,8 +198,10 @@ export function UploadDialog({ open, onClose, q, product, existing = [], inline,
         {bad > 0 && !q.busy && <Button variant="quiet" onClick={() => q.items.filter((i) => i.state === "error").forEach((i) => q.dismiss(i.id))}>Clear {bad === 1 ? "failure" : "failures"}</Button>}
         <Button variant={q.busy ? "default" : "primary"} onClick={onClose}>{q.busy ? "Hide" : "Done"}</Button>
       </>}>
-      <DropZone compact={q.items.length > 0} onFiles={(f) => q.addFiles(f, existing)} />
-      <UrlAdder onAdd={q.addUrl} />
+      {replacing && <ReplacingCard src={replacing} />}
+      {firstProduct && !replacing && <FirstProductField fp={firstProduct} />}
+      <DropZone compact={q.items.length > 0 || !!replacing} onFiles={(f) => q.addFiles(replacing ? f.slice(0, 1) : f, replacing ? existing.filter((n) => n !== replacing.name) : existing)} />
+      {!replacing && <UrlAdder onAdd={q.addUrl} />}
       {q.items.length > 0 && (
         <section className="k-queue" aria-label="This upload">
           <ul>{q.items.map((it) => <QueueRow key={it.id} it={it} onRetry={() => q.retry(it.id)} onDismiss={() => q.dismiss(it.id)} onReplace={() => { onReplace?.(it); q.dismiss(it.id); }} />)}</ul>

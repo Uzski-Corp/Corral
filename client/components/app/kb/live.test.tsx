@@ -20,7 +20,7 @@ const httpErr = (status: number, code?: string, extra: Partial<Extract<ApiError,
 const product = (id = "p1", name = "Kilima Dairies"): Product => ({ id, name, description: null, createdAt: "2026-09-30T06:00:00Z", updatedAt: "2026-09-30T06:00:00Z" });
 const productsOf = (over: Partial<KbProducts> = {}): KbProducts => ({
   phase: "ready", error: null, products: [product()], selected: product(), select: vi.fn(), retry: vi.fn(),
-  ensure: vi.fn(async () => ok(product())), ...over,
+  ensure: vi.fn(async () => ok(product())), firstName: "Kilima Dairies", setFirstName: vi.fn(), ...over,
 });
 const apiSource = (over: Partial<ApiSource> = {}): ApiSource => ({
   id: "s1", productId: "p1", kind: "pdf", name: "Spec.pdf", url: null, scope: null, byteSize: 10, status: "processing", stage: "scan", stagePct: 0,
@@ -74,6 +74,18 @@ describe("useKbProducts", () => {
     expect(kb.products).toHaveLength(1);
   });
 
+  it("names the first product from the inline field (M11), and falls back to the workspace when it's blank", async () => {
+    resetKb({ products: [] });
+    const { result } = renderHook(() => useKbProducts(api, { active: true, workspace: "Kilima Dairies" }));
+    await waitFor(() => expect(result.current?.phase).toBe("ready"));
+    expect(result.current?.firstName).toBe("Kilima Dairies");
+    act(() => result.current!.setFirstName("  "));
+    expect(result.current?.firstName).toBe("  ");
+    act(() => result.current!.setFirstName("Kilima Cold Rooms"));
+    await act(async () => { await result.current!.ensure(); });
+    expect(result.current?.selected?.name).toBe("Kilima Cold Rooms");
+  });
+
   it("returns the create failure without selecting anything", async () => {
     resetKb({ products: [] });
     server.use(http.post(`${API}/api/v1/products`, () => HttpResponse.json({ error: "name_taken", detail: "Taken." }, { status: 409 })));
@@ -100,9 +112,12 @@ describe("queueFailure", () => {
       .toEqual({ error: { title: "Already in this knowledge base", fix: "Replace the old copy, or skip this one.", actions: ["replace", "skip"] }, existingId: "s9" });
     expect(queueFailure(httpErr(409, "duplicate"), url)).toMatchObject({ error: { actions: ["skip"] }, existingId: undefined });
   });
-  it("uses the server's sentence for other conflicts", () => {
-    expect(queueFailure(httpErr(409, "kb_full"), pdf)).toEqual({ error: { title: "Couldn’t add it", fix: "The server said no.", actions: [] } });
-    expect(queueFailure({ ...httpErr(409, "kb_full"), message: "Full." }, pdf)).toMatchObject({ error: { fix: "Full." } });
+  it("gives each refusal code its own copy and recovery (M11), keeping the server's sentence where ours can't say more", () => {
+    expect(queueFailure(httpErr(409, "kb_full"), pdf)).toEqual({ error: { title: "This knowledge base is full", fix: "The server said no. Remove a source you no longer need, then retry.", actions: ["retry", "skip"] } });
+    expect(queueFailure(httpErr(409, "other"), pdf)).toEqual({ error: { title: "Couldn’t add this file", fix: "The server said no.", actions: ["retry", "skip"] } });
+    expect(queueFailure({ ...httpErr(409, "other"), message: "Full." }, pdf)).toMatchObject({ error: { fix: "Full." } });
+    expect(queueFailure(httpErr(415, "type_mismatch"), pdf)).toMatchObject({ error: { title: "This file isn’t what its name says", actions: ["replace", "skip"] } });
+    expect(queueFailure(httpErr(422, "url_not_public"), url)).toMatchObject({ error: { title: "That page isn’t public", actions: ["skip"] } });
   });
   it("uses the designed file checks for size and empty files", () => {
     expect(queueFailure(httpErr(413, "too_large"), pdf)).toMatchObject({ error: { title: expect.stringMatching(/over the 25 MB limit/) } });
@@ -110,8 +125,9 @@ describe("queueFailure", () => {
     expect(queueFailure(httpErr(422, "empty"), pdf)).toMatchObject({ error: { title: expect.stringMatching(/empty/i) } });
   });
   it("calls a refused type unreadable, and a refused page unaddable", () => {
-    expect(queueFailure(httpErr(415, "unsupported"), pdf)).toMatchObject({ error: { title: "Corral couldn’t read this file", fix: "The server said no." } });
-    expect(queueFailure(httpErr(422, "url_invalid"), url)).toMatchObject({ error: { title: "Couldn’t add this page" } });
+    expect(queueFailure(httpErr(415, "unsupported"), pdf)).toMatchObject({ error: { title: "Corral couldn’t read this file", fix: "The server said no.", actions: ["skip"] } });
+    expect(queueFailure(httpErr(422, "url_invalid"), url)).toMatchObject({ error: { title: "That isn’t a page Corral can open" } });
+    expect(queueFailure(httpErr(415), url)).toMatchObject({ error: { title: "Couldn’t read this page", fix: "The server said no.", actions: ["retry", "skip"] } });
   });
   it("treats anything else as a dropped upload with Retry", () => {
     expect(queueFailure({ kind: "network", op: "x", message: "n" }, pdf)).toEqual({ error: { title: "Upload stopped", fix: "The connection dropped. Nothing was saved.", actions: ["retry"] } });
@@ -288,7 +304,7 @@ describe("useLiveKb", () => {
   it("polls while a source is being read and stops once it's ready", async () => {
     resetKb({ sources: [sourceRow({ id: "s1", name: "Spec.pdf", status: "processing", stage: "embed", stage_pct: 40, processed_at: null })], readyAfter: 2 });
     const { result } = liveKb();
-    await waitFor(() => expect(result.current.sources[0]?.status).toEqual({ s: "processing", stage: "embed", pct: 40 }));
+    await waitFor(() => expect(result.current.sources[0]?.status).toEqual({ s: "processing", stage: "embed", pct: 40, attempts: 1 }));
     await waitFor(() => expect(result.current.sources[0]?.status).toEqual({ s: "ready" }), { timeout: 4000 });
     const lists = kb.lists;
     await new Promise((r) => setTimeout(r, 2300));
@@ -322,7 +338,7 @@ describe("useLiveKb", () => {
     const { result } = liveKb();
     await waitFor(() => expect(result.current.phase).toBe("ready"));
     act(() => result.current.reread("s1"));
-    await waitFor(() => expect(lastToast()).toMatchObject({ tone: "error", children: "Couldn’t read Spec.pdf again. Nothing changed." }));
+    await waitFor(() => expect(lastToast()).toMatchObject({ tone: "error", children: "Couldn’t re-read Spec.pdf. The current version stays searchable." }));
     expect(result.current.sources[0].status).toMatchObject({ s: "failed" });
     act(() => lastToast().action!.onClick());
     await waitFor(() => expect(lastToast()?.children).toBe("Reading Spec.pdf again"));
@@ -359,13 +375,16 @@ describe("useLiveKb", () => {
     const { result } = liveKb();
     await waitFor(() => expect(result.current.phase).toBe("ready"));
     act(() => result.current.remove("s1"));
-    await waitFor(() => expect(lastToast()).toMatchObject({ tone: "error", children: "Couldn’t remove Spec.pdf. Nothing changed." }));
+    await waitFor(() => expect(lastToast()).toMatchObject({ tone: "error", children: "Couldn’t remove Spec.pdf. It’s still in your sources." }));
     expect(result.current.sources).toHaveLength(1);
     server.use(http.post(`${SOURCES}/s1/restore`, () => HttpResponse.json({ error: "kb_full", detail: "Full." }, { status: 409 })));
     act(() => lastToast().action!.onClick());   // Try again
     await waitFor(() => expect(lastToast()?.children).toBe("Removed Spec.pdf"));
     act(() => lastToast().action!.onClick());   // Undo
-    await waitFor(() => expect(lastToast()).toMatchObject({ tone: "error", children: "Couldn’t bring back Spec.pdf." }));
+    await waitFor(() => expect(lastToast()).toMatchObject({ tone: "error", children: "Couldn’t bring back Spec.pdf. It’s still removed.", action: { label: "Try again" } }));
+    server.use(http.post(`${SOURCES}/s1/restore`, () => HttpResponse.json(sourceRow({ id: "s1", name: "Spec.pdf" }))));
+    act(() => lastToast().action!.onClick());   // Try again (restore)
+    await waitFor(() => expect(result.current.sources).toHaveLength(1));
   });
 
   it("loads a source's first passages once", async () => {
@@ -373,12 +392,22 @@ describe("useLiveKb", () => {
     const { result } = liveKb();
     await waitFor(() => expect(result.current.phase).toBe("ready"));
     act(() => { result.current.loadPassages("s2"); result.current.loadPassages("nope"); result.current.loadPassages("s1"); });
-    await waitFor(() => expect(result.current.passages.s1).toEqual([{ loc: "p. 1", text: "Sensors report every five minutes." }, { loc: "§2", text: "Alerts go to the on-call phone." }]));
+    await waitFor(() => expect(result.current.passages.s1).toEqual([{ loc: "p. 1", ordinal: 0, text: "Sensors report every five minutes." }, { loc: null, ordinal: 1, text: "Alerts go to the on-call phone." }]));
     expect(result.current.passages.s2).toBeUndefined();
     act(() => result.current.loadPassages("s1"));
     expect(passageRows([])).toEqual([]);
     expect(passageRows([{ id: "a", ordinal: 4, loc: "ColdTrace T4 wireless temperature sensors", text: "t" }, { id: "b", ordinal: 0, loc: "p. 14", text: "u" }]))
-      .toEqual([{ loc: "§5", text: "t" }, { loc: "p. 14", text: "u" }]);
+      .toEqual([{ loc: "ColdTrace T4 wireless temperature sensors", ordinal: 4, text: "t" }, { loc: "p. 14", ordinal: 0, text: "u" }]);
+  });
+
+  it("searches the selected product (M11), and answers empty without one", async () => {
+    resetKb({ sources: [sourceRow({ id: "s1", name: "Spec.pdf" })] });
+    const { result } = liveKb();
+    await waitFor(() => expect(result.current.phase).toBe("ready"));
+    const r = await result.current.search("battery", 8);
+    expect(r).toMatchObject({ ok: true, value: [{ sourceId: "s1", sourceName: "Spec.pdf", loc: "p. 1" }] });
+    const none = liveKb(productsOf({ products: [], selected: null }));
+    expect(await none.result.current.search("battery", 8)).toEqual({ ok: true, value: [] });
   });
 
   it("adds uploads to the list, creating the product first when there is none", async () => {

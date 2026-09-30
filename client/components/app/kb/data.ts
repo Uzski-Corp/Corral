@@ -1,23 +1,23 @@
-import type { Failure, PartialReason, SourceKind, Stage } from "@/lib/kb/upload";
+import type { Failure, SkipReason, SourceKind, Stage } from "@/lib/kb/upload";
 
 /* Sample knowledge base for ColdTrace Sensors (M2 design data; ENG-65 shapes the real one). */
 
-/** A source's status, from the server's SourceOut (PR #67, server/app/api/v1/kb_schemas.py):
- *  processing ← `stage`, `stage_pct`, `note` · partial ← `pages_read` (read), `pages_total` (total), `skipped`, `note`
- *  failed ← `failure`, `failure_stage` (at), `note`, `processed_at` (when, shown as people read it). */
+/** A source's status, from the server's SourceOut (PR #67 + 2f66f91, server/app/api/v1/kb_schemas.py):
+ *  processing ← `stage`, `stage_pct`, `note`, `attempts`
+ *  partial ← `pages_read` (read), `pages_total` (total; both null for a text-limit DOCX/MD), `skipped`, `skipped_reason` (reason), `note`
+ *  failed ← `failure`, `failure_stage` (at), `note`, `attempts`, `processed_at` (when, shown as people read it). */
 export type SourceStatus =
   | { s: "ready" }
-  | { s: "processing"; stage: Stage; pct: number; note?: string }
-  | { s: "partial"; read: number; total: number; unit: "pages"; note: string; skipped: string;
-      /** From the API's `skipped_reason` (lib/kb/map.ts). Without it the copy reads the note (partialReason). */
-      why?: PartialReason }
-  | { s: "failed"; failure: Failure; at: Stage; note?: string; when?: string };
+  | { s: "processing"; stage: Stage; pct: number; note?: string; attempts?: number }
+  | { s: "partial"; read?: number; total?: number; unit: "pages"; note: string; skipped: string; reason: SkipReason }
+  | { s: "failed"; failure: Failure; at: Stage; note?: string; when?: string; attempts?: number };
 
 export type Source = {
   id: string; name: string; kind: SourceKind; host?: string;
-  /** "18 pages · 4.2 MB" / "38 pages read · weekly" */
+  /** "18 pages · 4.2 MB" / "Markdown · 2,140 words · 14 KB" / "Whole section · 40 pages" */
   meta: string; passages?: number; cited: number;
-  by: { name: string; avatar?: string }; added: string; updated: string; status: SourceStatus;
+  /** `unknown`: we don't know who (no members endpoint) → neutral "Teammate" mark. `avatar` is a sample id. */
+  by: { name: string; avatar?: string; unknown?: boolean }; added: string; updated: string; status: SourceStatus;
   /** API sources: worker tries of the current read (SourceOut `attempts`). */
   attempts?: number;
 };
@@ -26,7 +26,7 @@ export const PRODUCT = { name: "ColdTrace Sensors", slug: "coldtrace-sensors", l
 
 export const SOURCES: Source[] = [
   { id: "gateway", name: "Gateway spec sheet v4.pdf", kind: "pdf", meta: "38 pages · 11 MB", passages: 71, cited: 2, by: { name: "Tomás Ibarra", avatar: "tomas" }, added: "Sep 27", updated: "2 days ago",
-    status: { s: "partial", read: 31, total: 38, unit: "pages", note: "7 pages are scanned images with no text layer.", skipped: "pages 12–18" } },
+    status: { s: "partial", read: 31, total: 38, unit: "pages", note: "7 pages are scanned images with no text layer.", skipped: "pages 12–18", reason: "scanned" } },
   { id: "cert", name: "Calibration certificate 2026.pdf", kind: "pdf", meta: "2 pages · 380 KB", cited: 0, by: { name: "Wanjiru Kamau", avatar: "wanjiru" }, added: "Sep 28", updated: "yesterday",
     status: { s: "failed", failure: "encrypted", at: "scan" } },
   { id: "install", name: "Warehouse install guide.pdf", kind: "pdf", meta: "24 pages · 6.8 MB", cited: 0, by: { name: "Tomás Ibarra", avatar: "tomas" }, added: "Today", updated: "just now",
@@ -34,28 +34,49 @@ export const SOURCES: Source[] = [
   { id: "blog", name: "coldtrace.io/blog", kind: "url", host: "coldtrace.io", meta: "Whole section · ~40 pages", cited: 0, by: { name: "Wanjiru Kamau", avatar: "wanjiru" }, added: "Today", updated: "just now",
     status: { s: "processing", stage: "parse", pct: 30, note: "Page 12 of about 40" } },
   { id: "pitch", name: "ColdTrace pitch 2026.pdf", kind: "pdf", meta: "18 pages · 4.2 MB", passages: 46, cited: 9, by: { name: "Tomás Ibarra", avatar: "tomas" }, added: "Sep 22", updated: "Sep 22", status: { s: "ready" } },
-  { id: "site", name: "coldtrace.io", kind: "url", host: "coldtrace.io", meta: "38 pages · re-read weekly", passages: 212, cited: 6, by: { name: "Wanjiru Kamau", avatar: "wanjiru" }, added: "Sep 14", updated: "2h ago", status: { s: "ready" } },
+  { id: "site", name: "coldtrace.io", kind: "url", host: "coldtrace.io", meta: "38 pages", passages: 212, cited: 6, by: { name: "Wanjiru Kamau", avatar: "wanjiru" }, added: "Sep 14", updated: "2h ago", status: { s: "ready" } },
   { id: "kilima", name: "Kilima Dairies case study.docx", kind: "docx", meta: "6 pages · 1.1 MB", passages: 14, cited: 3, by: { name: "Tomás Ibarra", avatar: "tomas" }, added: "Sep 22", updated: "Sep 22", status: { s: "ready" } },
   { id: "objections", name: "Objection handling v3.docx", kind: "docx", meta: "11 pages · 820 KB", passages: 22, cited: 4, by: { name: "Amara Njoroge", avatar: "njoroge" }, added: "Sep 19", updated: "Sep 25", status: { s: "ready" } },
-  { id: "pricing", name: "Pricing 2026.md", kind: "md", meta: "2,140 words · 14 KB", passages: 9, cited: 2, by: { name: "Tomás Ibarra", avatar: "tomas" }, added: "Sep 27", updated: "Sep 27", status: { s: "ready" } },
-  { id: "pharmacy", name: "coldtrace.io/pharmacy", kind: "url", host: "coldtrace.io", meta: "1 page · re-read weekly", passages: 7, cited: 1, by: { name: "Wanjiru Kamau", avatar: "wanjiru" }, added: "Yesterday", updated: "yesterday", status: { s: "ready" } },
+  { id: "pricing", name: "Pricing 2026.md", kind: "md", meta: "Markdown · 2,140 words · 14 KB", passages: 9, cited: 2, by: { name: "Tomás Ibarra", avatar: "tomas" }, added: "Sep 27", updated: "Sep 27", status: { s: "ready" } },
+  { id: "pharmacy", name: "coldtrace.io/pharmacy", kind: "url", host: "coldtrace.io", meta: "1 page", passages: 7, cited: 1, by: { name: "Wanjiru Kamau", avatar: "wanjiru" }, added: "Yesterday", updated: "yesterday", status: { s: "ready" } },
   { id: "haccp", name: "HACCP logging whitepaper.pdf", kind: "pdf", meta: "12 pages · 2.9 MB", passages: 27, cited: 2, by: { name: "Amara Njoroge", avatar: "njoroge" }, added: "Sep 16", updated: "Sep 16", status: { s: "ready" } },
-  { id: "faq", name: "Sales FAQ.md", kind: "md", meta: "3,480 words · 22 KB", passages: 19, cited: 3, by: { name: "Tomás Ibarra", avatar: "tomas" }, added: "Sep 14", updated: "Sep 24", status: { s: "ready" } },
+  { id: "faq", name: "Sales FAQ.md", kind: "md", meta: "Markdown · 3,480 words · 22 KB", passages: 19, cited: 3, by: { name: "Tomás Ibarra", avatar: "tomas" }, added: "Sep 14", updated: "Sep 24", status: { s: "ready" } },
 ];
 
 /** Sources for the M10b review states (?state=unreadable / interrupted), added on top of SOURCES so the
  *  other states keep their counts. Notes are the server's own strings (server/app/kb/ingest.py). */
-export const REVIEW_SOURCES: Record<"unreadable" | "unreadable-timeout" | "interrupted", Source> = {
+export type ReviewSourceId = "warranty" | "unreadable" | "unreadable-timeout" | "interrupted" | "interrupted-crash" | "retrying" | "partial-limit" | "partial-text-limit" | "partial-web" | "partial-mixed";
+export const REVIEW_SOURCES: Record<ReviewSourceId, Source> = {
+  /** M11: a markdown source as the API gives it today: size-only meta, heading locators, added by someone we can't name. */
+  warranty: { id: "warranty", name: "Sensor warranty and support.md", kind: "md", meta: "Markdown · 6.2 KB", passages: 12, cited: 0, by: { name: "Teammate", unknown: true }, added: "Sep 29", updated: "yesterday", status: { s: "ready" } },
   unreadable: { id: "pricelist", name: "Distributor price list 2026.pdf", kind: "pdf", meta: "3.6 MB", cited: 0, by: { name: "Amara Njoroge", avatar: "njoroge" }, added: "Today", updated: "just now",
-    status: { s: "failed", failure: "unreadable", at: "parse", when: "Today, 09:14" } },
+    status: { s: "failed", failure: "unreadable", at: "parse", when: "Today, 09:14", attempts: 1 } },
   "unreadable-timeout": { id: "tender", name: "KEMSA tender response.docx", kind: "docx", meta: "22 MB", cited: 0, by: { name: "Tomás Ibarra", avatar: "tomas" }, added: "Today", updated: "just now",
-    status: { s: "failed", failure: "unreadable", at: "parse", note: "Reading the file took too long.", when: "Today, 09:20" } },
+    status: { s: "failed", failure: "unreadable", at: "parse", note: "Reading the file took too long.", when: "Today, 09:20", attempts: 1 } },
   interrupted: { id: "fleet", name: "Reefer fleet brochure.pdf", kind: "pdf", meta: "16 pages · 5.3 MB", cited: 0, by: { name: "Wanjiru Kamau", avatar: "wanjiru" }, added: "Today", updated: "8 min ago",
-    status: { s: "failed", failure: "interrupted", at: "embed", note: "Corral couldn't finish reading it.", when: "Today, 09:12" } },
+    status: { s: "failed", failure: "interrupted", at: "embed", note: "Corral couldn't finish reading it.", when: "Today, 09:12", attempts: 5 } },
+  "interrupted-crash": { id: "crash", name: "Service level agreement.docx", kind: "docx", meta: "9 pages · 640 KB", cited: 0, by: { name: "Amara Njoroge", avatar: "njoroge" }, added: "Today", updated: "3 min ago",
+    status: { s: "failed", failure: "interrupted", at: "parse", note: "Something went wrong reading it.", when: "Today, 09:26", attempts: 1 } },
+  retrying: { id: "retry", name: "Cold room sizing guide.pdf", kind: "pdf", meta: "14 pages · 3.9 MB", cited: 0, by: { name: "Tomás Ibarra", avatar: "tomas" }, added: "Today", updated: "just now",
+    status: { s: "processing", stage: "embed", pct: 20, attempts: 3 } },
+  "partial-limit": { id: "manual", name: "Gateway service manual 2019–2026.pdf", kind: "pdf", meta: "620 pages · 24 MB", passages: 880, cited: 0, by: { name: "Tomás Ibarra", avatar: "tomas" }, added: "Today", updated: "just now",
+    status: { s: "partial", read: 500, total: 620, unit: "pages", note: "Only the first 500 pages were read (size limit).", skipped: "pages 501–620", reason: "size-limit" } },
+  "partial-text-limit": { id: "transcripts", name: "Customer call transcripts.docx", kind: "docx", meta: "18 MB", passages: 1640, cited: 0, by: { name: "Wanjiru Kamau", avatar: "wanjiru" }, added: "Today", updated: "just now",
+    status: { s: "partial", unit: "pages", note: "Only the first part was read (text limit).", skipped: "the end of the document", reason: "size-limit" } },
+  "partial-web": { id: "blog-part", name: "coldtrace.io/blog", kind: "url", host: "coldtrace.io", meta: "Whole section · 40 pages", passages: 188, cited: 0, by: { name: "Wanjiru Kamau", avatar: "wanjiru" }, added: "Today", updated: "just now",
+    status: { s: "partial", read: 37, total: 40, unit: "pages", note: "3 of 40 pages couldn't be read.", skipped: "/blog/2019-trade-show, /blog/careers, /blog/press-kit", reason: "unreadable" } },
+  "partial-mixed": { id: "archive", name: "Installer archive (scanned + digital).pdf", kind: "pdf", meta: "540 pages · 25 MB", passages: 702, cited: 0, by: { name: "Amara Njoroge", avatar: "njoroge" }, added: "Today", updated: "just now",
+    status: { s: "partial", read: 488, total: 540, unit: "pages", note: "12 pages are scanned images with no text layer. Only the first 500 pages were read (size limit).", skipped: "pages 40–51, 501–540", reason: "mixed" } },
 };
 
 /** A few passages per source, as retrieval sees them (ENG-65 chunks). */
-export const PASSAGES: Record<string, { loc: string; text: string }[]> = {
+export const PASSAGES: Record<string, { loc: string | null; text: string }[]> = {
+  /** Markdown passages as PassageOut returns them: `loc` is the heading path's last heading, `text` keeps the markers. */
+  warranty: [
+    { loc: "ColdTrace T4 wireless temperature sensors: warranty", text: "# ColdTrace T4 wireless temperature sensors: warranty\nEvery T4 sensor carries a **three-year** warranty from the day it's installed. We replace a failed sensor within two working days, and the replacement keeps its readings history." },
+    { loc: "Battery and replacement cells", text: "## Battery and replacement cells\nThe battery lasts five years at a 60-second interval. When it drops below 15%, the on-duty manager gets an SMS a month ahead.\n- Standard CR123A cells\n- No tools needed to swap" },
+    { loc: "Support hours", text: "## Support hours\nSupport answers by phone and WhatsApp, 06:00–22:00 EAT, seven days a week." },
+  ],
   pitch: [
     { loc: "p.2", text: "ColdTrace Sensors are wireless temperature and humidity sensors for cold rooms, reefer trucks and pharmacy fridges. One gateway covers up to 40 sensors across a site." },
     { loc: "p.4", text: "When a reading crosses its limit, the on-duty manager gets an SMS and a call within two minutes. Median alert time across our installed base is 94 seconds." },

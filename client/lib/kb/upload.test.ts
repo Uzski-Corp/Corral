@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FAILURE, SERVER_FAILURES, partialReason, recoveryOf, skippedPages, MAX_FILE_BYTES, STAGES, checkFile, checkUrl, extOf, formatBytes, overallPercent, queueSummary, stageLabel, takeDrop } from "./upload";
+import { FAILURE, SERVER_FAILURES, SKIP_REASONS, triedLabel, recoveryOf, skippedPages, MAX_FILE_BYTES, STAGES, checkFile, checkUrl, extOf, formatBytes, overallPercent, queueSummary, stageLabel, takeDrop } from "./upload";
 
 describe("extOf", () => {
   it("reads the last extension, lower-cased, ignoring folders and dotfiles", () => {
@@ -101,12 +101,15 @@ describe("PR #67 contract (M10b)", () => {
     expect(recoveryOf("blocked")).toBe("remove");
     expect(recoveryOf("dropped")).toBe("retry");
   });
-  it("reads why a partial source skipped pages", () => {
-    expect(partialReason("7 pages are scanned images with no text layer.", "pdf")).toBe("scanned");
-    expect(partialReason("1 page is a scanned image with no text layer.", "pdf")).toBe("scanned");
-    expect(partialReason("Only the first 500 pages were read (size limit).", "pdf")).toBe("limit");
-    expect(partialReason(undefined, "docx")).toBe("limit");
-    expect(partialReason("3 of 40 pages couldn't be read.", "url")).toBe("pages");
+  it("skipped_reason matches the server's list (PR #67, 2f66f91)", () => {
+    expect(SKIP_REASONS).toEqual(["scanned", "size-limit", "unreadable", "mixed"]);
+  });
+  it("says how many times Corral tried", () => {
+    expect(triedLabel(0)).toBeUndefined();
+    expect(triedLabel(undefined)).toBeUndefined();
+    expect(triedLabel(1)).toBe("Tried once");
+    expect(triedLabel(2)).toBe("Tried twice");
+    expect(triedLabel(3)).toBe("Tried 3 times");
   });
   it("parses the server's skipped label into page numbers", () => {
     expect(skippedPages("page 2")).toEqual([2]);
@@ -128,5 +131,30 @@ describe("queueSummary", () => {
     expect(queueSummary([{ state: "done" }, { state: "done" }, { state: "error" }, { state: "error" }])).toBe("2 added · 2 need attention");
     expect(queueSummary([{ state: "done" }])).toBe("1 added");
     expect(queueSummary([{ state: "queued" }, { state: "error" }, { state: "error" }])).toBe("Adding 1 of 1 · 2 need attention");
+  });
+});
+
+describe("M11 copy", () => {
+  it("refusals: designed copy per code, the server's sentence otherwise", async () => {
+    const { refusalCopy } = await import("./upload");
+    expect(refusalCopy("kb_full", "pdf", "It holds 200 sources.")).toEqual({ title: "This knowledge base is full", fix: "It holds 200 sources. Remove a source you no longer need, then retry.", actions: ["retry", "skip"] });
+    expect(refusalCopy("url_not_public", "url", "x").actions).toEqual(["skip"]);
+    expect(refusalCopy("url_invalid", "url", "x").title).toBe("That isn’t a page Corral can open");
+    expect(refusalCopy("type_mismatch", "pdf", "x").actions).toEqual(["replace", "skip"]);
+    expect(refusalCopy(undefined, "url", "Nope.")).toEqual({ title: "Couldn’t read this page", fix: "Nope.", actions: ["retry", "skip"] });
+    expect(refusalCopy("odd", "md", "Nope.")).toEqual({ title: "Couldn’t add this file", fix: "Nope.", actions: ["retry", "skip"] });
+  });
+  it("toasts say what's true now and offer Try again", async () => {
+    const { ACTION_FAILED } = await import("./upload");
+    expect(ACTION_FAILED.reread("A.pdf")).toEqual({ text: "Couldn’t re-read A.pdf. The current version stays searchable.", action: "Try again" });
+    expect(ACTION_FAILED.remove("A.pdf").text).toBe("Couldn’t remove A.pdf. It’s still in your sources.");
+    expect(ACTION_FAILED.restore("A.pdf").text).toBe("Couldn’t bring back A.pdf. It’s still removed.");
+  });
+  it("markdown meta: size today, words and sections when the API has them", async () => {
+    const { mdMeta, SEARCH_LIMIT, SEARCH_MAX } = await import("./upload");
+    expect(mdMeta(957)).toBe("Markdown · 957 B");
+    expect(mdMeta(14336, { words: 2140, headings: 9 })).toBe("Markdown · 2,140 words · 9 sections · 14 KB");
+    expect(mdMeta(1024, { headings: 1 })).toBe("Markdown · 1 section · 1 KB");
+    expect([SEARCH_LIMIT, SEARCH_MAX]).toEqual([8, 20]);
   });
 });

@@ -2,9 +2,10 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { KNOWLEDGE, REVIEW_SOURCES, SOURCES, citedBy, sourceName, type Source } from "./data";
-import { advance, FileTile } from "./parts";
+import { advance, FileTile, SourceState } from "./parts";
+import { SKIP, SKIP_REASONS } from "@/lib/kb/upload";
 import { SourceList, filterSources } from "./SourceList";
-import { PageStrip, SourceDetail, pipelineSteps } from "./SourceDetail";
+import { PageStrip, SourceDetail, pageTicks, pipelineSteps } from "./SourceDetail";
 import { UploadDialog, UploadTray, fileItem, useUploadQueue, type QueueItem } from "./Upload";
 import { KnowledgeEditor, attentionOf } from "./Editor";
 import { KnowledgeBase, reviewQueue } from "./KnowledgeBase";
@@ -24,7 +25,9 @@ describe("pipeline", () => {
   it("describes each state as receipts", () => {
     expect(pipelineSteps(src("pitch")).every((s) => s.state === "done")).toBe(true);
     expect(pipelineSteps(src("gateway")).find((s) => s.stage === "parse")).toMatchObject({ state: "warn", text: "Used 31 of 38 pages" });
-    expect(pipelineSteps(REVIEW_SOURCES.interrupted).find((s) => s.state === "fail")).toMatchObject({ stage: "embed", meta: "retries used up" });
+    expect(pipelineSteps(REVIEW_SOURCES.interrupted).find((s) => s.state === "fail")).toMatchObject({ stage: "embed", meta: "tried 5 times" });
+    expect(pipelineSteps(REVIEW_SOURCES["interrupted-crash"]).find((s) => s.state === "fail")).toMatchObject({ stage: "parse", meta: "stopped" });
+    expect(pipelineSteps(REVIEW_SOURCES["partial-text-limit"]).find((s) => s.stage === "parse")).toMatchObject({ state: "warn", text: "Read the first part" });
     expect(pipelineSteps(REVIEW_SOURCES.unreadable).find((s) => s.state === "fail")).toMatchObject({ stage: "parse", meta: "file damaged" });
     expect(pipelineSteps(REVIEW_SOURCES["unreadable-timeout"]).find((s) => s.state === "fail")?.meta).toBe("took too long");
     const failed = pipelineSteps(src("cert"));
@@ -83,18 +86,38 @@ describe("SourceDetail", () => {
     await userEvent.click(screen.getAllByRole("button", { name: /Replace file/ })[0]);
     expect(onAction).toHaveBeenCalledTimes(2);
   });
-  it("partial beyond scans: the limit and web sections say their own reason and fix", async () => {
+  it("partial: skipped_reason picks the copy and the fix, not the note text", async () => {
     const onAction = vi.fn();
-    const limit: Source = { ...src("gateway"), status: { s: "partial", read: 500, total: 620, unit: "pages", note: "Only the first 500 pages were read (size limit).", skipped: "pages 501–620" } };
+    // The note says scans, the reason says size-limit: the reason wins (M10c, 2f66f91).
+    const limit: Source = { ...REVIEW_SOURCES["partial-limit"], status: { ...(REVIEW_SOURCES["partial-limit"].status as Extract<Source["status"], { s: "partial" }>), note: "7 pages are scanned images." } };
     const { unmount } = render(<SourceDetail src={limit} onAction={onAction} />);
-    expect(screen.getByRole("status")).toHaveTextContent(/Split it into smaller files/);
-    expect(document.querySelectorAll(".k-pages__p.is-off")).toHaveLength(120);
+    expect(screen.getByText("500 of 620 pages used · 120 skipped")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(/Corral reads up to 500 pages of one file, so it stopped there and skipped pages 501–620/);
+    expect(screen.getByRole("status")).not.toHaveTextContent(/scanned/);
+    expect(screen.getByRole("figure", { name: "500 pages used, 120 skipped" })).toHaveTextContent("past the limit");
+    expect(document.querySelectorAll(".k-pages__p").length).toBeLessThanOrEqual(76);
+    await userEvent.click(screen.getByRole("button", { name: /Replace with the first part/ }));
+    expect(onAction).toHaveBeenLastCalledWith(limit.id, "replace");
     unmount();
-    const web: Source = { ...src("blog"), status: { s: "partial", read: 37, total: 40, unit: "pages", note: "3 of 40 pages couldn't be read.", skipped: "/blog/a, /blog/b, /blog/c" } };
-    render(<SourceDetail src={web} onAction={onAction} />);
+    const web = REVIEW_SOURCES["partial-web"];
+    const w = render(<SourceDetail src={web} onAction={onAction} />);
+    expect(screen.getByRole("status")).toHaveTextContent(/3 pages in this section didn’t load or had no text/);
     expect(screen.queryByRole("figure")).toBeNull();
-    await userEvent.click(screen.getAllByRole("button", { name: /Re-read/ })[0]);
-    expect(onAction).toHaveBeenCalledWith("blog", "reread");
+    await userEvent.click(within(screen.getByRole("status")).getByRole("button", { name: /Re-read/ }));
+    expect(onAction).toHaveBeenLastCalledWith(web.id, "reread");
+    w.unmount();
+    const mixed = render(<SourceDetail src={REVIEW_SOURCES["partial-mixed"]} onAction={onAction} />);
+    expect(screen.getByRole("status")).toHaveTextContent(/for two reasons: some are scanned images .* past the most Corral reads/);
+    expect(screen.getByRole("button", { name: /Upload a text version/ })).toBeInTheDocument();
+    mixed.unmount();
+    render(<SourceDetail src={REVIEW_SOURCES["partial-text-limit"]} onAction={onAction} />);
+    expect(screen.getByText("Partly read · the end was skipped")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(/skipped the end of the document/);
+    expect(screen.queryByRole("figure")).toBeNull();
+  });
+  it("each skip reason has its own copy and fix", () => {
+    expect(SKIP_REASONS.map((r) => SKIP[r].fix)).toEqual(["text-version", "split", "reread", "text-version"]);
+    expect(new Set(SKIP_REASONS.map((r) => SKIP[r].key)).size).toBe(4);
   });
   it("unreadable: couldn't read the file, Replace file, and what happened", async () => {
     const onAction = vi.fn();
@@ -111,7 +134,7 @@ describe("SourceDetail", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(/^.*Reading the file took too long\. Save a fresh copy or export it as PDF, then replace it\./);
     expect(screen.getByText(/isn’t really a Word document|very large or complex/)).toHaveTextContent(/very large or complex/);
   });
-  it("interrupted: retries used up, Try again first, with the detail open", async () => {
+  it("interrupted: tried 5 times, Try again first, with the detail open", async () => {
     const onAction = vi.fn();
     render(<SourceDetail src={REVIEW_SOURCES.interrupted} onAction={onAction} />);
     const alert = screen.getByRole("alert");
@@ -120,9 +143,10 @@ describe("SourceDetail", () => {
     expect(document.querySelector("details.k-why")).toHaveAttribute("open");
     expect(document.querySelector(".k-why dd")).toHaveTextContent("Indexing embed");
     expect(screen.getByText("Corral couldn’t finish reading it.")).toBeInTheDocument();
-    expect(screen.getByText(/ran out of tries/)).toBeInTheDocument();
+    expect(alert).toHaveTextContent("Corral tried 5 times and couldn’t finish, so nothing from it is searchable yet.");
+    expect(screen.getByText("Tried 5 times, waiting longer between each, then stopped.")).toBeInTheDocument();
     expect(screen.getByText("Today, 09:12")).toBeInTheDocument();
-    expect(screen.getByText(/retries used up/)).toBeInTheDocument();
+    expect(screen.getByText("tried 5 times")).toBeInTheDocument();
     await userEvent.click(within(alert).getByRole("button", { name: /Try again/ }));
     expect(onAction).toHaveBeenCalledWith("fleet", "reread");
     await userEvent.click(screen.getByRole("button", { name: /Replace instead/ }));
@@ -134,11 +158,32 @@ describe("SourceDetail", () => {
     render(<SourceDetail src={lost} onAction={onAction} />);
     expect(screen.getByRole("alert")).toHaveTextContent(/nothing to try again/);
     expect(screen.queryByRole("button", { name: /Try again/ })).toBeNull();
-    expect(screen.queryByText(/ran out of tries/)).toBeNull();
+    expect(screen.queryByText(/Tried \d+ times/)).toBeNull();
     expect(screen.getByText("Not stored. Upload it again.")).toBeInTheDocument();
     expect(screen.getByText("file not stored")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /Upload again/ }));
     expect(onAction).toHaveBeenCalledWith("fleet", "replace");
+  });
+  it("interrupted once (a crash) says it stopped, not that it retried; no attempts falls back to the old copy", () => {
+    const { unmount } = render(<SourceDetail src={REVIEW_SOURCES["interrupted-crash"]} />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Corral stopped partway through reading it");
+    expect(screen.getByText("Tried once. This kind of stop isn’t retried on its own.")).toBeInTheDocument();
+    unmount();
+    const bare: Source = { ...REVIEW_SOURCES.interrupted, status: { s: "failed", failure: "interrupted", at: "embed" } };
+    render(<SourceDetail src={bare} />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Corral tried again on its own and still couldn’t finish");
+    expect(screen.getByText("Corral retried on its own until it ran out of tries.")).toBeInTheDocument();
+  });
+  it("a retry in progress shows its try in the row and the live step", () => {
+    const { unmount } = render(<SourceState src={REVIEW_SOURCES.retrying} />);
+    expect(screen.getByText(/· try 3/)).toBeInTheDocument();
+    unmount();
+    render(<SourceDetail src={REVIEW_SOURCES.retrying} />);
+    expect(screen.getByText(/try 3 · retrying after a hiccup/)).toBeInTheDocument();
+  });
+  it("a partial row without counts says the end was skipped", () => {
+    render(<SourceState src={REVIEW_SOURCES["partial-text-limit"]} />);
+    expect(screen.getByText(/Partly read · end skipped/)).toBeInTheDocument();
   });
   it("a failure whose fix is removal offers Remove; a web page has no file line", async () => {
     const onAction = vi.fn();
@@ -149,6 +194,14 @@ describe("SourceDetail", () => {
     const web: Source = { ...src("blog"), id: "w2", status: { s: "failed", failure: "interrupted", at: "parse" } };
     render(<SourceDetail src={web} />);
     expect(screen.queryByText("Your file")).toBeNull();
+  });
+  it("page ticks: one per page up to 76, then buckets that are part-skipped where they straddle", () => {
+    expect(pageTicks(3, [2])).toEqual(["on", "off", "on"]);
+    const big = pageTicks(620, Array.from({ length: 120 }, (_, i) => 501 + i));
+    expect(big).toHaveLength(69);
+    expect(big.filter((t) => t === "off").length).toBe(13);
+    expect(big.includes("part")).toBe(true);
+    expect(pageTicks(76, [])).toHaveLength(76);
   });
   it("the page strip counts one page, and ignores pages past the total", () => {
     render(<PageStrip total={3} skipped={[2]} />);
@@ -338,6 +391,12 @@ describe("KnowledgeBase", () => {
     expect(screen.getByRole("tab", { name: /Sources/ })).toHaveTextContent(String(SOURCES.length + 1));
     cleanupAndMount("interrupted");
     expect(screen.getByRole("complementary", { name: /Reefer fleet brochure.pdf details/ })).toHaveTextContent("Reading stopped");
+    cleanupAndMount("partial-limit");
+    expect(screen.getByRole("complementary", { name: /Gateway service manual 2019–2026.pdf details/ })).toHaveTextContent("500 of 620 pages used");
+    cleanupAndMount("partial-web");
+    expect(screen.getByRole("complementary", { name: /coldtrace.io\/blog details/ })).toHaveTextContent("didn’t load or had no text");
+    cleanupAndMount("partial-mixed");
+    expect(screen.getByRole("complementary", { name: /Installer archive/ })).toHaveTextContent("for two reasons");
   });
   it("shows the tray while uploads continue", () => {
     mount("tray");

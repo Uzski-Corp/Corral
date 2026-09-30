@@ -144,6 +144,7 @@
 @media (max-width: 720px) {
   .or-nav { margin-top: 20px; }
   .or-nav__signin { display: none; }
+  .or-nav__cta.is-signed-in { gap: 10px; }
   .or-hero__grid { padding-top: 48px; }
   .or-hero__copy p { font-size: 16.5px; }
   .or-hero__plate { margin-top: 40px; height: 380px; }

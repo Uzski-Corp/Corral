@@ -5,3 +5,4 @@ export * from "./SourceDetail";
 export * from "./Upload";
 export * from "./Editor";
 export * from "./KnowledgeBase";
+export * from "./Search";

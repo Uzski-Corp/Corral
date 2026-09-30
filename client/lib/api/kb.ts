@@ -18,7 +18,7 @@
  * Writes need an allow-listed Origin, which the browser sends. Pages are at most 200 rows.
  */
 import { err, ok, type Result } from "../result";
-import { SERVER_FAILURES, STAGES, type ServerFailure, type SourceKind, type Stage } from "../kb/upload";
+import { SERVER_FAILURES, SKIP_REASONS, STAGES, type ServerFailure, type SkipReason, type SourceKind, type Stage } from "../kb/upload";
 import type { ApiClient } from "./client";
 import { listDecoder, recordDecoder, type Reader } from "./decode";
 import type { ApiError } from "./errors";
@@ -42,9 +42,8 @@ export const KB_PATHS = {
 
 export const SOURCE_KINDS = ["pdf", "docx", "md", "url"] as const satisfies readonly SourceKind[];
 export const SOURCE_STATUSES = ["processing", "ready", "partial", "failed"] as const;
-/** `skipped_reason` (PR #67 follow-up): why a partial source is missing pages. */
-export const SKIP_REASONS = ["scanned", "size-limit", "unreadable", "mixed"] as const;
-export type SkipReason = (typeof SKIP_REASONS)[number];
+/** `skipped_reason` (PR #67 follow-up): one list, in lib/kb/upload.ts with its copy (M10c), re-exported here. */
+export { SKIP_REASONS, type SkipReason };
 
 export type Product = { id: string; name: string; description: string | null; createdAt: string; updatedAt: string };
 

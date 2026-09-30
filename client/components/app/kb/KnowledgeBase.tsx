@@ -8,12 +8,15 @@ import { Button, cx } from "../primitives";
 import { EmptyState, ErrorState, Skeleton } from "../States";
 import { Tabs } from "../Tabs";
 import { useToast } from "../Toaster";
-import { KNOWLEDGE, PRODUCT, REVIEW_SOURCES, SOURCES, citedBy, type KSection, type Source } from "./data";
+import type { SearchHit } from "@/lib/api/kb";
+import { ok } from "@/lib/result";
+import { KNOWLEDGE, PASSAGES, PRODUCT, REVIEW_SOURCES, SOURCES, citedBy, type KSection, type Source } from "./data";
 import { KnowledgeEditor } from "./Editor";
 import { advance, isBusy, useTicker } from "./parts";
 import { SourceDetail } from "./SourceDetail";
 import { SourceList, type SourceFilter } from "./SourceList";
-import { DropZone, UploadDialog, UploadTray, UrlAdder, failed, fileItem, useUploadQueue, type QueueItem, type UploadQueue } from "./Upload";
+import { KbSearch, type KbSearchFn, type SearchState } from "./Search";
+import { DropZone, FirstProductField, UploadDialog, UploadTray, UrlAdder, failed, fileItem, useUploadQueue, type FirstProduct, type QueueItem, type UploadQueue } from "./Upload";
 import { useLiveKb, type KbProducts } from "./live";
 
 const MB = 1048576;
@@ -38,7 +41,47 @@ export function reviewQueue(state?: KbReviewState): QueueItem[] {
   return [];
 }
 
-const FROZEN: KbReviewState[] = ["loading", "error", "sources", "source", "partial", "failed", "unreadable", "interrupted", "upload", "upload-errors", "dragging", "tray", "editing", "save-error", "conflict"];
+/** Review states that add one REVIEW_SOURCES source on top of the list and open it (M10b, M10c). */
+const INJECTED = ["unreadable", "interrupted", "partial-limit", "partial-web", "partial-mixed", "markdown", "replace"] as const satisfies readonly KbReviewState[];
+const INJECT: Partial<Record<KbReviewState, keyof typeof REVIEW_SOURCES>> = { markdown: "warranty", replace: "warranty" };
+const injected = (state: KbReviewState) => REVIEW_SOURCES[INJECT[state] ?? (state as keyof typeof REVIEW_SOURCES)];
+const SEARCH_STATES = ["search", "search-loading", "search-none", "search-error"] as const satisfies readonly KbReviewState[];
+const FROZEN: KbReviewState[] = ["loading", "error", "sources", "source", "partial", "failed", "unreadable", "interrupted", "partial-limit", "partial-web", "partial-mixed", "upload", "upload-errors", "dragging", "tray", "editing", "save-error", "conflict",
+  "not-drafted", "first-product", "markdown", "replace", ...SEARCH_STATES];
+
+/** Sample search: Bau's sample passages, matched on words (the API ranks by meaning). */
+export function sampleSearch(sources: Source[]): KbSearchFn {
+  return async (query, limit) => {
+    await new Promise((r) => setTimeout(r, 350));
+    const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+    const hits: SearchHit[] = [];
+    for (const [id, list] of Object.entries(PASSAGES)) {
+      const src = sources.find((s) => s.id === id) ?? Object.values(REVIEW_SOURCES).find((s) => s.id === id);
+      if (!src) continue;
+      list.forEach((p, i) => {
+        const hay = `${p.loc ?? ""} ${p.text}`.toLowerCase();
+        const score = terms.filter((t) => hay.includes(t)).length / terms.length;
+        if (score > 0) hits.push({ passageId: `${id}-${i}`, sourceId: id, sourceName: src.name, sourceKind: src.kind, loc: p.loc, text: p.text, score });
+      });
+    }
+    return ok(hits.sort((a, b) => b.score - a.score).slice(0, limit));
+  };
+}
+
+/** Frozen search review states: the query and what's on screen. */
+export function reviewSearch(state: KbReviewState | undefined, sources: Source[]): { query: string; state: SearchState } | undefined {
+  if (state === "search-loading") return { query: "battery life", state: { phase: "loading", query: "battery life" } };
+  if (state === "search-none") return { query: "solar panels", state: { phase: "done", query: "solar panels", hits: [], limit: 8 } };
+  if (state === "search-error") return { query: "battery life", state: { phase: "error", query: "battery life", detail: "POST /api/v1/products/coldtrace-sensors/knowledge/search · 503" } };
+  if (state !== "search") return undefined;
+  const hit = (id: string, i: number, score: number): SearchHit => {
+    const src = [...sources, ...Object.values(REVIEW_SOURCES)].find((s) => s.id === id)!;
+    const p = PASSAGES[id][i];
+    return { passageId: `${id}-${i}`, sourceId: id, sourceName: src.name, sourceKind: src.kind, loc: p.loc, text: p.text, score };
+  };
+  return { query: "battery life", state: { phase: "done", query: "battery life", limit: 8,
+    hits: [hit("gateway", 2, 0.91), hit("gateway", 1, 0.84), hit("warranty", 1, 0.8), hit("warranty", 0, 0.72), hit("pitch", 0, 0.61)] } };
+}
 
 /** What the page needs from its data, whether that's Bau's sample knowledge base or the API (live.ts). */
 export type KbModel = {
@@ -60,8 +103,14 @@ export type KbModel = {
   /** Replace on a duplicate in the upload queue. */
   replaceFromQueue: (it: QueueItem) => void;
   /** The API's first passages per source; undefined uses the sample passages. */
-  passages?: Record<string, { loc: string; text: string }[] | undefined>;
+  passages?: Record<string, { loc: string | null; ordinal?: number; text: string }[] | undefined>;
   loadPassages?: (id: string) => void;
+  /** Search this product's sources (M11). */
+  search: KbSearchFn;
+  /** No product yet: the first upload names it (M11). */
+  firstProduct?: FirstProduct;
+  /** Whether Corral drafts the Knowledge page. False on the API (no drafting yet), so read sources show "Not drafted yet". */
+  drafts: boolean;
 };
 
 type KbProps = {
@@ -76,7 +125,10 @@ export function KnowledgeBase(props: KbProps) {
 
 function LiveKnowledgeBase({ live, ...props }: KbProps & { live: NonNullable<KbProps["live"]> }) {
   const m = useLiveKb({ api: live.data.kb, products: live.products, me: live.data.person });
-  const model: KbModel = { ...m, errorDetail: m.errorDetail ?? "", productName: live.products.selected?.name ?? live.data.me.organization.name };
+  const p = live.products;
+  const workspace = live.data.me.organization.name;
+  const model: KbModel = { ...m, errorDetail: m.errorDetail ?? "", productName: p.selected?.name ?? (p.firstName.trim() || workspace), drafts: false,
+    firstProduct: p.selected ? undefined : { name: p.firstName, workspace, setName: p.setFirstName } };
   return <KbView {...props} m={model} isLive />;
 }
 
@@ -85,12 +137,15 @@ function useSampleKb(state: KbReviewState | undefined): KbModel {
   const toast = useToast();
   const live = !state || !FROZEN.includes(state);
   const [phase, setPhase] = useState<"loading" | "error" | "ready">(state === "loading" ? "loading" : state === "error" ? "error" : "ready");
-  const [sources, setSources] = useState<Source[]>(() => (state === "empty" ? [] : state === "drafting" ? [{ ...SOURCES[4], id: "pitch", status: { s: "processing", stage: "parse", pct: 40 } }]
-    : state === "unreadable" || state === "interrupted" ? [REVIEW_SOURCES[state], ...SOURCES] : SOURCES));
-  const [knowledge, setKnowledge] = useState<KSection[]>(state === "empty" || state === "drafting" ? [] : KNOWLEDGE);
+  const [sources, setSources] = useState<Source[]>(() => (state === "empty" || state === "first-product" ? [] : state === "drafting" ? [{ ...SOURCES[4], id: "pitch", status: { s: "processing", stage: "parse", pct: 40 } }]
+    : state === "not-drafted" ? SOURCES.filter((s) => s.status.s === "ready")
+    : state && (INJECTED as readonly string[]).includes(state) ? [injected(state), ...SOURCES]
+    : state && (SEARCH_STATES as readonly string[]).includes(state) ? [REVIEW_SOURCES.warranty, ...SOURCES] : SOURCES));
+  const [knowledge, setKnowledge] = useState<KSection[]>(state === "empty" || state === "drafting" || state === "not-drafted" || state === "first-product" ? [] : KNOWLEDGE);
+  const [firstName, setFirstName] = useState("ColdTrace");
 
   const onDone = useCallback((it: QueueItem) => {
-    const now: Source = { id: `up-${it.id}`, name: it.name, kind: it.kind, host: it.host, meta: it.kind === "url" ? (it.whole ? "Whole section · re-read weekly" : "1 page · re-read weekly") : `${it.size ? `${Math.round(it.size / MB * 10) / 10} MB` : ""}`,
+    const now: Source = { id: `up-${it.id}`, name: it.name, kind: it.kind, host: it.host, meta: it.kind === "url" ? (it.whole ? "Whole section" : "1 page") : `${it.size ? `${Math.round(it.size / MB * 10) / 10} MB` : ""}`,
       cited: 0, by: { name: "Tomás Ibarra", avatar: "tomas" }, added: "Today", updated: "just now", status: { s: "processing", stage: "parse", pct: 0 } };
     setSources((l) => [now, ...l]);
   }, []);
@@ -106,9 +161,10 @@ function useSampleKb(state: KbReviewState | undefined): KbModel {
   const anyBusy = sources.some(isBusy);
   useTicker(live && anyBusy, 900, tick);
   // First source finished while the page was empty: Corral drafts the page.
-  if (knowledge.length === 0 && sources.some((s) => s.status.s === "ready")) setKnowledge(KNOWLEDGE);
+  if (state !== "not-drafted" && knowledge.length === 0 && sources.some((s) => s.status.s === "ready")) setKnowledge(KNOWLEDGE);
 
   const existing = useMemo(() => sources.map((s) => s.name), [sources]);
+  const search = useMemo(() => sampleSearch(sources), [sources]);
   const reread = (id: string) => {
     const s = sources.find((x) => x.id === id);
     if (!s) return;
@@ -124,8 +180,10 @@ function useSampleKb(state: KbReviewState | undefined): KbModel {
   };
   return {
     phase, errorDetail: `GET /api/v1/products/${PRODUCT.slug}/knowledge · 502`, retry: () => { setPhase("loading"); setTimeout(() => setPhase("ready"), 800); },
-    productName: PRODUCT.name, sources, knowledge, setKnowledge, q, existing, reread, remove, replace: () => {},
+    productName: state === "first-product" ? firstName.trim() || "ColdTrace" : PRODUCT.name, sources, knowledge, setKnowledge, q, existing, reread, remove, replace: () => {},
     replaceFromQueue: (it) => toast({ icon: "upload", children: `Replacing ${it.name}`, meta: "the old copy stays searchable until the new one is read" }),
+    search, drafts: state !== "not-drafted",
+    firstProduct: state === "first-product" ? { name: firstName, workspace: "ColdTrace", setName: setFirstName } : undefined,
   };
 }
 
@@ -136,11 +194,13 @@ function SampleKnowledgeBase(props: KbProps) {
 
 function KbView({ state, addOpen, onAddOpenChange, contained, m, isLive: live }: Omit<KbProps, "live"> & { m: KbModel; isLive?: boolean }) {
   const { phase, sources, knowledge, setKnowledge, q, existing } = m;
-  const sourceStates: KbReviewState[] = ["sources", "source", "partial", "failed", "unreadable", "interrupted", "tray", "dragging"];
+  const sourceStates: KbReviewState[] = ["sources", "source", "partial", "failed", ...INJECTED, ...SEARCH_STATES, "tray", "dragging"];
   // Live: nothing is drafted yet (the API has no knowledge drafting), so open on what's real.
   const [tab, setTab] = useState<"knowledge" | "sources">(live || (state && sourceStates.includes(state)) ? "sources" : "knowledge");
   const [selected, setSelected] = useState<string | undefined>(state === "source" ? "pitch" : state === "partial" ? "gateway" : state === "failed" ? "cert"
-    : state === "unreadable" || state === "interrupted" ? REVIEW_SOURCES[state].id : undefined);
+    : state && state !== "replace" && (INJECTED as readonly string[]).includes(state) ? injected(state).id : undefined);
+  const [replacingId, setReplacingId] = useState<string | undefined>(state === "replace" ? injected(state).id : undefined);
+  const [searchKey, setSearchKey] = useState(0);
   const [filter, setFilter] = useState<SourceFilter>("all");
   const [dragging, setDragging] = useState(state === "dragging");
   const [removing, setRemoving] = useState<string | undefined>();
@@ -153,7 +213,7 @@ function KbView({ state, addOpen, onAddOpenChange, contained, m, isLive: live }:
   const action = (id: string, a: "reread" | "replace" | "remove") => {
     if (!sources.some((x) => x.id === id)) return;
     if (a === "remove") { setRemoving(id); return; }
-    if (a === "replace") { m.replace(id); onAddOpenChange(true); return; }
+    if (a === "replace") { m.replace(id); setReplacingId(id); onAddOpenChange(true); return; }
     m.reread(id);
   };
   const remove = (id: string) => {
@@ -176,6 +236,10 @@ function KbView({ state, addOpen, onAddOpenChange, contained, m, isLive: live }:
   const sel = selected ? sources.find((s) => s.id === selected) : undefined;
   const empty = phase === "ready" && sources.length === 0;
   const product = m.productName;
+  const searchable = sources.reduce((t, s) => t + (s.status.s === "ready" || s.status.s === "partial" ? s.passages ?? 0 : 0), 0);
+  const replacing = addOpen && replacingId ? sources.find((s) => s.id === replacingId) : undefined;
+  const closeAdd = () => { onAddOpenChange(false); setReplacingId(undefined); };
+  const toSearch = () => { setTab("sources"); setSearchKey((k) => k + 1); setTimeout(() => document.querySelector<HTMLInputElement>(".k-search input")?.focus(), 60); };
 
   return (
     <div className={cx("c-view k-kb", contained && "is-contained")} onDragEnter={(e) => onDrag(e, "enter")} onDragOver={(e) => { if (Array.from(e.dataTransfer?.types ?? []).includes("Files")) e.preventDefault(); }}
@@ -195,20 +259,24 @@ function KbView({ state, addOpen, onAddOpenChange, contained, m, isLive: live }:
           </ErrorState>
         </div>
       )}
-      {empty && <FirstRun product={product} onFiles={(f) => { q.addFiles(f, existing); onAddOpenChange(true); }} onUrl={(h, p, w) => { q.addUrl(h, p, w); onAddOpenChange(true); }} />}
+      {empty && <FirstRun product={product} firstProduct={m.firstProduct} onFiles={(f) => { q.addFiles(f, existing); onAddOpenChange(true); }} onUrl={(h, p, w) => { q.addUrl(h, p, w); onAddOpenChange(true); }} />}
 
       {phase === "ready" && !empty && tab === "knowledge" && (
         <div className="c-view__scroll">
           {knowledge.length ? (
             <KnowledgeEditor sections={knowledge} onChange={setKnowledge} sources={sources} onOpenSource={openSource} onShowSources={() => setTab("sources")}
               initialEditing={state === "editing" || state === "save-error" ? "proof-kilima" : undefined} failFirstSave={state === "save-error"} initialFocus={state === "conflict" ? "price" : undefined} />
-          ) : <Drafting sources={live && busy ? sources.filter(isBusy) : sources} />}
+          ) : busy ? <Drafting sources={sources.filter(isBusy)} drafts={m.drafts} />
+            : m.drafts ? <Drafting sources={sources} drafts />
+            : <NotDrafted sources={sources.length} passages={searchable} onSearch={toSearch} onSources={() => setTab("sources")} />}
         </div>
       )}
       {phase === "ready" && !empty && tab === "sources" && (
         <div className={cx("k-split", sel && "has-detail")}>
           <div className="k-split__list">
-            <SourceList sources={sources} filter={filter} onFilter={setFilter} selected={selected} onOpen={setSelected} onAction={action} onAdd={() => onAddOpenChange(true)} />
+            <KbSearch key={searchKey} search={m.search} searchable={searchable} onOpen={setSelected} onAdd={() => onAddOpenChange(true)} initial={searchKey === 0 ? reviewSearch(state, sources) : undefined}>
+              <SourceList sources={sources} filter={filter} onFilter={setFilter} selected={selected} onOpen={setSelected} onAction={action} onAdd={() => onAddOpenChange(true)} />
+            </KbSearch>
           </div>
           {sel && <div className="k-split__detail"><SourceDetail key={sel.id} src={sel} knowledge={knowledge} onBack={() => setSelected(undefined)} onAction={action} onJump={jump}
             passages={m.passages ? m.passages[sel.id] ?? [] : undefined} /></div>}
@@ -220,8 +288,8 @@ function KbView({ state, addOpen, onAddOpenChange, contained, m, isLive: live }:
           <div className="k-dropover__card"><Icon name="upload" size={18} /><b>Drop to add to {product}</b><span>PDF, DOCX or Markdown · up to 25 MB each</span></div>
         </div>
       )}
-      <UploadDialog open={addOpen} onClose={() => onAddOpenChange(false)} q={q} product={product} existing={existing} inline={contained}
-        onReplace={m.replaceFromQueue} />
+      <UploadDialog open={addOpen} onClose={closeAdd} q={q} product={product} existing={existing} inline={contained}
+        onReplace={m.replaceFromQueue} replacing={replacing} firstProduct={m.firstProduct} />
       {!addOpen && (state === "tray" || q.busy || q.items.some((i) => i.state === "error")) && <UploadTray q={q} onOpen={() => onAddOpenChange(true)} inline={contained} />}
       <Dialog open={!!rem} onClose={() => setRemoving(undefined)} tone="danger" title={`Remove ${rem?.name ?? ""}?`}
         description={rem?.passages ? `Corral stops searching its ${rem.passages} passages.` : "Corral stops using it."}
@@ -234,14 +302,15 @@ function KbView({ state, addOpen, onAddOpenChange, contained, m, isLive: live }:
 }
 
 /* First run: the page is the upload. No wizard, no modal: the drop zone is the empty state. */
-function FirstRun({ product, onFiles, onUrl }: { product: string; onFiles: (f: File[]) => void; onUrl: (host: string, path: string, whole: boolean) => void }) {
+function FirstRun({ product, firstProduct, onFiles, onUrl }: { product: string; firstProduct?: FirstProduct; onFiles: (f: File[]) => void; onUrl: (host: string, path: string, whole: boolean) => void }) {
   return (
     <div className="c-view__scroll">
       <div className="k-first">
         <div className="k-first__main">
           <span className="k-eyebrow">Product knowledge · {product}</span>
           <h1>Teach Corral what you sell</h1>
-          <p className="k-lede">Add the documents your best rep would read before a first call. Corral reads them, drafts what it learns into one page you can edit, and cites every line back to where it came from.</p>
+          <p className="k-lede">Add the documents your best rep would read before a first call. Corral reads them, splits them into passages, and cites them back to where they came from when it writes.</p>
+          {firstProduct && <FirstProductField fp={firstProduct} />}
           <DropZone onFiles={onFiles} />
           <UrlAdder onAdd={onUrl} />
         </div>
@@ -250,7 +319,7 @@ function FirstRun({ product, onFiles, onUrl }: { product: string; onFiles: (f: F
           <ol className="k-first__list">
             <li><b>Your pitch deck</b><span>Positioning, who it&rsquo;s for, the numbers you quote.</span></li>
             <li><b>Two or three case studies</b><span>Proof Corral can name in emails.</span></li>
-            <li><b>Your product and pricing pages</b><span>Re-read weekly, so the knowledge stays current.</span></li>
+            <li><b>Your product and pricing pages</b><span>Corral reads them when you add them. Re-read one whenever it changes.</span></li>
             <li><b>The objections doc, if you have one</b><span>Corral drafts replies from it.</span></li>
           </ol>
           <p className="k-first__note"><Icon name="clock" size={12} />A 20-page PDF is usually searchable in under a minute.</p>
@@ -260,13 +329,39 @@ function FirstRun({ product, onFiles, onUrl }: { product: string; onFiles: (f: F
   );
 }
 
-/* Sources exist, but none is searchable yet. */
-function Drafting({ sources }: { sources: Source[] }) {
+/* Sources are being read. `drafts` (the sample) promises the drafted page; on the API there's no drafting yet,
+   so it only promises what's true: the passages become searchable. */
+function Drafting({ sources, drafts }: { sources: Source[]; drafts: boolean }) {
+  const what = sources.length === 1 ? `${sources[0].name} is being read now.` : `${sources.length} sources are being read now.`;
   return (
     <div className="c-view c-view--center">
-      <EmptyState icon="book" title="Corral drafts this page once your first source is read">
-        {sources.length === 1 ? `${sources[0].name} is being read now.` : `${sources.length} sources are being read now.`} You&rsquo;ll get a page of positioning, pains, proof and objections, each line cited, ready to edit.
-      </EmptyState>
+      {drafts ? (
+        <EmptyState icon="book" title="Corral drafts this page once your first source is read">
+          {what} You&rsquo;ll get a page of positioning, pains, proof and objections, each line cited, ready to edit.
+        </EmptyState>
+      ) : (
+        <EmptyState icon="book" title="Reading your sources">{what} Once read, every passage is searchable from Sources.</EmptyState>
+      )}
+    </div>
+  );
+}
+
+/* M11, gap 1: sources are read, nothing is drafted (the API has no drafting yet). Honest about both: what
+   Corral has now (passages it can search) and what this page will hold, marked as not drafted yet. */
+const OUTLINE = ["Positioning", "Who it’s for", "Pains it solves", "Proof", "Objections"];
+function NotDrafted({ sources, passages, onSearch, onSources }: { sources: number; passages: number; onSearch: () => void; onSources: () => void }) {
+  return (
+    <div className="k-nd">
+      <span className="k-eyebrow">Knowledge</span>
+      <h2 className="k-nd__title">Your sources are read. This page isn&rsquo;t drafted yet.</h2>
+      <p className="k-nd__lede">Corral can search <b>{passages.toLocaleString("en-GB")} passages</b> from {sources} {sources === 1 ? "source" : "sources"} right now. Drafting them into one page you can edit comes in a later update; nothing here is written for you yet.</p>
+      <div className="k-nd__acts">
+        <Button variant="primary" onClick={onSearch}><Icon name="search" />Search your sources</Button>
+        <Button onClick={onSources}>See sources</Button>
+      </div>
+      <ol className="k-nd__outline" aria-label="What this page will hold">
+        {OUTLINE.map((t) => <li key={t}><span>{t}</span><em>Not drafted</em></li>)}
+      </ol>
     </div>
   );
 }

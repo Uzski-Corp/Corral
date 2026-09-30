@@ -4,6 +4,7 @@ import { FitBar } from "@/components/app/primitives";
 import { Mark } from "@/components/app/icons";
 import { CTA, ROUTES } from "@/lib/marketing/site";
 import { ProductFrame, Screen } from "../site";
+import { AuthLink, FencelineNavAccount } from "../site/Visitor";
 
 const STACK = ["wanjiru", "kamau", "amara", "grace", "reza"];
 
@@ -13,7 +14,8 @@ export function FencelineHero() {
       <div className="fl-hero__left">
         <nav className="fl-nav" aria-label="Main">
           <Link className="fl-logo" href={ROUTES.fenceline}><Mark size={22} /><span>Corral</span></Link>
-          <div className="fl-nav__links"><a href="#plates">Product</a><Link href={ROUTES.pricing}>Pricing</Link><Link href={ROUTES.mcp}>MCP</Link><Link href={ROUTES.security}>Security</Link><Link href={ROUTES.signIn}>Sign in</Link></div>
+          <div className="fl-nav__links"><a href="#plates">Product</a><Link href={ROUTES.pricing}>Pricing</Link><Link href={ROUTES.mcp}>MCP</Link><Link href={ROUTES.security}>Security</Link><AuthLink hideSignedIn /></div>
+          <FencelineNavAccount />
         </nav>
         <div className="fl-hero__copy">
           <div className="fl-folio"><b>Corral</b><span>Outbound for teams who sell one thing well</span></div>

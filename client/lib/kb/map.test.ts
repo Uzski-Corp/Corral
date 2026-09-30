@@ -16,7 +16,8 @@ describe("metaOf", () => {
   it("describes files by pages and size", () => {
     expect(metaOf(src({ pages_total: 38, byte_size: 11 * 1048576 }))).toBe("38 pages · 11 MB");
     expect(metaOf(src({ pages_total: 1, byte_size: null }))).toBe("1 page");
-    expect(metaOf(src({ kind: "md", pages_total: null, byte_size: 957 }))).toBe("957 B");
+    expect(metaOf(src({ kind: "md", pages_total: null, byte_size: 957 }))).toBe("Markdown · 957 B");
+    expect(metaOf(src({ kind: "md", pages_total: null, byte_size: null }))).toBe("Markdown");
     expect(metaOf(src({ pages_total: null, byte_size: null }))).toBe("");
   });
   it("describes web pages by scope", () => {
@@ -30,43 +31,45 @@ describe("metaOf", () => {
 describe("statusOf", () => {
   it("maps ready and processing", () => {
     expect(statusOf(src(), now)).toEqual({ s: "ready" });
-    expect(statusOf(src({ status: "processing", stage: "chunk", stage_pct: 140, note: "page 3 of 9" }), now)).toEqual({ s: "processing", stage: "chunk", pct: 100, note: "page 3 of 9" });
-    expect(statusOf(src({ status: "processing", stage: "embed", stage_pct: -3 }), now)).toEqual({ s: "processing", stage: "embed", pct: 0 });
+    expect(statusOf(src({ status: "processing", stage: "chunk", stage_pct: 140, note: "page 3 of 9" }), now)).toEqual({ s: "processing", stage: "chunk", pct: 100, note: "page 3 of 9", attempts: 1 });
+    expect(statusOf(src({ status: "processing", stage: "embed", stage_pct: -3 }), now)).toEqual({ s: "processing", stage: "embed", pct: 0, attempts: 1 });
+    expect(statusOf(src({ status: "processing", stage: "embed", stage_pct: 20, attempts: 3 }), now)).toEqual({ s: "processing", stage: "embed", pct: 20, attempts: 3 });
   });
   it("shows a queued source at the first stage its kind runs", () => {
-    expect(statusOf(src({ status: "processing", stage: null, stage_pct: 50 }), now)).toEqual({ s: "processing", stage: "scan", pct: 0 });
+    expect(statusOf(src({ status: "processing", stage: null, stage_pct: 50 }), now)).toEqual({ s: "processing", stage: "scan", pct: 0, attempts: 1 });
     expect(statusOf(src({ kind: "url", status: "processing", stage: null }), now)).toMatchObject({ stage: "upload" });
   });
   it("maps partial with the reason the server gives", () => {
     expect(statusOf(src({ status: "partial", pages_read: 30, pages_total: 38, skipped: "pp. 31–38", note: "scanned pages", skipped_reason: "scanned" }), now))
-      .toEqual({ s: "partial", read: 30, total: 38, unit: "pages", note: "scanned pages", skipped: "pp. 31–38", why: "scanned" });
-    expect(statusOf(src({ status: "partial", pages_read: null, pages_total: null, skipped: null, note: null }), now)).toMatchObject({ read: 0, total: 0, note: "", skipped: "" });
+      .toEqual({ s: "partial", read: 30, total: 38, unit: "pages", note: "scanned pages", skipped: "pp. 31–38", reason: "scanned" });
+    expect(statusOf(src({ status: "partial", pages_read: null, pages_total: null, skipped: null, note: null }), now)).toEqual({ s: "partial", unit: "pages", note: "", skipped: "", reason: "size-limit" });
+    expect(statusOf(src({ status: "partial", kind: "url", skipped_reason: "mixed" }), now)).toMatchObject({ reason: "mixed" });
   });
   it("maps failed with when and where", () => {
     const processed = new Date(2026, 8, 30, 9, 14);
     expect(statusOf(src({ status: "failed", failure: "encrypted", failure_stage: "scan", note: "password", processed_at: iso(processed) }), now))
-      .toEqual({ s: "failed", failure: "encrypted", at: "scan", note: "password", when: "Today, 09:14" });
-    expect(statusOf(src({ status: "failed", failure: null, failure_stage: null, stage: "embed", processed_at: null }), now)).toEqual({ s: "failed", failure: "interrupted", at: "embed" });
+      .toEqual({ s: "failed", failure: "encrypted", at: "scan", note: "password", when: "Today, 09:14", attempts: 1 });
+    expect(statusOf(src({ status: "failed", failure: null, failure_stage: null, stage: "embed", processed_at: null }), now)).toEqual({ s: "failed", failure: "interrupted", at: "embed", attempts: 1 });
     expect(statusOf(src({ status: "failed", failure: "blocked", failure_stage: null, stage: null, processed_at: null }), now)).toMatchObject({ at: "upload" });
+    expect(statusOf(src({ status: "failed", failure: "interrupted", failure_stage: "embed", processed_at: null, attempts: 5 }), now)).toEqual({ s: "failed", failure: "interrupted", at: "embed", attempts: 5 });
   });
 });
 
 describe("reasonOf", () => {
-  it("prefers the server's reason and falls back to the note", () => {
-    expect(reasonOf("scanned", undefined, "pdf")).toBe("scanned");
-    expect(reasonOf("size-limit", undefined, "pdf")).toBe("limit");
-    expect(reasonOf("unreadable", undefined, "url")).toBe("pages");
-    expect(reasonOf("mixed", "12 pages are scanned images", "pdf")).toBe("scanned");
-    expect(reasonOf(null, undefined, "pdf")).toBeTypeOf("string");
+  it("uses the server's reason as-is (M10c copy), and falls back by kind and note without one", () => {
+    for (const r of ["scanned", "size-limit", "unreadable", "mixed"] as const) expect(reasonOf(r, undefined, "pdf")).toBe(r);
+    expect(reasonOf(null, undefined, "url")).toBe("unreadable");
+    expect(reasonOf(null, "12 pages are scanned images", "pdf")).toBe("scanned");
+    expect(reasonOf(null, undefined, "pdf")).toBe("size-limit");
   });
 });
 
 describe("byOf / hostOf", () => {
-  it("names me, someone known, or a teammate", () => {
+  it("names me, someone known, or a neutral teammate", () => {
     expect(byOf("u1", { now, me })).toEqual({ name: "Wanjiru Mwangi" });
     expect(byOf("u2", { now, me, people: [{ id: "u2", name: "Otieno" }] })).toEqual({ name: "Otieno" });
-    expect(byOf("u3", { now, me })).toEqual({ name: TEAMMATE });
-    expect(byOf(null, { now })).toEqual({ name: TEAMMATE });
+    expect(byOf("u3", { now, me })).toEqual({ name: TEAMMATE, unknown: true });
+    expect(byOf(null, { now })).toEqual({ name: TEAMMATE, unknown: true });
   });
   it("takes the host without www", () => {
     expect(hostOf("https://www.kilima.co.ke/docs")).toBe("kilima.co.ke");

@@ -17,6 +17,7 @@ import type { ContactsReviewState } from "@/lib/contacts/state";
 import { ToastProvider, useToast } from "./Toaster";
 import { SessionUnavailable, type SessionUnavailableProps } from "./SessionUnavailable";
 import { KnowledgeBase, PRODUCT } from "./kb";
+import { productRows } from "@/lib/kb/products";
 import { useKbProducts } from "./kb/live";
 import { useAppData } from "@/components/session/AppData";
 import type { KbReviewState } from "@/lib/kb/state";
@@ -178,7 +179,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
   const [builderOpen, setBuilderOpen] = useState(false);
   const [enrollAll, setEnrollAll] = useState(0);
   const [setupOpen, setSetupOpen] = useState(false);
-  const [kbAdd, setKbAdd] = useState(kb === "upload" || kb === "upload-errors");
+  const [kbAdd, setKbAdd] = useState(kb === "upload" || kb === "upload-errors" || kb === "replace");
   const [seqTab, setSeqTab] = useState<SeqTab>(() => seedFor(sequences).tab);
   const [pool, setPool] = useState(() => seedFor(sequences).pool);
   const [newSeq, setNewSeq] = useState(0);
@@ -252,8 +253,9 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
     </>
     : view === "knowledge" ? <>
       <DropdownMenu align="end" width={240} label="Product" items={kbLive && kbProducts
-          ? [{ heading: "Knowledge for" }, ...kbProducts.products.map((pr) => ({ label: pr.name, checked: pr.id === kbProducts.selected?.id, onSelect: () => kbProducts.select(pr.id) }))]
-          : [{ heading: "Knowledge for" }, { label: "ColdTrace Sensors", checked: true, meta: "12 sources" }, { label: "ColdTrace Gateway", meta: "4 sources", onSelect: () => toast({ icon: "book", children: "ColdTrace Gateway", meta: "sample action" }) }]}
+          ? [{ heading: "Knowledge for" }, ...productRows(kbProducts.products, kbProducts.selected?.id).map((r) => ({ label: r.label, checked: r.checked, meta: r.meta, onSelect: () => kbProducts.select(r.id) }))]
+          : [{ heading: "Knowledge for" }, ...productRows([{ id: "s", name: "ColdTrace Sensors" }, { id: "g", name: "ColdTrace Gateway" }], "s", { s: 12 })
+              .map((r) => ({ label: r.label, checked: r.checked, meta: r.meta, onSelect: r.checked ? undefined : () => toast({ icon: "book", children: r.label, meta: "sample action" }) }))]}
         trigger={(tp) => <button type="button" className="c-btn c-btn--quiet k-prodbtn" {...tp}><Icon name="box" />{productName}<Icon name="down" size={12} /></button>} />
       <Button variant="primary" onClick={() => setKbAdd(true)}><Icon name="plus" />Add sources</Button>
     </>

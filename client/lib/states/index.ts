@@ -22,6 +22,7 @@ import { UNIBOX_REVIEW_STATES } from "@/lib/unibox/state";
 import { HANDOFF_REVIEW_STATES } from "@/lib/handoff/state";
 import { SETTINGS_REVIEW_STATES } from "@/lib/integrations/state";
 import { MCP_REVIEW_STATES } from "@/lib/mcp/state";
+import { MARKETING_REVIEW_STATES } from "@/lib/marketing/visitor";
 
 export type StateKind = "empty" | "loading" | "error" | "partial" | "progress" | "view";
 export const KINDS: StateKind[] = ["empty", "loading", "error", "partial", "progress", "view"];
@@ -32,6 +33,8 @@ export type Surface = {
   id: string; label: string; milestone: string;
   /** The ?view= this surface's states load on; undefined for the shell (any view). */
   view?: string;
+  /** A surface outside /app: its states load on this route instead (?state=…). */
+  route?: string;
   states: readonly string[];
   /** Why a required kind is missing on purpose. */
   na?: Partial<Record<StateKind, string>>;
@@ -40,11 +43,17 @@ export type Surface = {
 };
 
 export const SURFACES: Surface[] = [
+  { id: "marketing", label: "Marketing nav (signed in or out)", milestone: "M10c", route: "/", states: MARKETING_REVIEW_STATES,
+    kinds: { "signed-in-initials": "partial" },
+    na: { empty: "Marketing pages are static copy; there is nothing to be empty.",
+      loading: "Static HTML: the nav renders signed out and swaps after hydration in the same footprint, so there is no skeleton.",
+      error: "The hint can only be present or not; a page that throws is app/error.tsx (route-level states)." } },
   { id: "shell", label: "Shell and session", milestone: "M1", states: APP_REVIEW_STATES,
     kinds: { "no-avatar": "partial", "signout-failed": "error" },
     na: { empty: "The shell always has its navigation; each view owns its own empty state." } },
   { id: "knowledge", label: "Knowledge base", milestone: "M2", view: "knowledge", states: KB_REVIEW_STATES,
-    kinds: { failed: "partial", unreadable: "partial", interrupted: "partial", conflict: "error" } },
+    kinds: { failed: "partial", unreadable: "partial", interrupted: "partial", conflict: "error",
+      "not-drafted": "empty", "first-product": "empty", "search-none": "empty", "search-loading": "loading", "search-error": "error" } },
   { id: "companies", label: "Companies and fit", milestone: "M3–M5", view: "companies", states: LEADS_REVIEW_STATES,
     kinds: { "no-results": "empty", "fit-none": "partial", "fit-low": "view", "fit-changed": "view" } },
   { id: "segments", label: "Segments", milestone: "M3", view: "segments", states: SEGMENT_REVIEW_STATES },
@@ -90,6 +99,7 @@ export function kindOf(state: string, surface?: Surface): StateKind {
 }
 
 export function hrefOf(surface: Surface, state: string) {
+  if (surface.route) return `${surface.route}?state=${state}`;
   return surface.view ? `/app?view=${surface.view}&state=${state}` : `/app?state=${state}`;
 }
 

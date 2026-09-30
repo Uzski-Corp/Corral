@@ -1,12 +1,12 @@
 "use client";
-import { Avatar, cx } from "../primitives";
+import { cx } from "../primitives";
 import { DropdownMenu } from "../Overlays";
 import { Icon } from "../icons";
 import { Tabs } from "../Tabs";
 import { EmptyState } from "../States";
 import { Button } from "../primitives";
 import type { Source } from "./data";
-import { FileTile, SourceState, isBusy, needsAttention } from "./parts";
+import { FileTile, PersonMark, SourceState, byName, isBusy, needsAttention } from "./parts";
 
 export type SourceFilter = "all" | "files" | "web" | "attention";
 export const filterSources = (list: Source[], f: SourceFilter) =>
@@ -14,7 +14,7 @@ export const filterSources = (list: Source[], f: SourceFilter) =>
 
 /* Source list: what Corral has read for this product. Exceptions sort to the top (need you, then
    still reading), everything else by recency. Two-line rows: the name people recognise, then the
-   facts that let them trust it (pages, size, how often it's re-read).                         */
+   facts that let them trust it (pages, size, when it was last read).                         */
 export function SourceList({ sources, filter, onFilter, selected, onOpen, onAction, onAdd }: {
   sources: Source[]; filter: SourceFilter; onFilter: (f: SourceFilter) => void; selected?: string;
   onOpen: (id: string) => void; onAction?: (id: string, action: "reread" | "replace" | "remove") => void; onAdd?: () => void;
@@ -38,7 +38,7 @@ export function SourceList({ sources, filter, onFilter, selected, onOpen, onActi
       {list.length === 0 ? (
         <EmptyState compact icon={filter === "attention" ? "check" : "book"} title={filter === "attention" ? "Nothing needs you" : filter === "web" ? "No web pages yet" : "No files yet"}
           actions={filter === "attention" ? undefined : <Button onClick={onAdd}><Icon name="plus" />Add sources</Button>}>
-          {filter === "attention" ? "Every source was read in full." : filter === "web" ? "Paste your product pages and Corral re-reads them weekly." : "Add your pitch deck, case studies and FAQs."}
+          {filter === "attention" ? "Every source was read in full." : filter === "web" ? "Add your product pages. Corral reads each one when you add it, and again whenever you choose Re-read." : "Add your pitch deck, case studies and FAQs."}
         </EmptyState>
       ) : (
         <div className="k-srcs" role="table" aria-label="Sources">
@@ -56,7 +56,7 @@ export function SourceList({ sources, filter, onFilter, selected, onOpen, onActi
               </span>
               <span role="cell"><SourceState src={s} /></span>
               <span role="cell" className="k-col-cited">{s.cited ? <span className="k-cited">{s.cited} {s.cited === 1 ? "line" : "lines"}</span> : <span className="k-nil">Not yet</span>}</span>
-              <span role="cell" className="k-col-by"><span className="k-by">{s.by.avatar && <Avatar id={s.by.avatar} />}<span>{s.by.name.split(" ")[0]}<em>{s.added}</em></span></span></span>
+              <span role="cell" className="k-col-by"><span className={cx("k-by", s.by.unknown && "is-anon")}><PersonMark by={s.by} /><span>{byName(s.by)}<em>{s.added}</em></span></span></span>
               <span role="cell" className="k-col-upd">{s.updated}</span>
               <span role="cell" className="k-col-more">
                 <DropdownMenu align="end" width={200} label={`${s.name} actions`} items={[

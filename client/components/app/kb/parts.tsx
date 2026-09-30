@@ -1,8 +1,9 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useId, useState } from "react";
 import { FAILURE, STAGES, overallPercent, stageLabel, type SourceKind } from "@/lib/kb/upload";
+import { cleanPassage, passageLabel } from "@/lib/kb/passages";
 import { Icon } from "../icons";
-import { cx } from "../primitives";
+import { Avatar, Monogram, cx } from "../primitives";
 import type { Source, SourceStatus } from "./data";
 
 /* File tile: the format, set in mono on a paper-coloured tile. Neutral on purpose: status colour
@@ -17,6 +18,8 @@ export function FileTile({ kind, size = 28, label }: { kind: SourceKind; size?: 
   );
 }
 export const kindLabel = (k: SourceKind) => (k === "url" ? "Web page" : k === "md" ? "Markdown" : k.toUpperCase());
+/** "PDF · 18 pages · 4.2 MB"; a meta that already names its kind ("Markdown · 6.2 KB") isn't said twice. */
+export const kindMeta = (s: Pick<Source, "kind" | "meta">) => (s.meta.startsWith(kindLabel(s.kind)) ? s.meta : [kindLabel(s.kind), s.meta].filter(Boolean).join(" · "));
 
 /** Thin progress rule. `value` undefined = indeterminate (the scan step has no percent). */
 export function Progress({ value, label, tone }: { value?: number; label: string; tone?: "error" }) {
@@ -36,12 +39,12 @@ export function SourceState({ src, compact }: { src: Source; compact?: boolean }
     const pct = overallPercent(st.stage, st.pct);
     return (
       <span className="k-state k-state--live">
-        <span className="k-state__line"><span>{stageLabel(st.stage, src.kind)}</span><span className="c-mono">{pct}%</span></span>
+        <span className="k-state__line"><span>{stageLabel(st.stage, src.kind)}{(st.attempts ?? 0) > 1 && <span className="k-state__try"> · try {st.attempts}</span>}</span><span className="c-mono">{pct}%</span></span>
         {!compact && <Progress value={pct} label={`${src.name}: ${stageLabel(st.stage, src.kind)}, ${pct}%`} />}
       </span>
     );
   }
-  if (st.s === "partial") return <span className="k-state is-caution"><Icon name="alert" size={12} />Partly read · {st.read} of {st.total} {st.unit}</span>;
+  if (st.s === "partial") return <span className="k-state is-caution"><Icon name="alert" size={12} />Partly read{st.total !== undefined ? <> · {st.read} of {st.total} {st.unit}</> : " · end skipped"}</span>;
   return <span className="k-state is-negative"><Icon name="alert" size={12} />{FAILURE[st.failure].title}</span>;
 }
 
@@ -66,4 +69,51 @@ export function useTicker(active: boolean, ms: number, fn: () => void) {
     const t = setInterval(fn, ms);
     return () => clearInterval(t);
   }, [active, ms, fn]);
+}
+
+/* ------------------------------------------------------------ people (M11, gap 6)
+   Who added a source. A known person gets their photo or initials; someone we can't name yet (no members
+   endpoint) gets a neutral outlined person mark and "Teammate": deliberate, not an error. The same slot
+   takes a name and photo later without the row moving. */
+export const byName = (by: Source["by"], form: "first" | "full" = "first") => (by.unknown ? "Teammate" : form === "first" ? by.name.split(" ")[0] : by.name);
+export function PersonMark({ by }: { by: Source["by"] }) {
+  if (by.avatar) return <Avatar id={by.avatar} />;
+  if (by.unknown) return <span className="c-av c-mono-av c-mono-av--off k-anon" aria-hidden="true"><Icon name="user" size={11} /></span>;
+  return <Monogram name={by.name} />;
+}
+
+/* ------------------------------------------------------------ passages (M11, gaps 12–13)
+   A short locator ("p. 14") sits in the narrow column. A markdown heading label goes on its own mono line
+   above the passage: one line with an ellipsis, the whole heading on hover and on keyboard focus. The text
+   is the server's with the markdown markers taken out; headings inside it render as light run-in headings. */
+/** `inert`: inside another control (a search result button), so the heading is a plain title, not a stop. */
+export function PassageLabel({ loc, ordinal, inert }: { loc: string | null; ordinal: number; inert?: boolean }) {
+  const l = passageLabel(loc, ordinal);
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  if (l.kind === "short") return <span className="c-mono k-ploc">{l.text}</span>;
+  if (inert) return <span className="k-phead" title={l.text}><span className="k-phead__txt">{l.text}</span></span>;
+  return (
+    <span className="k-phead" tabIndex={0} aria-describedby={open ? id : undefined} onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)} onFocus={() => setOpen(true)} onBlur={() => setOpen(false)}>
+      <span className="k-phead__txt">{l.text}</span>
+      {open && <span role="tooltip" id={id} className="k-phead__tip">{l.text}</span>}
+    </span>
+  );
+}
+export function PassageText({ text, loc, clamp = true }: { text: string; loc?: string | null; clamp?: boolean }) {
+  const blocks = cleanPassage(text, loc ?? undefined);
+  return (
+    <div className={cx("k-ptext", clamp && "is-clamped")}>
+      {blocks.map((b, i) => ("h" in b ? <b key={i} className="k-ptext__h">{b.h}</b> : <p key={i}>{b.p}</p>))}
+    </div>
+  );
+}
+export function PassageItem({ loc, ordinal, text }: { loc: string | null; ordinal: number; text: string }) {
+  const heading = passageLabel(loc, ordinal).kind === "heading";
+  return (
+    <li className={cx(heading && "is-heading")}>
+      <PassageLabel loc={loc} ordinal={ordinal} />
+      <PassageText text={text} loc={loc} />
+    </li>
+  );
 }
