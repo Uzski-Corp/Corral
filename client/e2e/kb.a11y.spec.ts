@@ -5,7 +5,7 @@ import { audit, WIDTHS } from "./axe";
  * axe (WCAG 2.1 A/AA, no skipped rules) on the M2 knowledge base and its main review states, at 1440 and 390
  * (HANDOFF-ENG.md §10). Runs in the "review" project: a NEXT_PUBLIC_DESIGN_REVIEW=1 server, because
  * `?state=` is off in production builds and there is no knowledge base API yet (ENG-65/66).
- * ENG-79 owns the rest (live upload, the remaining states, visual baselines).
+ * M10b adds partial, unreadable and interrupted (ENG-66). ENG-79 owns the rest (live upload, the remaining states, visual baselines).
  */
 const kb = (state?: string) => `/app?view=knowledge${state ? `&state=${state}` : ""}`;
 
@@ -17,6 +17,10 @@ const CASES: [state: string | undefined, ready: (page: Page) => Promise<void>][]
   ["upload", (p) => expect(p.getByRole("dialog", { name: "Add sources" })).toBeVisible()],
   ["upload-errors", (p) => expect(p.getByRole("dialog", { name: "Add sources" }).getByText(/\.key files aren't supported/)).toBeVisible()],
   ["failed", (p) => expect(p.getByText("Remove the password, then add it again.").first()).toBeVisible()],
+  // M10b (ENG-66, backend PR #67): partial with its page strip, and the two server failures with What happened.
+  ["partial", (p) => expect(p.getByLabel(/\d+ pages used, \d+ skipped/).first()).toBeVisible()],
+  ["unreadable", (p) => expect(p.getByText("Corral couldn’t read this file").filter({ visible: true }).first()).toBeVisible()],
+  ["interrupted", (p) => expect(p.getByText("Reading stopped").filter({ visible: true }).first()).toBeVisible()],
   ["conflict", (p) => expect(p.getByText(/\$39 per sensor per month/).first()).toBeVisible()],
 ];
 
