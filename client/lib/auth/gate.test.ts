@@ -21,6 +21,17 @@ describe("decide", () => {
     expect(run({ pathname: "/", returnTo: "/app" })).toEqual({ type: "next" });
   });
 
+  it("/ is the public home page (ENG-87): never sent to sign-in, and only a post-login landing is redirected", () => {
+    // Signed out, with or without a stale return cookie: the landing, never sign-in.
+    expect(run({ pathname: "/" })).toEqual({ type: "next" });
+    expect(run({ pathname: "/", returnTo: "/app?view=companies" })).toEqual({ type: "next" });
+    // Signed in and just browsing (no return cookie): the landing too.
+    expect(run({ pathname: "/", hasSession: true, onboarded: true })).toEqual({ type: "next" });
+    expect(run({ pathname: "/", hasSession: true, onboarded: false })).toEqual({ type: "next" });
+    // Signed in and arriving from the API callback (return cookie set): on to the app, as before.
+    expect(run({ pathname: "/", hasSession: true, onboarded: true, returnTo: "/app" })).toEqual(to("/app", true));
+  });
+
   it("finishes the post-login trip and clears the return cookie", () => {
     expect(run({ hasSession: true, onboarded: true, returnTo: "/app?view=segments" })).toEqual(to("/app?view=segments", true));
     expect(run({ hasSession: true, onboarded: true, returnTo: "//evil.test" })).toEqual(to("/app", true));

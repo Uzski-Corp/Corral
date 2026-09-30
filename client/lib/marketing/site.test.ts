@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CHANGELOG, CLAIMS, CTA, FOOTER, HOME, NAV, PUBLIC_ROUTES, ROUTES, SITE_URL, homeOf, isConfirmed } from "./site";
+import { CHANGELOG, CLAIMS, CTA, FOOTER, HOME, NAV, PUBLIC_ROUTES, ROUTES, SITE_URL, homeOf, isConfirmed, sitemapRoutes } from "./site";
 import { COMPARE, FAQ, PLANS, priceWords } from "./plans";
 import { SHARE_CARDS } from "./share";
 
@@ -19,7 +19,9 @@ describe("marketing site data", () => {
     expect(anchors.filter((h) => path(h) === ROUTES.mcp).map((h) => h.split("#")[1])).toEqual(["tools", "keys", "errors"]);
   });
   it("home is one of the two landings; the CTAs go somewhere real", () => {
-    expect([ROUTES.openRange, ROUTES.fenceline]).toContain(homeOf(HOME));
+    expect(HOME).toBe("open-range");
+    expect(homeOf(HOME)).toBe("/");
+    expect(homeOf()).toBe(ROUTES.home);
     expect(PUBLIC_ROUTES).toContain(CTA.start);
     expect(CTA.walkthrough).toMatch(/^mailto:/);
     expect(SITE_URL).toMatch(/^https:\/\//);
@@ -42,6 +44,18 @@ describe("marketing site data", () => {
     expect(isConfirmed("prices")).toBe(false);
     expect(isConfirmed("nope")).toBe(false);
     expect(CLAIMS.find((c) => c.id === "host")?.owner).toBe("Aegon");
+  });
+});
+
+describe("sitemap (ENG-87)", () => {
+  it("lists / as home and the shared pages, not sign-in, the /open-range alias, Fenceline or the legal stubs", () => {
+    expect(sitemapRoutes()).toEqual(["/", "/pricing", "/security", "/mcp", "/changelog"]);
+  });
+  it("adds the legal pages once counsel's text is confirmed", () => {
+    expect(sitemapRoutes(true)).toEqual(["/", "/pricing", "/security", "/mcp", "/changelog", "/legal/terms", "/legal/privacy", "/legal/dpa"]);
+  });
+  it("drops whichever landing isn't home", () => {
+    expect(sitemapRoutes(false, "fenceline")).toEqual(["/", "/fenceline", "/pricing", "/security", "/mcp", "/changelog"]);
   });
 });
 

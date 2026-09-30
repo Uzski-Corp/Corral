@@ -37,6 +37,12 @@ describe("proxy", () => {
     expect(res.cookies.get("corral_return_to")?.value).toBe("");
   });
 
+  it("serves / (the Open Range landing) to signed-out visitors and signed-in visitors who aren't mid-sign-in", () => {
+    expect(proxy(req("/")).headers.get("x-middleware-next")).toBe("1");
+    expect(proxy(req("/", { corral_return_to: "/app" })).headers.get("x-middleware-next")).toBe("1");
+    expect(proxy(req("/", { wos_session: "sealed", corral_onboarded: "1" })).headers.get("x-middleware-next")).toBe("1");
+  });
+
   it("uses the configured session cookie name", () => {
     vi.stubEnv("SESSION_COOKIE_NAME", "corral_session");
     resetConfigCache();

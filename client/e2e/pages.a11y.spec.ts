@@ -9,6 +9,7 @@ import { audit, WIDTHS } from "./axe";
 const PAGES: [path: string, ready: string][] = [
   ["/styleguide", "main, body"],
   ["/styleguide/share", "main, body"],
+  ["/styleguide/landings", "main"],
   ["/app", ".c-app"],
   ["/app?view=knowledge", ".c-app"],
   ["/sign-in", ".s-auth"],

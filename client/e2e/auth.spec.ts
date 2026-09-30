@@ -26,6 +26,19 @@ test.describe("route protection", () => {
       await expect(page).toHaveURL(`${WEB}${path}`);
     }
   });
+
+  test("a signed-in user can browse / (the landing) and still opens the app directly", async ({ page, mockApi, onboarded }) => {
+    void mockApi;
+    await onboarded();
+    await page.goto("/sign-in");
+    await signInWithGoogle(page);
+    await expect(page).toHaveURL(`${WEB}/app`);
+    await page.goto("/");
+    await expect(page).toHaveURL(`${WEB}/`);
+    await expect(page.getByRole("heading", { level: 1, name: /The right fifty/ })).toBeVisible();
+    await page.goto("/app");
+    await expect(page.getByRole("button", { name: "Account" })).toContainText("Wanjiru Mwangi");
+  });
 });
 
 test.describe("sign-in", () => {
