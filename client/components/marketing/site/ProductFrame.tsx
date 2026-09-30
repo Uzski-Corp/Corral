@@ -2,10 +2,13 @@
 /* A real Corral screen on the marketing site (M10). Not a picture: the M1–M9 components themselves, on the
    sample workspace, at the frame's real width (so at 390 you see the phone layout). Quiet until you ask:
    the screen is inert and described in words; "Try it" hands you the controls. It mounts as it nears the
-   viewport, showing the app's own skeleton until then, so the landing stays light. */
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+   viewport, showing the app's own skeleton until then, so the landing stays light. An `eager` frame (a hero)
+   doesn't wait for scroll: it mounts when the main thread is first idle after hydration (ENG-87), as a
+   transition so React can yield while it renders. Its first frame is the same skeleton either way. */
+import { startTransition, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { cx } from "@/components/app/primitives";
 import { AppSkeleton } from "@/components/app/States";
+import { whenIdle } from "@/lib/marketing/idle";
 
 export function ProductFrame({ label, caption, children, height = 720, phone = 620, tone = "light", className, eager }: {
   /** What the screen shows, for screen readers and the Try it button: "the Unibox with Brian's objection drafted". */
@@ -18,7 +21,7 @@ export function ProductFrame({ label, caption, children, height = 720, phone = 6
   /** "photo": the caption sits on an image, light type. */
   tone?: "light" | "photo";
   className?: string;
-  /** Mount at once (the hero), instead of when it nears the viewport. */
+  /** Mount on the first idle moment after hydration (the hero), instead of when it nears the viewport. */
   eager?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -27,7 +30,8 @@ export function ProductFrame({ label, caption, children, height = 720, phone = 6
   useEffect(() => {
     if (mounted) return;
     const el = ref.current;
-    if (eager || !el || typeof IntersectionObserver === "undefined") { setMounted(true); return; }
+    if (eager) return whenIdle(() => startTransition(() => setMounted(true)));
+    if (!el || typeof IntersectionObserver === "undefined") { setMounted(true); return; }
     const io = new IntersectionObserver(([e]) => { if (e?.isIntersecting) { setMounted(true); io.disconnect(); } }, { rootMargin: "900px 0px" });
     io.observe(el);
     return () => io.disconnect();
