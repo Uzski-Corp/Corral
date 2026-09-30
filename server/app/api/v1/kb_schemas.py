@@ -2,8 +2,9 @@
 
 ``SourceOut`` maps 1:1 onto the client's ``Source``/``SourceStatus`` (components/app/kb/data.ts):
 ``status`` is ``processing | ready | partial | failed``; ``processing`` carries ``stage``
-and ``stage_pct``; ``partial`` carries ``pages_read``/``pages_total``/``skipped``/``note``;
-``failed`` carries ``failure`` and ``failure_stage``.
+and ``stage_pct``; ``partial`` carries ``pages_read``/``pages_total``/``skipped``/``note``
+and the structured ``skipped_reason``; ``failed`` carries ``failure`` and ``failure_stage``.
+``attempts`` counts worker tries of the current read (0 queued, 2+ after a retry).
 """
 
 import uuid
@@ -12,7 +13,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
-from app.kb.errors import Failure, SourceKind, Stage
+from app.kb.errors import Failure, SkipReason, SourceKind, Stage
 
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)]
 
@@ -68,8 +69,13 @@ class SourceOut(BaseModel):
     pages_total: int | None
     pages_read: int | None
     skipped: str | None
+    skipped_reason: SkipReason | None = Field(
+        description="Why pages are missing (set iff `skipped` is): scanned | size-limit | "
+        "unreadable | mixed"
+    )
     note: str | None
     passage_count: int
+    attempts: int = Field(description="Worker tries of the current read; 0 while queued")
     added_by_user_id: uuid.UUID | None
     created_at: datetime
     updated_at: datetime

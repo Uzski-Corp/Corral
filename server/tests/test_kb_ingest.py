@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 from arq import Retry, Worker
 from sqlalchemy import delete, update
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from app.kb import ingest as ingest_module
@@ -85,6 +85,7 @@ async def test_scanned_pages_make_the_source_partial(
         2,
         "page 2",
     )
+    assert (done.skipped_reason, done.attempts) == ("scanned", 1)
     assert done.note == "1 page is a scanned image with no text layer."
     assert [c.loc for c in await chunks_of(db_engine, src.id)] == ["p.1", "p.3"]
 
@@ -321,19 +322,41 @@ async def test_a_reread_replaces_passages(db_engine: AsyncEngine, world: KbWorld
         kind="md",
         data=long_doc.encode(),
     )
-    await run(db_engine, src)
+    await run(db_engine, src, job_try=2)
+    assert (await reload(db_engine, src.id)).attempts == 2
     before = len(await chunks_of(db_engine, src.id))
     async with as_tenant(db_engine, world.a) as s:
         service = KnowledgeBaseService(s, world.a.org_id, SETTINGS)
         fresh = await service.get_source(world.product_a, src.id)
         assert fresh is not None
         await service.start_reread(fresh)
+    assert (await reload(db_engine, src.id)).attempts == 0  # a re-read starts counting again
     small = make_settings(kb_chunk_chars=250, kb_chunk_overlap_chars=20)
     assert await run(db_engine, await reload(db_engine, src.id), settings=small) == "ready"
     chunks = await chunks_of(db_engine, src.id)
     assert len(chunks) > before
     assert [c.ordinal for c in chunks] == list(range(len(chunks)))
     assert (await reload(db_engine, src.id)).passage_count == len(chunks)
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        {"skipped": "page 2"},  # a skip always says why
+        {"skipped": "page 2", "skipped_reason": "bored"},
+        {"skipped_reason": "scanned"},  # and a reason needs a skip
+        {"attempts": -1},
+    ],
+)
+async def test_the_database_enforces_skip_reasons_and_attempts(
+    db_engine: AsyncEngine, world: KbWorld, values: dict[str, Any]
+) -> None:
+    src = await add_file(
+        db_engine, world.a, world.product_a, SETTINGS, name="a.md", kind="md", data=b"# a\nbody"
+    )
+    with pytest.raises(IntegrityError):
+        async with as_tenant(db_engine, world.a) as s:
+            await s.execute(update(KbSource).where(KbSource.id == src.id).values(**values))
 
 
 # --- retries --------------------------------------------------------------------------
@@ -372,13 +395,16 @@ async def test_transient_failures_retry_with_backoff_then_give_up(
     src = await add_file(
         db_engine, world.a, world.product_a, SETTINGS, name="a.md", kind="md", data=b"# a\nbody"
     )
+    assert (await reload(db_engine, src.id)).attempts == 0  # queued, not started
     with pytest.raises(Retry) as info:
         await run(db_engine, src, embedder=Down(), job_try=2)
     assert info.value.defer_score == 4000
-    assert (await reload(db_engine, src.id)).status == "processing"
+    waiting = await reload(db_engine, src.id)
+    assert (waiting.status, waiting.attempts) == ("processing", 2)
     assert await run(db_engine, src, embedder=Down(), job_try=SETTINGS.worker_max_tries) == "failed"
     done = await reload(db_engine, src.id)
     assert (done.failure, done.note) == ("interrupted", "Corral couldn't finish reading it.")
+    assert done.attempts == SETTINGS.worker_max_tries
 
 
 async def test_database_errors_are_transient(

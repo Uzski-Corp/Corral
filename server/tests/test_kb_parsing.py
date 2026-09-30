@@ -9,7 +9,7 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from app.kb.errors import IngestFailure
+from app.kb.errors import IngestFailure, skip_reason
 from app.kb.files import OLE_MAGIC
 from app.kb.parsing import (
     ParsedDocument,
@@ -92,6 +92,7 @@ def test_pdf_pages_become_located_sections() -> None:
     )
     assert [s.loc for s in doc.sections] == ["p.1", "p.2"]
     assert (doc.pages_total, doc.pages_read, doc.skipped, doc.note) == (2, 2, None, None)
+    assert doc.skipped_reason is None
     assert not doc.partial
 
 
@@ -99,6 +100,7 @@ def test_scanned_pages_make_a_partial_read() -> None:
     doc = parse_document("pdf", make_pdf(GATEWAY_PAGES), LIMITS)
     assert doc.partial
     assert (doc.pages_total, doc.pages_read, doc.skipped) == (3, 2, "page 2")
+    assert doc.skipped_reason == "scanned"
     assert doc.note == "1 page is a scanned image with no text layer."
 
 
@@ -124,7 +126,24 @@ def test_page_limit_reads_the_first_pages_only() -> None:
         replace(LIMITS, max_pages=2),
     )
     assert (doc.pages_total, doc.pages_read, doc.skipped) == (5, 2, "pages 3\u20135")
+    assert doc.skipped_reason == "size-limit"
     assert doc.note == "Only the first 2 pages were read (size limit)."
+
+
+def test_scanned_pages_and_the_page_limit_together_are_mixed() -> None:
+    doc = parse_document(
+        "pdf",
+        make_pdf(
+            [
+                "enough text on page one",
+                None,
+                "enough text on page three",
+                "enough text on page four",
+            ]
+        ),
+        replace(LIMITS, max_pages=3),
+    )
+    assert (doc.skipped, doc.skipped_reason) == ("pages 2, 4", "mixed")
 
 
 def test_text_limit_stops_reading() -> None:
@@ -132,7 +151,7 @@ def test_text_limit_stops_reading() -> None:
         "pdf", make_pdf(["a" * 40, "b" * 40, "c" * 40]), replace(LIMITS, max_text_chars=50)
     )
     assert [s.text for s in doc.sections] == ["a" * 40, "b" * 10]
-    assert doc.skipped == "page 3"
+    assert (doc.skipped, doc.skipped_reason) == ("page 3", "size-limit")
 
 
 def test_password_protected_pdf_is_encrypted() -> None:
@@ -238,6 +257,7 @@ def test_docx_text_limit() -> None:
     assert doc.partial
     assert doc.char_count == 40
     assert doc.skipped == "the end of the document"
+    assert doc.skipped_reason == "size-limit"
 
 
 def test_docx_stops_reading_once_the_budget_is_spent() -> None:
@@ -487,3 +507,11 @@ def test_any_markdown_text_parses_or_is_empty(text: str) -> None:
 def test_html_parser_never_crashes(html: str) -> None:
     page = parse_html(html)
     assert isinstance(page.text, str)
+
+
+def test_skip_reason_is_mixed_only_for_distinct_reasons() -> None:
+    assert skip_reason() is None
+    assert skip_reason(None, None) is None
+    assert skip_reason("scanned", None) == "scanned"
+    assert skip_reason("size-limit", "size-limit") == "size-limit"
+    assert skip_reason("scanned", "size-limit") == "mixed"

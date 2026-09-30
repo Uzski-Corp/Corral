@@ -434,7 +434,7 @@ async def test_section_crawl_stays_in_the_section(web: Web) -> None:
     assert "/blog/deck.pdf" not in fetched
     assert "/private/p" not in fetched
     assert (doc.pages_total, doc.pages_read) == (6, 4)
-    assert doc.skipped == "/blog/broken, /blog/blank"
+    assert (doc.skipped, doc.skipped_reason) == ("/blog/broken, /blog/blank", "unreadable")
     assert doc.note == "2 of 6 pages couldn't be read."
     assert progress[-1] == (6, 10)
 

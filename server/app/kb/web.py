@@ -394,6 +394,7 @@ async def read_web_source(
         pages_total=total,
         pages_read=total - len(skipped_pages),
         skipped=_join_paths(skipped_pages) if skipped_pages else None,
+        skipped_reason="unreadable" if skipped_pages else None,
         note=note,
     )
 

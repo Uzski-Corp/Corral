@@ -45,6 +45,7 @@ FAILURES = (
     "blocked",
 )
 URL_SCOPES = ("page", "section")
+SKIP_REASONS = ("scanned", "size-limit", "unreadable", "mixed")
 
 
 def _in(column: str, values: tuple[str, ...]) -> str:
@@ -79,7 +80,13 @@ class KbSource(TenantModel):
         CheckConstraint(f"stage IS NULL OR {_in('stage', STAGES)}", name="stage"),
         CheckConstraint(f"failure IS NULL OR {_in('failure', FAILURES)}", name="failure"),
         CheckConstraint(f"scope IS NULL OR {_in('scope', URL_SCOPES)}", name="scope"),
+        CheckConstraint(
+            f"skipped_reason IS NULL OR {_in('skipped_reason', SKIP_REASONS)}",
+            name="skipped_reason",
+        ),
+        CheckConstraint("(skipped IS NULL) = (skipped_reason IS NULL)", name="skip_has_reason"),
         CheckConstraint("stage_pct BETWEEN 0 AND 100", name="stage_pct"),
+        CheckConstraint("attempts >= 0", name="attempts"),
         CheckConstraint("(kind = 'url') = (url IS NOT NULL)", name="url_iff_web"),
         Index("ix_kb_sources_product_id", "product_id"),
         Index("ix_kb_sources_product_id_content_sha256", "product_id", "content_sha256"),
@@ -100,11 +107,15 @@ class KbSource(TenantModel):
     pages_total: Mapped[int | None] = mapped_column(Integer)
     pages_read: Mapped[int | None] = mapped_column(Integer)
     skipped: Mapped[str | None] = mapped_column(String(255))
+    skipped_reason: Mapped[str | None] = mapped_column(String(20))
     note: Mapped[str | None] = mapped_column(String(500))
     passage_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     # Bumped on every (re)ingest; a job only writes results for the generation it was
     # started for, so a stale job can't overwrite a newer read or a removed source.
     generation: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    # Worker tries of the current generation: 0 while queued, 1 on the first read, 2+ after
+    # retries (bounded by WORKER_MAX_TRIES). Reset by a re-read.
+    attempts: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default="0")
     added_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL")
     )

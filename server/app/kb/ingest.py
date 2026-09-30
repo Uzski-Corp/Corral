@@ -65,6 +65,7 @@ class IngestJob:
         source_id: uuid.UUID,
         generation: int,
         fetcher_factory: FetcherFactory | None = None,
+        attempt: int = 1,
     ) -> None:
         self.db = db
         self.settings = settings
@@ -72,6 +73,7 @@ class IngestJob:
         self.org_id = org_id
         self.source_id = source_id
         self.generation = generation
+        self.attempt = attempt
         self.fetcher_factory = fetcher_factory or (lambda config: SafeFetcher(config))
         self.limits = ParseLimits.from_settings(settings)
 
@@ -101,6 +103,7 @@ class IngestJob:
                 ).scalar_one_or_none()
                 if data is None:
                     raise IngestFailure("interrupted", "upload", "The upload wasn't stored.")
+            source.attempts = self.attempt  # visible while it runs: "attempt 2 of 5"
             return _Loaded(kind=source.kind, url=source.url, scope=source.scope, data=data)
 
     async def progress(self, stage: Stage, pct: int, **values: Any) -> None:
@@ -195,6 +198,7 @@ class IngestJob:
                     pages_total=source.pages_total,
                     pages_read=source.pages_read,
                     skipped=source.skipped,
+                    skipped_reason=source.skipped_reason,
                     note=source.note,
                     passage_count=len(chunks),
                     processed_at=datetime.now(UTC),
@@ -259,8 +263,9 @@ async def ingest_source(
         source_id=uuid.UUID(source_id),
         generation=int(generation),
         fetcher_factory=ctx.get("fetcher_factory"),
+        attempt=int(ctx.get("job_try", 1)),
     )
-    job_try = int(ctx.get("job_try", 1))
+    job_try = job.attempt
     max_tries = job.settings.worker_max_tries
     bound = log.bind(
         job="ingest_source", source_id=source_id, generation=generation, job_try=job_try

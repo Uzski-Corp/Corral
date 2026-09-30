@@ -26,7 +26,7 @@ from pypdf import PdfReader
 from pypdf.generic import DictionaryObject
 
 from app.core.config import Settings
-from app.kb.errors import FileKind, IngestFailure
+from app.kb.errors import FileKind, IngestFailure, SkipReason, skip_reason
 from app.kb.files import OLE_MAGIC
 
 log = structlog.get_logger(__name__)
@@ -74,6 +74,7 @@ class ParsedDocument:
     pages_total: int | None = None
     pages_read: int | None = None
     skipped: str | None = None
+    skipped_reason: SkipReason | None = None
     note: str | None = None
 
     @property
@@ -201,6 +202,9 @@ def parse_pdf(data: bytes, limits: ParseLimits) -> ParsedDocument:
         pages_total=total,
         pages_read=len(sections),
         skipped=page_ranges(skipped) if skipped else None,
+        skipped_reason=skip_reason(
+            "scanned" if scanned else None, "size-limit" if over_limit else None
+        ),
         note=" ".join(notes) or None,
     )
 
@@ -333,6 +337,7 @@ def _with_budget_note(sections: tuple[Section, ...], budget: _Budget) -> ParsedD
     return ParsedDocument(
         sections,
         skipped="the end of the document",
+        skipped_reason="size-limit",
         note="Only the first part was read (text limit).",
     )
 

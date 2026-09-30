@@ -86,9 +86,11 @@ def upgrade() -> None:
         sa.Column("pages_total", sa.Integer()),
         sa.Column("pages_read", sa.Integer()),
         sa.Column("skipped", sa.String(255)),
+        sa.Column("skipped_reason", sa.String(20)),
         sa.Column("note", sa.String(500)),
         sa.Column("passage_count", sa.Integer(), server_default="0", nullable=False),
         sa.Column("generation", sa.Integer(), server_default="0", nullable=False),
+        sa.Column("attempts", sa.SmallInteger(), server_default="0", nullable=False),
         sa.Column("added_by_user_id", sa.Uuid()),
         sa.Column("processed_at", sa.DateTime(timezone=True)),
         sa.Column("deleted_at", sa.DateTime(timezone=True)),
@@ -136,7 +138,17 @@ def upgrade() -> None:
             "scope IS NULL OR " + _in("scope", ("page", "section")),
             name=op.f("ck_kb_sources_scope"),
         ),
+        sa.CheckConstraint(
+            "skipped_reason IS NULL OR "
+            + _in("skipped_reason", ("scanned", "size-limit", "unreadable", "mixed")),
+            name=op.f("ck_kb_sources_skipped_reason"),
+        ),
+        sa.CheckConstraint(
+            "(skipped IS NULL) = (skipped_reason IS NULL)",
+            name=op.f("ck_kb_sources_skip_has_reason"),
+        ),
         sa.CheckConstraint("stage_pct BETWEEN 0 AND 100", name=op.f("ck_kb_sources_stage_pct")),
+        sa.CheckConstraint("attempts >= 0", name=op.f("ck_kb_sources_attempts")),
         sa.CheckConstraint(
             "(kind = 'url') = (url IS NOT NULL)", name=op.f("ck_kb_sources_url_iff_web")
         ),

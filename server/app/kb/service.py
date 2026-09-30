@@ -265,6 +265,7 @@ class KnowledgeBaseService:
             .where(KbSource.org_id == self.org_id, KbSource.id == source.id)
             .values(
                 generation=KbSource.generation + 1,
+                attempts=0,
                 status="processing",
                 stage="upload" if source.kind == "url" else "scan",
                 stage_pct=0,

@@ -15,6 +15,22 @@ Failure = Literal[
     "blocked",  # robots.txt, 401/403, or a redirect to a private address
 ]
 
+SkipReason = Literal[
+    "scanned",  # PDF pages that are images with no text layer (OCR them and re-add)
+    "size-limit",  # pages or text past the page/text limits weren't read
+    "unreadable",  # pages of a web section that failed to load or had no text
+    "mixed",  # more than one of the above
+]
+"""Why a ``partial`` source is missing pages. Server-side only; not in the client's FAILURE map."""
+
+
+def skip_reason(*reasons: "SkipReason | None") -> "SkipReason | None":
+    """The single reason for the distinct reasons that apply, ``mixed`` when several do."""
+    present = {r for r in reasons if r is not None}
+    if len(present) > 1:
+        return "mixed"
+    return present.pop() if present else None
+
 
 class IngestFailure(Exception):
     """A permanent, user-facing failure: the source is marked ``failed`` and never retried."""

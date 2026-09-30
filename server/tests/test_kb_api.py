@@ -515,6 +515,9 @@ async def test_list_orders_problems_first_and_filters(
     assert (got["failure"], got["failure_stage"], got["progress"]) == ("no-text", "parse", None)
     got = (await c.get(f"{src}/{partial}")).json()
     assert (got["pages_read"], got["pages_total"], got["skipped"]) == (2, 3, "page 2")
+    assert (got["skipped_reason"], got["attempts"]) == ("scanned", 1)
+    got = (await c.get(f"{src}/{processing}")).json()
+    assert (got["skipped_reason"], got["attempts"]) == (None, 0)
     assert ids(await c.get(src, params={"kind": "url"})) == [processing]
     assert ids(await c.get(src, params={"kind": "file"})) == [failed, partial, ready]
     assert ids(await c.get(src, params={"status": "ready"})) == [ready]
@@ -553,6 +556,7 @@ async def test_remove_restore_and_reread(
     reread = await c.post(f"{src}/reread", headers=ORIGIN)
     assert reread.status_code == 202
     assert (reread.json()["status"], reread.json()["stage"]) == ("processing", "scan")
+    assert reread.json()["attempts"] == 0
     job_ids = {j.job_id for j in await queue.redis.queued_jobs(queue_name=QUEUE_NAME)}
     assert f"ingest_source:{sid}:1" in job_ids
     async with AsyncSession(db_engine) as s:  # old passages stay searchable until replaced
