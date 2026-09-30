@@ -1,4 +1,7 @@
 /* Sample content for the Corral design study. People, companies and numbers are illustrative. */
+import type { Triage } from "@/lib/unibox/triage";
+import type { EnrichState } from "@/lib/discovery/run";
+import type { MeetingStatus } from "@/lib/handoff/handoff";
 import type { Status } from "./primitives";
 
 export const LOGOS = {
@@ -15,8 +18,14 @@ export const LOGOS = {
 export type CompanyName = keyof typeof LOGOS;
 
 export type Lead = {
-  id: string; company: CompanyName; domain: string; person: string; title: string; avatar: string;
+  /** company: a sample name with a logo tile, or any imported name (neutral tile). avatar "" = monogram. */
+  id: string; company: CompanyName | (string & {}); domain: string; person: string; title: string; avatar: string;
   fit: number; email: Status; reply: Status; last: string; why: string[];
+  /* M3 lead table: optional, so M1 rows still type-check */
+  country?: string; size?: string; industry?: string; source?: string;
+  /** Corral is still reading the site; fit isn't known yet */ scoring?: boolean;
+  /** id of the lead this one probably duplicates */ dupOf?: string;
+  /** M4: where the company is in discovery/enrichment; the table shows it in place of the value it waits for */ enrich?: EnrichState;
 };
 export const LEADS: Lead[] = [
   { id: "kilima", company: "Kilima Dairies", domain: "kilima.co.ke", person: "Wanjiru Mwangi", title: "Head of Supply Chain", avatar: "wanjiru", fit: 94, email: "Verified", reply: "Interested", last: "2h ago", why: ["Read 38 pages of kilima.co.ke", "Matched “3-site pilot” proof", "Replied in 2h"] },
@@ -31,10 +40,32 @@ export const LEADS: Lead[] = [
 ];
 
 export type Thread = {
-  id: string; avatar: string; name: string; company: CompanyName; title: string; fit: number; status: Status; time: string;
+  /** avatar "" = monogram. company: a sample name, or any name (neutral logo tile). */
+  id: string; avatar: string; name: string; company: CompanyName | (string & {}); title: string; fit: number; status: Status; time: string;
   unread?: boolean; snippet: string; subject: string; body: string; receipts: [string, string][];
   draft?: string[]; next?: [string, string, string][];
+  /* M7 Unibox (ENG-57). Optional, so the M1 sample threads and the marketing <Unibox /> are unchanged. */
+  /** The person's address. */
+  email?: string;
+  /** Who actually sent the reply when it isn't the person (a bounce from a mail server). */
+  sender?: { name: string; email: string };
+  /** Triage Corral (or you) gave the reply; defaults from `status`. */
+  triage?: Triage;
+  /** Corral acted on its own (OOO, unsubscribe, bounce): out of Needs you, still in All. */
+  handled?: boolean;
+  /** Snoozed until this label ("Mon 08:00"): shows in Snoozed only. */
+  snoozed?: string;
+  /** The pool mailbox the thread is in. Replies go from it (M6). */
+  mailbox?: string;
+  /** Earlier messages, oldest first, before the reply in `body`. */
+  history?: ThreadMsg[];
+  /** The sequence the reply came from (M6). */
+  seq?: { id: string; name: string; step: number; of: number; state: string };
+  /** M8: the Cal.com meeting on this thread, when there is one (ENG-58). */
+  meeting?: MeetingStatus;
 };
+/** One earlier message in a thread. `from`: you (the sequence), them, or a teammate. */
+export type ThreadMsg = { from: "you" | "them" | "teammate"; who: string; at: string; body: string; note?: string; meta?: string };
 export const THREADS: Thread[] = [
   { id: "brian", avatar: "kamau", name: "Brian Kamau", company: "Pwani Fresh", title: "COO", fit: 91, status: "Objection", time: "09:42", unread: true,
     snippet: "Honestly the price is the blocker. We pay less for our current…", subject: "Re: Spoilage across your Mombasa cold rooms",

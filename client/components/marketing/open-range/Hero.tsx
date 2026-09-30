@@ -1,13 +1,17 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Button, Mark, PersonCard, SegmentWindow } from "@/components/app";
+import { Mark } from "@/components/app/icons";
+import { CTA, CTA_SIGNED_IN, ROUTES } from "@/lib/marketing/site";
+import { VisitorLink } from "@/components/marketing/site/VisitorLink";
+import { ProductFrame, Screen } from "../site";
+import { OpenRangeNavAccount } from "../site/Visitor";
 
 export function OpenRangeNav() {
   return (
     <nav className="or-nav or-wrap" aria-label="Main">
-      <Link className="or-logo" href="/open-range"><Mark size={22} /><span>Corral</span></Link>
-      <div className="or-nav__links"><a href="#product">Product</a><a href="#how">How it works</a><a href="#people">Customers</a><a href="#pricing">Pricing</a></div>
-      <div className="or-nav__cta"><a href="#" className="or-nav__signin">Sign in</a><Button variant="ink" size="lg">Book a walkthrough</Button></div>
+      <Link className="or-logo" href={ROUTES.home}><Mark size={22} /><span>Corral</span></Link>
+      <div className="or-nav__links"><a href="#product">Product</a><a href="#unibox">Unibox</a><Link href={ROUTES.pricing}>Pricing</Link><Link href={ROUTES.mcp}>MCP</Link><Link href={ROUTES.security}>Security</Link></div>
+      <OpenRangeNavAccount />
     </nav>
   );
 }
@@ -21,11 +25,15 @@ export function OpenRangeHero() {
         <div className="or-hero__copy">
           <h1>The right fifty,<br />already read.</h1>
           <p>Corral reads every company’s website against what you actually sell, scores the fit, and puts a real person at the end of every row.</p>
-          <div className="or-hero__ctas"><Button variant="primary" size="lg">Add your first product</Button><Button size="lg" className="or-glass">See a scored segment</Button></div>
+          <div className="or-hero__ctas"><VisitorLink className="c-btn c-btn--primary c-btn--lg" href={CTA.start} signedInHref={CTA_SIGNED_IN.start}>Add your first product</VisitorLink><a className="c-btn c-btn--lg or-glass" href="#product">See a scored segment</a></div>
         </div>
-        <div className="or-hero__card"><PersonCard /></div>
       </div>
-      <div className="or-hero__plate"><SegmentWindow limit={9} /></div>
+      <div className="or-hero__plate">
+        <ProductFrame eager tone="photo" height={660} phone={600} label="Companies for ColdTrace Sensors, Kilima Dairies open on why it scored 94"
+          caption="The app, not a picture of it: Companies, with Kilima Dairies open on why it scored 94.">
+          <Screen view="companies" leads="fit" />
+        </ProductFrame>
+      </div>
     </header>
   );
 }

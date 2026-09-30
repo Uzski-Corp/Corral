@@ -8,8 +8,8 @@
   --mk-ink: #1F1B18;
   --mk-ink-hover: #3A342E;
   --mk-copy: #4A443D;        /* sepia 600 */
-  --mk-copy-muted: #7A7369;  /* sepia 500 */
-  --mk-copy-faint: #A39C92;  /* sepia 400 */
+  --mk-copy-muted: #6B645A;  /* sepia 500, darkened in M10 for 4.5:1 on paper */
+  --mk-copy-faint: #857E73;  /* sepia 400, M10: 3:1 on paper, large text only */
   --mk-rule: #DDD7CC;
   --mk-rule-soft: #E7E2D9;
   --mk-press: #16130F;       /* the one dark band */

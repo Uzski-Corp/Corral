@@ -1,0 +1,1 @@
+Corral’s MCP server: an API key’s access by area. Keys can draft but can’t send; sending needs a signed-in connection.

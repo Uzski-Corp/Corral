@@ -1,0 +1,63 @@
+/* M5 fit score reasoning (ENG-55). f- prefix. Reads like a list of findings with sources, not a chart. */
+.f-why { gap: 10px; }
+.f-why__hd { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 28px; }
+.f-why__hd h3 { display: block; font-size: 13px; color: var(--color-text); }
+/* Banners in the 400px rail: the action goes under the text. */
+.f-why .c-banner { flex-wrap: wrap; }
+.f-why .c-banner__txt { flex-basis: calc(100% - 26px); }
+.f-why .c-banner > :last-child:not(.c-banner__txt) { margin: 4px 0 0 26px; align-self: flex-start; }
+.f-why__sum { margin: 0; font-size: 13.5px; line-height: 20px; color: var(--color-text-body); text-wrap: pretty; }
+.f-why__meta { margin: -4px 0 0; font-size: var(--text-meta); line-height: 16px; }
+.f-why__code { margin: 0; font-size: 11px; }
+
+/* What changed since the last score: a quiet note, arrows in text, no colour. */
+.f-change { border-radius: var(--radius-button); background: var(--color-surface-sunken); padding: 9px 12px; font-size: 12.5px; line-height: 18px; color: var(--color-text-secondary); }
+.f-change__hd { margin: 0; }
+.f-change__hd .c-num { font-weight: 500; color: var(--color-text); }
+.f-change ul { margin: 4px 0 0; padding-left: 16px; }
+
+/* Checks: icon · claim + points in the margin · finding · evidence (quote + cite) · the KB line it was measured against. */
+.f-checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.f-check { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 6px; padding: 10px 0; border-top: 1px solid var(--color-border-subtle); }
+.f-check:first-child { border-top: 0; padding-top: 4px; }
+.f-check__ic { width: 18px; height: 18px; margin-top: 1px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: var(--color-text-quaternary); box-shadow: inset 0 0 0 1px var(--color-border); background: var(--color-canvas); }
+.f-check.is-met .f-check__ic { color: var(--color-canvas); background: var(--color-fit-on); box-shadow: none; }
+.f-check.is-partly .f-check__ic { color: var(--color-fit-on); box-shadow: inset 0 0 0 1.25px var(--color-fit-on); }
+.f-check.is-missed .f-check__ic { color: var(--color-text-tertiary); }
+.f-check.is-unknown .f-check__ic { color: var(--color-caution-600); box-shadow: inset 0 0 0 1px var(--color-caution-200); background: var(--color-caution-50); }
+.f-check__body { display: flex; flex-direction: column; gap: 3px; min-width: 0; font-size: 12.5px; line-height: 18px; }
+.f-check__top { margin: 0; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; color: var(--color-text); }
+.f-check__pts { flex-shrink: 0; font-size: 11.5px; color: var(--color-text-tertiary); font-variant-numeric: tabular-nums; }
+.f-check__finding { margin: 0; color: var(--color-text-secondary); }
+.f-check__word { color: var(--color-text-tertiary); }
+.f-check.is-unknown .f-check__finding { color: var(--color-text-tertiary); }
+.f-check__basis { margin: 2px 0 0; font-size: 11.5px; line-height: 16px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.f-check__basis b { font-weight: 500; }
+.f-check__add { align-self: flex-start; font-size: 12px; }
+/* The last score after an error: marked by a caption and a quiet rule, not opacity (keeps text contrast). */
+.f-checks__cap { margin: 4px 0 -4px; font-size: 12px; }
+.f-checks.is-dim { border-left: 2px solid var(--color-border); padding-left: 12px; }
+
+.f-ev { display: flex; flex-direction: column; gap: 1px; margin-top: 2px; padding-left: 10px; border-left: 2px solid var(--color-border); }
+.f-ev__q { margin: 0; color: var(--color-text-body); font-size: 12.5px; line-height: 18px; text-wrap: pretty; }
+.f-ev__t { margin: 0; color: var(--color-text-secondary); }
+.f-ev__cite { margin: 0; font-size: 11px; line-height: 16px; overflow-wrap: anywhere; }
+.f-ev__cite .c-mono { font-size: 10.5px; }
+
+/* Scoring: the checks as a to-do list. */
+@keyframes f-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+.f-checks.is-pending .f-check { padding: 7px 0; }
+.f-check.is-wait .f-check__ic { box-shadow: none; background: none; }
+.f-dot { width: 7px; height: 7px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--color-border-strong); }
+.f-dot.is-live { box-shadow: none; background: var(--color-action); animation: f-pulse 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .f-dot.is-live { animation: none; } }
+
+.f-none { display: flex; flex-direction: column; gap: 10px; font-size: 13px; line-height: 19px; color: var(--color-text-secondary); }
+.f-none p { margin: 0; }
+
+.f-why__foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding-top: 4px; font-size: var(--text-meta); }
+.f-form { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: var(--radius-card); box-shadow: 0 0 0 1px var(--color-border); background: var(--color-canvas); font-size: 12.5px; }
+.f-form p { margin: 0; }
+
+/* The "Why?" link next to the fit in the facts grid. */
+.f-why-link { margin-left: 10px; font-size: var(--text-meta); }

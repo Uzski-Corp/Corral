@@ -1,0 +1,29 @@
+/* Share images (M10): 1200×630, one per route. Screenshotted by m10-wip/og.mjs, not shown to users. */
+.sh-page { padding: 40px; background: #e9e6df; display: flex; flex-direction: column; gap: 40px; min-width: 1280px; }
+.sh-page__h { margin: 0; font: 500 14px/1.4 var(--font-sans); color: #555; }
+.sh-page figure { margin: 0; }
+.sh-page figcaption { margin-top: 8px; font: 400 12px/1.4 var(--font-sans); color: #555; max-width: 1200px; }
+.sh { position: relative; width: 1200px; height: 630px; overflow: hidden; display: grid; grid-template-columns: 500px 1fr; grid-template-rows: 630px; background: #f4f1ea;
+  background-image: radial-gradient(120% 90% at 100% 100%, rgb(125 150 90 / .28), transparent 60%), radial-gradient(80% 60% at 0% 0%, rgb(255 255 255 / .7), transparent 60%); }
+.sh__copy { padding: 64px 0 56px 72px; display: flex; flex-direction: column; }
+.sh__brand { display: flex; align-items: center; gap: 10px; font: 600 24px/1 var(--mk-font-display, var(--font-sans)); color: #16150f; letter-spacing: -0.02em; }
+.sh__brand em { font-style: normal; font-weight: 500; font-size: 18px; color: #6b675c; padding-left: 12px; margin-left: 4px; border-left: 1px solid #cfc9bb; }
+.sh h2 { margin: auto 0 0; font: 600 58px/1.02 var(--mk-font-display, var(--font-sans)); letter-spacing: -0.035em; color: #16150f; text-wrap: balance; }
+.sh__foot { margin-top: 36px; display: flex; align-items: center; gap: 16px; font: 500 16px/1 var(--font-sans); color: #6b675c; }
+.sh__piece { position: relative; padding: 56px 0 0 40px; height: 630px; overflow: hidden; box-sizing: border-box; }
+.sh__piece::after { content: ""; position: absolute; inset: auto 0 0 0; height: 90px; background: linear-gradient(transparent, #efece3); pointer-events: none; }
+.sh__piece > * { box-shadow: 0 30px 60px rgb(40 30 10 / .18), 0 0 0 .5px rgb(0 0 0 / .08); border-radius: 12px; background: var(--color-canvas, #fff); }
+.sh__piece .pp-fit, .sh__piece .pp-prov, .sh__piece .pp-hand, .sh__piece .pp-access { width: 600px; }
+.sh--unibox .sh__piece { padding: 48px 0 0 32px; }
+.sh--plans .sh__piece::after { display: none; }
+.sh--plans .sh__piece { padding-top: 150px; }
+.sh-screen { width: 1100px; height: 700px; overflow: hidden; container: shell / inline-size; }
+.sh-plans { width: 560px; display: grid; gap: 0; padding: 8px 0; zoom: 1.2; }
+.sh-plan { display: grid; grid-template-columns: 110px 110px 1fr; align-items: baseline; gap: 12px; padding: 16px 22px; font-size: 14px; }
+.sh-plan + .sh-plan { border-top: 1px solid var(--color-border-subtle); }
+.sh-plan.is-primary { background: var(--color-surface-selected); }
+.sh-plan__n { font: 600 24px/1 var(--mk-font-display, var(--font-sans)); letter-spacing: -0.02em; }
+.sh-change { width: 600px; padding: 20px 24px; display: flex; flex-direction: column; gap: 12px; font-size: 13px; line-height: 18px; zoom: 1.1; }
+.sh-change > div { display: grid; grid-template-columns: 120px 1fr; gap: 12px; }
+.sh-change b { font-weight: 500; }
+.sh-change span:not(.c-mono) { color: var(--color-text-secondary); }

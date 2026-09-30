@@ -1,5 +1,6 @@
 import Image from "next/image";
-import { MeetingCard, Tag, type Status } from "@/components/app";
+import { Tag, type Status } from "@/components/app/primitives";
+import { MeetingCard } from "@/components/app/Cards";
 
 const GALLERY: [string, string, string, string, Status, string, string][] = [
   ["a", "wanjiru", "Wanjiru Mwangi", "Head of Supply Chain, Kilima Dairies", "Interested", "Asked for a three-site pilot", "(max-width: 720px) 100vw, 40vw"],

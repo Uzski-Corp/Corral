@@ -1,5 +1,15 @@
 @import "tailwindcss";
 @import "../components/app/app.css";
+@import "../components/app/system.css";
+@import "../components/app/screens/screens.css";
+@import "../components/app/kb/kb.css";
+@import "../components/app/leads/leads.css";
+@import "../components/app/discovery/discovery.css";
+@import "../components/app/fit/fit.css";
+@import "../components/app/sequences/sequences.css";
+@import "../components/app/unibox/unibox.css";
+@import "../components/app/handoff/handoff.css";
+@import "../components/app/mcp/mcp.css";
 
 /* ============================================================
    Corral — base layer: Open Range app tokens (Tailwind v4).
@@ -21,14 +31,20 @@
   --color-border: #E7E7E5;
   --color-border-subtle: #F0F0EE;
   --color-border-strong: #D4D4D1;
+  --color-border-control: #8F8F8C; /* checkbox, radio, switch-off: 3.24:1 on white (WCAG 1.4.11) */
 
   /* Text */
   --color-text: #1C1C1C;            /* names, titles, values */
   --color-text-body: #292929;       /* message bodies */
-  --color-text-secondary: #5D5D5D;  /* meta that still matters */
-  --color-text-tertiary: #7F7F7F;   /* labels, columns, receipts */
-  --color-text-quaternary: #A1A1A1; /* timings, placeholders, disabled */
+  /* AA ladder: every text grey is >= 4.5:1 on the darkest surface it sits on (#EBEBE9, active nav). */
+  --color-text-secondary: #4F4F4F;  /* meta that still matters     8.19:1 on white */
+  --color-text-tertiary: #5F5F5F;   /* labels, columns, receipts   6.39:1 */
+  --color-text-quaternary: #6A6A6A; /* timings, domains, placeholders 5.41:1 (4.53 on #EBEBE9) */
+  --color-text-disabled: #A1A1A1;   /* disabled controls ONLY (WCAG-exempt). Never for readable text */
   --color-text-inverse: #FFFFFF;
+
+  /* Scrim behind dialogs, ⌘K and the mobile drawer */
+  --color-scrim: rgb(28 28 28 / 0.22);
 
   /* The one action colour (pulled from the Open Range sky) */
   --color-action: #1F5FD6;
@@ -44,10 +60,10 @@
   --color-fit-low: #B3B3B0;         /* score < 80 */
   --color-fit-off: #E7E7E5;
 
-  /* Status triples: 50 fill / 200 border / 600 text */
-  --color-positive-50: #ECFDF5; --color-positive-200: #A7F3D0; --color-positive-600: #059669;
-  --color-caution-50: #FFFBEB;  --color-caution-200: #FDE68A;  --color-caution-600: #C26A05;
-  --color-negative-50: #FFF1F2; --color-negative-200: #FECDD3; --color-negative-600: #E11D48;
+  /* Status triples: 50 fill / 200 border / 600 text (600 text >= 4.5:1 on its own 50 fill) */
+  --color-positive-50: #ECFDF5; --color-positive-200: #A7F3D0; --color-positive-600: #047857;
+  --color-caution-50: #FFFBEB;  --color-caution-200: #FDE68A;  --color-caution-600: #A35A04;
+  --color-negative-50: #FFF1F2; --color-negative-200: #FECDD3; --color-negative-600: #BE123C;
   --color-neutral-50: #F5F5F4;  --color-neutral-200: #E7E5E4;  --color-neutral-600: #57534E;
   --color-info-50: #EFF6FF;     --color-info-200: #DBEAFE;     --color-info-600: #2563EB;
   --color-referral-50: #F5F3FF; --color-referral-200: #DDD6FE; --color-referral-600: #7C3AED;
@@ -78,6 +94,9 @@
   --spacing-toolbar: 52px;
   --spacing-sidebar: 220px;
   --spacing-rail: 300px;
+  --spacing-sidebar-collapsed: 56px;
+  --spacing-dialog: 440px;
+  --spacing-cmdk: 640px;
 
   /* Radius */
   --radius-check: 4px;
@@ -90,7 +109,13 @@
   /* Elevation (only for things that float) */
   --shadow-window: 0 40px 100px rgb(24 36 60 / 0.24), 0 0 0 1px rgb(0 0 0 / 0.05);
   --shadow-pop: 0 14px 36px rgb(24 36 60 / 0.16), 0 0 0 1px rgb(0 0 0 / 0.05);
+  --shadow-dialog: 0 24px 64px rgb(24 36 60 / 0.22), 0 0 0 1px rgb(0 0 0 / 0.06);
   --shadow-button: inset 0 0 0 1px rgb(0 0 0 / 0.10), 0 1px 1px rgb(0 0 0 / 0.06);
+
+  /* Motion (Emil Kowalski rules from corral.md): press 140ms scale(.97); pop 180ms from scale(.96) */
+  --ease-snap: cubic-bezier(0.23, 1, 0.32, 1);
+  --duration-press: 140ms;
+  --duration-pop: 180ms;
 }
 
 

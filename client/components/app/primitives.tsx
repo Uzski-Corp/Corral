@@ -1,6 +1,7 @@
-import type { ReactNode, ButtonHTMLAttributes } from "react";
+import type { ReactNode, ButtonHTMLAttributes, CSSProperties } from "react";
 import { Icon, type IconName } from "./icons";
 import { LOGOS, type CompanyName } from "./data";
+import { fitLabel, type FitBarMeta } from "@/lib/fit/score";
 
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 export { cx };
@@ -23,17 +24,30 @@ export const STATUS = {
   Interested: "t-pos", Replied: "t-pos", Verified: "t-pos", "Meeting booked": "t-info",
   Objection: "t-warn", "Catch-all": "t-warn", "Not interested": "t-neg", Disqualified: "t-neg", Bounced: "t-neg",
   "Not contacted": "t-neu", Contacted: "t-neu", OOO: "t-neu", Referral: "t-ref",
+  /* M3: email not checked yet, and people who asked not to be written to */
+  Unverified: "t-neu", Unsubscribed: "t-neg",
 } as const;
 export type Status = keyof typeof STATUS;
 export const Tag = ({ status }: { status: Status }) => <span className={cx("c-tag", STATUS[status])}>{status}</span>;
 
-/* Fit bar — the signature. Ten segments; blue from 80, grey below. */
-export function FitBar({ value, size }: { value: number; size?: "md" | "lg" }) {
-  const on = Math.round(value / 10);
+/* Fit bar — the signature. Ten segments; blue from 80, grey below.
+   M5 (ENG-55) extends it; a plain `value` renders exactly as before:
+   state "scoring" (segments sweep, "Scoring"), "none" (empty, "Not scored yet"), "error" (the last score in grey, or "Couldn’t score"),
+   confidence "low" (segments outlined: too little evidence), delta (↑/↓ since the last score), by "you" (your own number, pen mark). */
+export function FitBar({ value, size, state, confidence, delta, by, text }: { value: number; size?: "md" | "lg" } & FitBarMeta) {
+  const plain = !state && !confidence && !delta && !by;
+  const on = state === "scoring" || state === "none" || (state === "error" && !value) ? 0 : Math.round(value / 10);
+  const label = plain ? `Fit ${value} of 100`
+    : state === "error" && value ? `Fit ${value} of 100, the last score; couldn’t rescore` : fitLabel({ value, state, confidence, delta, by, text });
   return (
-    <span className={cx("c-fit", value < 80 && "c-fit--low", size && `c-fit--${size}`)} role="img" aria-label={`Fit ${value} of 100`}>
-      <span className="c-fit__bar">{Array.from({ length: 10 }, (_, i) => <i key={i} className={i < on ? "on" : undefined} />)}</span>
-      <span className="c-fit__n">{value}</span>
+    <span className={cx("c-fit", (value < 80 || state) && "c-fit--low", size && `c-fit--${size}`, state && `is-${state}`, confidence === "low" && "is-unsure", by && "is-yours")}
+      role="img" aria-label={label} title={plain ? undefined : label}>
+      <span className="c-fit__bar">{Array.from({ length: 10 }, (_, i) => <i key={i} className={i < on ? "on" : undefined} style={state === "scoring" ? ({ "--i": i } as CSSProperties) : undefined} />)}</span>
+      {state === "scoring" || state === "none" ? <span className="c-fit__t">{text ?? (state === "none" ? "Not scored yet" : "Scoring")}</span>
+        : state === "error" ? <>{value > 0 && <span className="c-fit__n">{value}</span>}<span className="c-fit__t is-err"><Icon name="alert" size={11} />{!value && (text ?? "Couldn’t score")}</span></>
+        : <><span className="c-fit__n">{value}</span>
+          {by === "you" && <span className="c-fit__you"><Icon name="pen" size={11} /></span>}
+          {delta ? <span className="c-fit__d">{delta > 0 ? "↑" : "↓"}{Math.abs(delta)}</span> : null}</>}
     </span>
   );
 }
@@ -44,8 +58,30 @@ export function Avatar({ id, size = 20, alt = "" }: { id: string; size?: 20 | 24
   return <img className={cx("c-av", size !== 20 && `c-av--${size}`)} src={`/corral/app/av-${id}.jpg`} alt={alt} width={size} height={size} loading="lazy" />;
 }
 
-export function Logo({ company }: { company: CompanyName }) {
-  const [bg, fg, l] = LOGOS[company];
+/** Initials from a display name ("Tomás Ibarra" -> "TI"), falling back to an email's local part. */
+export function initialsOf(name: string, email?: string): string {
+  const words = name.trim().split(/\s+/).filter((w) => /\p{L}|\p{N}/u.test(w));
+  if (words.length >= 2) return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  const local = (email ?? "").split("@")[0].replace(/[^\p{L}\p{N}]/gu, "");
+  return (local.slice(0, 2) || "?").toUpperCase();
+}
+
+/**
+ * Avatar for people without a picture: initials on the neutral token tint
+ * (neutral-200 fill, neutral-600 initials, 6.08:1). Same box as <Avatar>, so rows never shift.
+ * Also the fallback when a remote picture fails to load.
+ */
+export function Monogram({ name, email, size = 20, label }: { name: string; email?: string; size?: 20 | 24 | 28 | 36 | 48; label?: string }) {
+  return (
+    <span className={cx("c-av c-mono-av", size !== 20 && `c-av--${size}`)} style={{ fontSize: Math.round(size * 0.42) }}
+      role={label ? "img" : undefined} aria-label={label} aria-hidden={label ? undefined : true}>{initialsOf(name, email)}</span>
+  );
+}
+
+/** Sample tile for known companies; any other name gets a neutral tile with its initial (imports, M3). */
+export function Logo({ company }: { company: CompanyName | (string & {}) }) {
+  const [bg, fg, l] = (LOGOS as Record<string, readonly [string, string, string]>)[company] ?? ["#F2F2F0", "#525252", (company.trim()[0] ?? "?").toUpperCase()];
   return <span className="c-logo" style={{ background: bg, color: fg }} aria-hidden="true">{l}</span>;
 }
 
@@ -59,13 +95,20 @@ export function Chip({ children, add, open, onClick }: { children: ReactNode; ad
   return <button type="button" className={cx("c-chip", add && "c-chip--add", open && "is-open")} onClick={onClick} aria-expanded={open}>{add && <Icon name="plus" size={12} />}{children}</button>;
 }
 
-export function Check({ on, onChange, label }: { on: boolean; onChange?: (v: boolean) => void; label: string }) {
-  return <button type="button" role="checkbox" aria-checked={on} aria-label={label} className={cx("c-check", on && "is-on")} onClick={() => onChange?.(!on)} />;
+/** Table checkbox. `mixed` is the header state when some but not all rows are selected. */
+export function Check({ on, onChange, label, mixed }: { on: boolean; onChange?: (v: boolean) => void; label: string; mixed?: boolean }) {
+  return <button type="button" role="checkbox" aria-checked={mixed ? "mixed" : on} aria-label={label} className={cx("c-check", on && "is-on", mixed && "is-mixed")} onClick={(e) => { e.stopPropagation(); onChange?.(!on); }} />;
 }
-export const Toggle = ({ on }: { on?: boolean }) => <span className={cx("c-toggle", on && "is-on")} role="switch" aria-checked={!!on} />;
+/** Static switch for pictures of the product; pass `label` so it has a name. Interactive: use <Switch> from Form. */
+export const Toggle = ({ on, label }: { on?: boolean; label?: string }) => <span className={cx("c-toggle", on && "is-on")} role="switch" aria-checked={!!on} aria-label={label} aria-hidden={label ? undefined : true} />;
 
-export function Segmented({ options, value }: { options: string[]; value: string }) {
-  return <span className="c-seg">{options.map((o) => <span key={o} className={o === value ? "is-on" : undefined}>{o}</span>)}</span>;
+export function Segmented({ options, value, onChange, label }: { options: string[]; value: string; onChange?: (v: string) => void; label?: string }) {
+  if (!onChange) return <span className="c-seg">{options.map((o) => <span key={o} className={o === value ? "is-on" : undefined}>{o}</span>)}</span>;
+  return (
+    <span className="c-seg" role="radiogroup" aria-label={label}>
+      {options.map((o) => <button key={o} type="button" role="radio" aria-checked={o === value} className={o === value ? "is-on" : undefined} onClick={() => onChange(o)}>{o}</button>)}
+    </span>
+  );
 }
 
 export function Input({ icon, children, state, placeholder }: { icon?: IconName; children?: ReactNode; state?: "focus" | "error"; placeholder?: string }) {
@@ -79,6 +122,18 @@ export function Field({ label, hint, children }: { label: string; hint?: ReactNo
   return <div className="c-field"><label>{label}</label>{children}{hint && <span className="c-field__hint">{hint}</span>}</div>;
 }
 
-export function Toast({ icon = "cal", children, meta }: { icon?: IconName; children: ReactNode; meta?: ReactNode }) {
-  return <div className="c-toast"><Icon name={icon} /><span>{children}</span>{meta && <span className="c-muted">{meta}</span>}</div>;
+export type ToastProps = {
+  icon?: IconName; children: ReactNode; meta?: ReactNode; tone?: "default" | "success" | "error";
+  action?: { label: string; onClick: () => void }; onClose?: () => void;
+};
+/** Ink toast: one line, optional meta, at most one action. Success/error only tint the icon. */
+export function Toast({ icon, children, meta, tone = "default", action, onClose }: ToastProps) {
+  const ic: IconName = icon ?? (tone === "error" ? "alert" : tone === "success" ? "check" : "cal");
+  return (
+    <div className={cx("c-toast", tone !== "default" && `c-toast--${tone}`)} role={tone === "error" ? "alert" : "status"}>
+      <Icon name={ic} /><span>{children}</span>{meta && <span className="c-muted">{meta}</span>}
+      {action && <button type="button" className="c-toast__action" onClick={() => { action.onClick(); onClose?.(); }}>{action.label}</button>}
+      {onClose && <button type="button" className="c-toast__x" aria-label="Dismiss" onClick={onClose}><Icon name="x" size={12} /></button>}
+    </div>
+  );
 }

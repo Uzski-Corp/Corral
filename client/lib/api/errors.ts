@@ -1,0 +1,78 @@
+/**
+ * Every way an API call can fail, as data. `op` is the request that failed ("GET /api/v1/auth/me"),
+ * so an error carries its own context the way a wrapped Go error does.
+ */
+export type ApiError =
+  | { readonly kind: "unauthorized"; readonly op: string; readonly status: 401; readonly message: string }
+  | { readonly kind: "forbidden"; readonly op: string; readonly status: 403; readonly message: string }
+  | { readonly kind: "unavailable"; readonly op: string; readonly status: 502 | 503 | 504; readonly message: string }
+  | {
+      readonly kind: "http"; readonly op: string; readonly status: number; readonly message: string;
+      /** The API's machine-readable `error` (e.g. "code_invalid"), when the body has one. */
+      readonly code?: string;
+      /** The raw Retry-After header (seconds or an HTTP date), when the response has one. */
+      readonly retryAfter?: string;
+      /** Any other machine-readable fields in the body (e.g. `existing_source_id` on a 409 duplicate). */
+      readonly details?: Readonly<Record<string, unknown>>;
+    }
+  | { readonly kind: "invalid_response"; readonly op: string; readonly status: number; readonly message: string }
+  | { readonly kind: "timeout"; readonly op: string; readonly timeoutMs: number; readonly message: string }
+  | { readonly kind: "network"; readonly op: string; readonly message: string }
+  | { readonly kind: "aborted"; readonly op: string; readonly message: string };
+
+export type ApiErrorKind = ApiError["kind"];
+
+/** FastAPI puts a string in `detail`, or a list of validation errors with `msg`. */
+export function detailMessage(body: unknown): string | undefined {
+  if (typeof body !== "object" || body === null || !("detail" in body)) return undefined;
+  const detail = (body as { detail: unknown }).detail;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    const msgs = detail
+      .map((d) => (typeof d === "object" && d !== null && "msg" in d ? String((d as { msg: unknown }).msg) : undefined))
+      .filter((m): m is string => !!m);
+    return msgs.length ? msgs.join("; ") : undefined;
+  }
+  return undefined;
+}
+
+/** Corral's typed errors put a stable code in `error`: {"error": "code_invalid", "detail": "…"}. */
+export function errorCode(body: unknown): string | undefined {
+  if (typeof body !== "object" || body === null || !("error" in body)) return undefined;
+  const code = (body as { error: unknown }).error;
+  return typeof code === "string" && code !== "" ? code : undefined;
+}
+
+/** Fields of a Corral error body besides `error` and `detail`, or undefined when there are none. */
+export function extraFields(body: unknown): Record<string, unknown> | undefined {
+  if (typeof body !== "object" || body === null || Array.isArray(body)) return undefined;
+  const rest = Object.fromEntries(Object.entries(body).filter(([k]) => k !== "error" && k !== "detail"));
+  return Object.keys(rest).length ? rest : undefined;
+}
+
+export function httpError(op: string, status: number, body: unknown, retryAfter?: string | null): ApiError {
+  const message = detailMessage(body) ?? `HTTP ${status}`;
+  if (status === 401) return { kind: "unauthorized", op, status, message };
+  if (status === 403) return { kind: "forbidden", op, status, message };
+  if (status === 502 || status === 503 || status === 504) return { kind: "unavailable", op, status, message };
+  const code = errorCode(body);
+  const details = extraFields(body);
+  return { kind: "http", op, status, message, ...(code ? { code } : {}), ...(retryAfter ? { retryAfter } : {}), ...(details ? { details } : {}) };
+}
+
+/** One line for logs: "GET /api/v1/auth/me: timeout: timed out after 10000ms". */
+export function describeApiError(e: ApiError): string {
+  return `${e.op}: ${e.kind}: ${e.message}`;
+}
+
+/** Failures worth retrying later without asking the user to do anything. */
+export function isTransient(e: ApiError): boolean {
+  return e.kind === "timeout" || e.kind === "network" || e.kind === "unavailable";
+}
+
+/** "GET /api/v1/products · 503", "… · timed out after 10s", "… · network": the mono detail line of an ErrorState. */
+export function errorDetail(e: ApiError): string {
+  if ("status" in e) return `${e.op} · ${e.status}`;
+  if (e.kind === "timeout") return `${e.op} · timed out after ${Math.round(e.timeoutMs / 1000)}s`;
+  return `${e.op} · ${e.kind}`;
+}

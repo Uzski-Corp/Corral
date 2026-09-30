@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { Avatar, Tag, type Status } from "@/components/app";
+import { Avatar, Tag, type Status } from "@/components/app/primitives";
 
 const FACES: [string, string, string, Status, string, string][] = [
   ["kamau", "Brian Kamau", "COO, Pwani Fresh", "Objection", "“Honestly the price is the blocker.”", "Booked a call two days later."],

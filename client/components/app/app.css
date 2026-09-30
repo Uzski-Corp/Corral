@@ -46,7 +46,7 @@
 .c-btn--quiet { box-shadow: none; background: transparent; color: var(--color-text-tertiary); }
 .c-btn--quiet:hover { background: var(--color-surface-sunken); color: var(--color-text); }
 .c-btn[disabled], .c-btn.is-disabled { opacity: .45; cursor: default; }
-.c-btn .c-kbd { background: transparent; border-color: rgb(255 255 255 / .28); color: rgb(255 255 255 / .8); }
+.c-btn .c-kbd { background: transparent; border-color: rgb(255 255 255 / .28); color: rgb(255 255 255 / .9); }
 .c-btn:not(.c-btn--primary):not(.c-btn--ink) .c-kbd { border-color: var(--color-border); color: var(--color-text-quaternary); }
 
 /* Filters */
@@ -74,7 +74,7 @@
 .c-tr.is-dim { color: var(--color-text-quaternary); }
 .c-tr.is-dim .c-strong { color: var(--color-text-tertiary); }
 .c-cell { display: flex; align-items: center; gap: 8px; }
-.c-check { width: 12px; height: 12px; border-radius: var(--radius-check); box-shadow: inset 0 0 0 1px var(--color-border-strong); background: var(--color-canvas); flex-shrink: 0; position: relative; }
+.c-check { width: 12px; height: 12px; border-radius: var(--radius-check); box-shadow: inset 0 0 0 1px var(--color-border-control); background: var(--color-canvas); flex-shrink: 0; position: relative; }
 .c-check.is-on { background: var(--color-action); box-shadow: none; }
 .c-check.is-on::after { content: ""; position: absolute; left: 3.5px; top: 1.5px; width: 3px; height: 6px; border: solid #fff; border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); }
 .c-logo { width: 20px; height: 20px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; letter-spacing: 0; }
@@ -93,6 +93,19 @@
 .c-fit--lg .c-fit__bar { gap: 3px; } .c-fit--lg .c-fit__bar i { width: 8px; height: 20px; border-radius: 2px; }
 .c-fit--lg .c-fit__n { font-size: var(--text-heading); letter-spacing: var(--tracking-heading); }
 .c-fit--md .c-fit__bar i { width: 6px; height: 16px; }
+/* M5 fit bar states (ENG-55). Motion only while scoring, and never under reduced motion. */
+.c-fit__t { display: inline-flex; align-items: center; gap: 4px; font-size: var(--text-meta); color: var(--color-text-tertiary); white-space: nowrap; }
+.c-fit.is-none .c-fit__t { color: var(--color-text-quaternary); }
+.c-fit__t.is-err { color: var(--color-negative-600); }
+.c-fit.is-scoring .c-fit__bar i { animation: c-fit-sweep 1.6s ease-in-out infinite; animation-delay: calc(var(--i, 0) * 80ms); }
+@keyframes c-fit-sweep { 0%, 60%, 100% { background: var(--color-fit-off); } 30% { background: color-mix(in srgb, var(--color-fit-on) 30%, var(--color-fit-off)); } }
+@media (prefers-reduced-motion: reduce) { .c-fit.is-scoring .c-fit__bar i { animation: none; } }
+.c-fit.is-unsure .c-fit__bar i.on { background: var(--color-canvas); box-shadow: inset 0 0 0 1.25px var(--color-fit-on); }
+.c-fit--low.is-unsure .c-fit__bar i.on { box-shadow: inset 0 0 0 1.25px var(--color-text-quaternary); }
+.c-fit.is-unsure .c-fit__n { color: var(--color-text-tertiary); }
+.c-fit.is-error .c-fit__n { color: var(--color-text-tertiary); }
+.c-fit__you { display: inline-flex; margin-left: -4px; color: var(--color-text-tertiary); }
+.c-fit__d { margin-left: -3px; font-size: 11px; font-variant-numeric: tabular-nums; color: var(--color-text-tertiary); }
 
 /* Status tags */
 .c-tag { height: var(--spacing-tag); display: inline-flex; align-items: center; padding: 0 7px; border-radius: var(--radius-tag); font-size: var(--text-label);
@@ -156,13 +169,13 @@
   box-shadow: inset 0 0 0 1px var(--color-border); color: var(--color-text); font-size: var(--text-content); white-space: nowrap; }
 .c-input.is-placeholder { color: var(--color-text-quaternary); }
 .c-input.is-focus { box-shadow: inset 0 0 0 1px var(--color-action), 0 0 0 3px var(--color-action-ring); }
-.c-input.is-error { box-shadow: inset 0 0 0 1px var(--color-negative-600), 0 0 0 3px rgb(225 29 72 / .14); }
+.c-input.is-error { box-shadow: inset 0 0 0 1px var(--color-negative-600), 0 0 0 3px rgb(190 18 60 / .14); }
 .c-input--area { height: auto; align-items: flex-start; padding: 8px 10px; line-height: 20px; white-space: normal; min-height: 84px; }
 .c-caret { width: 1px; height: 16px; background: var(--color-action); display: inline-block; }
 .c-seg { display: inline-flex; padding: 2px; border-radius: var(--radius-button); background: var(--color-surface-sunken); gap: 2px; }
 .c-seg span { height: 24px; display: inline-flex; align-items: center; padding: 0 10px; border-radius: 6px; color: var(--color-text-tertiary); font-weight: 500; }
 .c-seg span.is-on { background: var(--color-canvas); color: var(--color-text); box-shadow: 0 1px 2px rgb(0 0 0 / .08), 0 0 0 1px rgb(0 0 0 / .04); }
-.c-toggle { width: 26px; height: 16px; border-radius: 8px; background: var(--color-border-strong); position: relative; flex-shrink: 0; }
+.c-toggle { width: 26px; height: 16px; border-radius: 8px; background: var(--color-border-control); position: relative; flex-shrink: 0; }
 .c-toggle::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 6px; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / .2); }
 .c-toggle.is-on { background: var(--color-action); } .c-toggle.is-on::after { left: 12px; }
 

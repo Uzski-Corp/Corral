@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { Field, FitBar, Input, Logo, Receipt, Receipts, Tag, type CompanyName } from "@/components/app";
+import { Field, FitBar, Input, Logo, Receipt, Receipts, Tag } from "@/components/app/primitives";
+import type { CompanyName } from "@/components/app/data";
 
 function Entry({ n, title, text, art }: { n: string; title: string; text: string; art: ReactNode }) {
   return <li className="fl-entry"><span className="fl-entry__n">{n}</span><h3>{title}</h3><p>{text}</p><div className="fl-entry__art c-app">{art}</div></li>;
