@@ -1,16 +1,19 @@
-/* /legal/terms, /legal/privacy, /legal/dpa (M10): stubs. The outline is what counsel fills in; the page says
-   plainly that it isn't the text yet, and stays out of search until it is. */
+/* /legal/terms, /legal/privacy, /legal/dpa (M10). Terms and Privacy carry the real text (ENG-87c, lib/marketing/legal.ts)
+   in Bau's outline markup: each section is the outline's h2 plus its paragraphs. The DPA is still the outline.
+   Bau's richer legal layout (contents, sub-headings, lists, subprocessor table, last-updated line) is a later batch.
+   All three stay out of search until the "legal" claim is confirmed (lib/marketing/site.ts). */
 import Link from "next/link";
+import { LEGAL_UPDATED, PRIVACY, TERMS, type LegalSection } from "@/lib/marketing/legal";
 import { ROUTES } from "@/lib/marketing/site";
 import { SitePage } from "./Chrome";
 
 export type LegalDoc = "terms" | "privacy" | "dpa";
-export const LEGAL: Record<LegalDoc, { title: string; kicker: string; lede: string; outline: [string, string][] }> = {
-  terms: { title: "Terms of service", kicker: "Legal", lede: "The agreement between Corral and the workspaces that use it.",
+export const LEGAL: Record<LegalDoc, { title: string; kicker: string; lede: string; outline: [string, string][]; text?: LegalSection[] }> = {
+  terms: { title: "Terms of service", kicker: "Legal", lede: `The agreement between Uzski Corp and the workspaces that use Corral. Last updated ${LEGAL_UPDATED}.`, text: TERMS,
     outline: [["The service", "What Corral provides, and what it doesn’t."], ["Your account", "Who can sign in, owners and members, and keeping access safe."],
       ["Sending", "Your mailboxes, your recipients, and the rules on consent and unsubscribing."], ["Plans and payment", "Billing, reads, changes and cancelling."],
       ["Your content", "What you own, and the licence Corral needs to run the service."], ["Ending", "Closing a workspace, export and deletion."], ["Liability", "Limits, warranties and disputes."]] },
-  privacy: { title: "Privacy notice", kicker: "Legal", lede: "What Corral collects, why, and your choices, for customers and for the people Corral writes to.",
+  privacy: { title: "Privacy notice", kicker: "Legal", lede: `What Corral collects, why, and your choices, for customers and for the people Corral writes to. Last updated ${LEGAL_UPDATED}.`, text: PRIVACY,
     outline: [["What we collect", "Account data, workspace content, and what Corral reads from public websites."], ["Why", "Running the service, and nothing we don’t say here."],
       ["People you write to", "How recipients can ask what Corral holds about them, and opt out."], ["Sharing", "Subprocessors and the integrations you connect."],
       ["Keeping and deleting", "How long, and what happens when you leave."], ["Your rights", "Access, correction, deletion and complaints."]] },
@@ -26,8 +29,12 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
   return (
     <SitePage current={ROUTES[doc]} kicker={d.kicker} title={d.title} lede={d.lede}>
       <div className="sn-wrap sn-legal">
-        <p className="sn-draft" role="note"><b>Outline, not the agreement.</b> Counsel supplies the text before launch; until then this page isn’t binding and isn’t indexed.</p>
-        <ol className="sn-outline">{d.outline.map(([h, t]) => <li key={h}><h2>{h}</h2><p>{t}</p></li>)}</ol>
+        {d.text
+          ? <p className="sn-draft" role="note"><b>Draft for review.</b> Items marked TODO are still being confirmed; this page isn’t indexed until they are.</p>
+          : <p className="sn-draft" role="note"><b>Outline, not the agreement.</b> Counsel supplies the text before launch; until then this page isn’t binding and isn’t indexed.</p>}
+        {d.text
+          ? <ol className="sn-outline">{d.text.map((x) => <li key={x.id} id={x.id}><h2>{x.title}</h2><div>{x.body.map((t, i) => <p key={i}>{t}</p>)}</div></li>)}</ol>
+          : <ol className="sn-outline">{d.outline.map(([h, t]) => <li key={h}><h2>{h}</h2><p>{t}</p></li>)}</ol>}
         <p className="sn-small">Also: {others.map((o, i) => <span key={o}>{i > 0 && " · "}<Link className="sn-link" href={ROUTES[o]}>{LEGAL[o].title}</Link></span>)}. Questions: <a className="sn-link" href="mailto:legal@corral.app">legal@corral.app</a>.</p>
       </div>
     </SitePage>
