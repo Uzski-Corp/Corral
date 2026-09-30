@@ -78,6 +78,14 @@ describe("/onboarding and /app pages keep their review params", () => {
     expect(await screen.findByText("Write your first sequence")).toBeInTheDocument();
   });
 
+  it("opens a unibox review state (M7)", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DESIGN_REVIEW", "1");
+    resetConfigCache();
+    const page = await AppPage(params({ state: "refused" }) as never);
+    render(AppLayout({ children: page, params: Promise.resolve({}) } as never));
+    expect(await screen.findByText("Corral won’t draft this one")).toBeInTheDocument();
+  });
+
   it("wraps onboarding in the session layout", async () => {
     vi.stubEnv("NEXT_PUBLIC_DESIGN_REVIEW", "1");
     resetConfigCache();

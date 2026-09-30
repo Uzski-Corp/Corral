@@ -33,6 +33,10 @@ button.c-menu__item { border: 0; background: transparent; font: inherit; letter-
 .c-menu__item.is-danger, .c-menu__item.is-danger svg { color: var(--color-negative-600); }
 .c-menu__item[disabled] { opacity: .45; cursor: default; }
 .c-menu__label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* M7: an option with a second line (Select `hint`) */
+.c-menu__item.has-hint { height: auto; min-height: var(--spacing-nav); padding-block: 6px; align-items: flex-start; white-space: normal; }
+.c-menu__stack { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.c-menu__hint { font-size: 12px; line-height: 16px; color: var(--color-text-tertiary); }
 .c-menu__meta { color: var(--color-text-quaternary); font-size: var(--text-meta); }
 .c-menu__tick { color: var(--color-action); display: inline-flex; } .c-menu__tick svg { color: var(--color-action) !important; }
 .c-menu__heading { height: 26px; display: flex; align-items: center; padding: 0 8px; font-size: var(--text-meta); color: var(--color-text-quaternary); }

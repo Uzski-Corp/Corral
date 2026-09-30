@@ -51,6 +51,8 @@
 .q-gate--edit { padding-top: 10px; padding-bottom: 10px; }
 .q-gate--edit .q-gate__ic { top: 17px; margin-top: 0; }
 .q-gate__w { color: var(--color-text-tertiary); }
+/* M7: under a gate on "Opened, no reply" (Apple Mail privacy) */
+.q-gate__note { flex-basis: 100%; margin: 0; font-size: 12px; line-height: 17px; color: var(--color-text-tertiary); max-width: 520px; }
 .q-add { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px dashed var(--color-border-strong); border-radius: var(--radius-button); background: transparent;
   font: inherit; font-size: var(--text-label); color: var(--color-text-secondary); cursor: pointer; }
 .q-add:hover { background: var(--color-surface-sunken); color: var(--color-text); }

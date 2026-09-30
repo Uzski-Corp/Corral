@@ -102,9 +102,11 @@ export function RadioGroup({ value, onChange, options, variant = "list", label }
 
 /* ------------------------------------------------------------- Select
    Button + listbox. For < 12 options; beyond that use a combobox (M2). */
-export type SelectOption = { value: string; label: string; meta?: ReactNode; lead?: ReactNode };
-export function Select({ value, onChange, options, placeholder = "Select…", width, defaultOpen = false, icon, label }: {
+/** `hint`: a second line under the label, in the menu only (M7: "Opened, no reply" and Apple Mail privacy). */
+export type SelectOption = { value: string; label: string; meta?: ReactNode; lead?: ReactNode; hint?: string };
+export function Select({ value, onChange, options, placeholder = "Select…", width, defaultOpen = false, icon, label, menuWidth }: {
   value: string | null; onChange?: (v: string) => void; options: SelectOption[]; placeholder?: string; width?: number | string; defaultOpen?: boolean; icon?: IconName;
+  /** M7: a wider menu than the trigger, for options with a `hint` */ menuWidth?: number;
   /** accessible name when there is no <FormField> label (table cells, rule rows) */ label?: string;
 }) {
   const f = useField();
@@ -133,11 +135,11 @@ export function Select({ value, onChange, options, placeholder = "Select…", wi
         {sel?.meta && <span className="c-select__meta">{sel.meta}</span>}<Icon name="down" size={12} />
       </button>
       {open && (
-        <div role="listbox" aria-label={label ?? undefined} aria-labelledby={label ? undefined : bid} className="c-menu c-menu--float c-pop-in" style={{ width: "100%", minWidth: 200 }}>
+        <div role="listbox" aria-label={label ?? undefined} aria-labelledby={label ? undefined : bid} className="c-menu c-menu--float c-pop-in" style={{ width: menuWidth ?? "100%", minWidth: 200 }}>
           {options.map((o, i) => (
-            <div key={o.value} role="option" aria-selected={o.value === value} className={cx("c-menu__item", i === active && "is-hover")}
+            <div key={o.value} role="option" aria-selected={o.value === value} className={cx("c-menu__item", i === active && "is-hover", o.hint && "has-hint")}
               onPointerMove={() => setActive(i)} onClick={() => { onChange?.(o.value); close(); }}>
-              {o.lead}<span className="c-menu__label">{o.label}</span>{o.meta && <span className="c-menu__meta">{o.meta}</span>}
+              {o.lead}{o.hint ? <span className="c-menu__stack"><span className="c-menu__label">{o.label}</span><span className="c-menu__hint">{o.hint}</span></span> : <span className="c-menu__label">{o.label}</span>}{o.meta && <span className="c-menu__meta">{o.meta}</span>}
               {o.value === value && <span className="c-menu__tick"><Icon name="check" size={13} /></span>}
             </div>
           ))}

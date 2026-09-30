@@ -236,3 +236,16 @@
 .sg-m6-pool { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .sg-m6-pool .c-app { margin-top: 8px; }
 @media (max-width: 900px) { .sg-m6, .sg-m6-pool { grid-template-columns: minmax(0, 1fr); } .sg-m6-cols { columns: 1; } }
+
+/* M7 Unibox, thread view, draft states */
+.sg-m7 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; max-width: 1180px; }
+.sg-m7--thread { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+.sg-m7--drafts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.sg-m7-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.sg-m7-stack { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
+.sg-m7-list { margin: 8px 0 16px; border-radius: 10px; box-shadow: 0 0 0 1px var(--color-border-subtle); overflow: hidden; }
+.sg-m7-list .u-filters { position: static; border-bottom: 0; }
+.sg-m7-tags { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin: 8px 0 16px; }
+.sg-m7-menuwrap { display: flex; justify-content: flex-end; min-height: 420px; padding-top: 8px; }
+.sg-m7-keys .c-scrim--inline { padding: 8px 0 0; }
+@media (max-width: 900px) { .sg-m7, .sg-m7--thread, .sg-m7--drafts { grid-template-columns: minmax(0, 1fr); } }

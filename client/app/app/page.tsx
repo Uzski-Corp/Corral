@@ -7,6 +7,7 @@ import { kbReviewState } from "@/lib/kb/state";
 import { leadsReviewState } from "@/lib/leads/state";
 import { discoveryReviewState } from "@/lib/discovery/state";
 import { sequenceReviewState } from "@/lib/sequences/state";
+import { uniboxReviewState } from "@/lib/unibox/state";
 
 export const metadata: Metadata = { title: "Corral · Unibox" };
 const VIEWS: ViewId[] = ["unibox", "companies", "discovery", "contacts", "segments", "sequences", "products", "knowledge", "settings"];
@@ -25,6 +26,9 @@ const VIEWS: ViewId[] = ["unibox", "companies", "discovery", "contacts", "segmen
  *   rate-limited | zero | detail  (see lib/discovery/state.ts)
  * Sequences (M6): ?view=sequences&state=empty | loading | error | draft | conditions | editor | copilot | errors | launch |
  *   launching | running | paused | mailboxes  (see lib/sequences/state.ts)
+ * Unibox (M7): ?view=unibox&state=panes | filtered | triage-menu | referral | ooo | unsubscribe | bounce | thread | keys |
+ *   drafting | draft | low | refused | edited | undo | sending | sent | failed | disconnected | conflict | empty | loading | error
+ *   (see lib/unibox/state.ts; ?view can be left out, the Unibox is home)
  */
 export default async function AppPage({ searchParams }: PageProps<"/app">) {
   const q = await searchParams;
@@ -36,5 +40,6 @@ export default async function AppPage({ searchParams }: PageProps<"/app">) {
   const leads = leadsReviewState(view, one("state"), reviewStates);
   const discovery = discoveryReviewState(view, one("state"), reviewStates);
   const sequences = sequenceReviewState(view, one("state"), reviewStates);
-  return <AppScreen key={`${preview ?? "live"}-${kb ?? ""}-${leads ?? ""}-${discovery ?? ""}-${sequences ?? ""}`} preview={preview} kb={kb} leads={leads} discovery={discovery} sequences={sequences} initialView={view} cmdk={one("cmdk") === "1"} collapsed={one("collapsed") === "1"} drawer={one("nav") === "1"} dialog={one("dialog") === "enroll"} />;
+  const unibox = uniboxReviewState(view, one("state"), reviewStates);
+  return <AppScreen key={`${preview ?? "live"}-${kb ?? ""}-${leads ?? ""}-${discovery ?? ""}-${sequences ?? ""}-${unibox ?? ""}`} preview={preview} kb={kb} leads={leads} discovery={discovery} sequences={sequences} unibox={unibox} initialView={view} cmdk={one("cmdk") === "1"} collapsed={one("collapsed") === "1"} drawer={one("nav") === "1"} dialog={one("dialog") === "enroll"} />;
 }

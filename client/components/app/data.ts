@@ -1,4 +1,5 @@
 /* Sample content for the Corral design study. People, companies and numbers are illustrative. */
+import type { Triage } from "@/lib/unibox/triage";
 import type { EnrichState } from "@/lib/discovery/run";
 import type { Status } from "./primitives";
 
@@ -38,10 +39,30 @@ export const LEADS: Lead[] = [
 ];
 
 export type Thread = {
-  id: string; avatar: string; name: string; company: CompanyName; title: string; fit: number; status: Status; time: string;
+  /** avatar "" = monogram. company: a sample name, or any name (neutral logo tile). */
+  id: string; avatar: string; name: string; company: CompanyName | (string & {}); title: string; fit: number; status: Status; time: string;
   unread?: boolean; snippet: string; subject: string; body: string; receipts: [string, string][];
   draft?: string[]; next?: [string, string, string][];
+  /* M7 Unibox (ENG-57). Optional, so the M1 sample threads and the marketing <Unibox /> are unchanged. */
+  /** The person's address. */
+  email?: string;
+  /** Who actually sent the reply when it isn't the person (a bounce from a mail server). */
+  sender?: { name: string; email: string };
+  /** Triage Corral (or you) gave the reply; defaults from `status`. */
+  triage?: Triage;
+  /** Corral acted on its own (OOO, unsubscribe, bounce): out of Needs you, still in All. */
+  handled?: boolean;
+  /** Snoozed until this label ("Mon 08:00"): shows in Snoozed only. */
+  snoozed?: string;
+  /** The pool mailbox the thread is in. Replies go from it (M6). */
+  mailbox?: string;
+  /** Earlier messages, oldest first, before the reply in `body`. */
+  history?: ThreadMsg[];
+  /** The sequence the reply came from (M6). */
+  seq?: { id: string; name: string; step: number; of: number; state: string };
 };
+/** One earlier message in a thread. `from`: you (the sequence), them, or a teammate. */
+export type ThreadMsg = { from: "you" | "them" | "teammate"; who: string; at: string; body: string; note?: string; meta?: string };
 export const THREADS: Thread[] = [
   { id: "brian", avatar: "kamau", name: "Brian Kamau", company: "Pwani Fresh", title: "COO", fit: 91, status: "Objection", time: "09:42", unread: true,
     snippet: "Honestly the price is the blocker. We pay less for our current…", subject: "Re: Spoilage across your Mombasa cold rooms",

@@ -6,6 +6,7 @@ import { BuilderDemo, ImportDemo, LeadDetailDemo, LeadStatesDemo, LeadTableDemo,
 import { DiscoveryShellDemo, EnrichDemo, RunStatesDemo, SetupDemo } from "./M4Sections";
 import { FitBarDemo, FitReasoningDemo } from "./M5Sections";
 import { PoolDemo, SequenceDemo, StepEditorDemo } from "./M6Sections";
+import { CopilotStatesDemo, ThreadViewDemo, UniboxTriageDemo } from "./M7Sections";
 import { EditorDemo, KbShellDemo, SourceDetailDemo, SourceListDemo, UploadDemo } from "./M2Sections";
 import { AccountStatesDemo, CodeStatesDemo, CmdkDemo, ContrastDemo, FormDemo, OverlayDemo, SessionErrorDemo, ShellDemo, StatesDemo, TabsToastDemo } from "./M1Sections";
 import {
@@ -266,7 +267,22 @@ export default function Styleguide() {
         <PoolDemo />
       </Part>
 
-      <Part n="39" title="Things that float" tokens={["--shadow-pop", "--radius-window 14", "--color-surface-inverse"]}
+      <Part wide n="39" title="Unibox panes and triage" tokens={["u-chip 26px · is-on surface-selected", "triage dots: positive · caution · referral · neutral · negative", "menu 320px: label, what Corral does, key 1–6", "handled: out of Needs you, in All"]}
+        notes={<p>Three panes, extended rather than rebuilt: the M1 list, reading pane and rail take optional pieces. Chips over the list filter by triage and unread, with counts from the tab. Every reply is one of six kinds, each with a key and a sentence about what Corral does next. Out of office, unsubscribes and bounces are handled on their own, so they leave Needs you and wait in All with a note saying what was done.</p>}>
+        <UniboxTriageDemo />
+      </Part>
+
+      <Part wide n="40" title="Thread view" tokens={["u-msg: surface-muted, one line until opened", "email as plain text: quoted folded, images blocked", "rail: fit (M5) · sequence trail (M6) · mailbox", "trail dot: action ring = the step they replied to"]}
+        notes={<p>The thread reads oldest first, each earlier step one line until you open it. The reply is rendered as text, never raw HTML: quoted history is folded and remote images wait for a click, so opening an email tells no one you read it. The rail says why the company fits, which sequence the reply came from and what it won&rsquo;t send now, and which mailbox the answer goes from.</p>}>
+        <ThreadViewDemo />
+      </Part>
+
+      <Part wide n="41" title="Copilot draft states" tokens={["c-reply--caution / --negative: 200 outline", "cites: info-50 mono markers → KB line", "u-gap: caution-50 underline on the unsure sentence", "undo ring: conic --color-action, 10s"]}
+        notes={<p>Corral drafts from the knowledge base and shows its work: every claim is numbered to its line, what it left out is said, and a sentence it can&rsquo;t support is marked and phrased as a question. It won&rsquo;t draft Never-say claims at all. Your edits are checked for Never-say and prices before they send. Send waits 10 seconds for Undo; failures keep your words; a disconnected mailbox or a teammate&rsquo;s reply holds the send and says why.</p>}>
+        <CopilotStatesDemo />
+      </Part>
+
+      <Part n="42" title="Things that float" tokens={["--shadow-pop", "--radius-window 14", "--color-surface-inverse"]}
         notes={<p>Only moments float: a booked meeting, a reply worth seeing, a toast. Faces are film-graded photos in circles, one treatment for everyone.</p>}>
         <div className="sg-float">
           <MeetingCard />

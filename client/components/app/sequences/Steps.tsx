@@ -5,7 +5,7 @@ import { Icon } from "../icons";
 import { Banner } from "../States";
 import { Select } from "../Form";
 import {
-  CONDITION_SHORT, EXITS, gateText, pct, stepDays, subjectOf, summaryOf, tokensIn, varDef,
+  CONDITION_HINT, CONDITION_SHORT, OPENS_NOTE, EXITS, gateText, pct, stepDays, subjectOf, summaryOf, tokensIn, varDef,
   type Condition, type Gate, type Issue, type Step,
 } from "@/lib/sequences/sequence";
 import type { SeqStatus, Sequence } from "./data";
@@ -68,13 +68,14 @@ export function GateRow({ gate, editable, onChange, openCondition, n }: {
       <Select label={`Wait before step ${n}`} width={104} value={String(gate.wait)} onChange={(v) => onChange?.({ ...gate, wait: Number(v) })}
         options={WAITS.map((d) => ({ value: String(d), label: `${d} ${d === 1 ? "day" : "days"}` }))} />
       <span className="q-gate__w">then send</span>
-      <Select label={`Send step ${n}`} width={176} defaultOpen={openCondition} value={gate.cond} onChange={(v) => onChange?.({ ...gate, cond: v as Condition, otherwise: v === "no-reply" ? undefined : gate.otherwise ?? "stop" })}
-        options={(Object.keys(CONDITION_SHORT) as Condition[]).map((c) => ({ value: c, label: CONDITION_SHORT[c], meta: c === "no-reply" ? "default" : undefined }))} />
+      <Select label={`Send step ${n}`} width={176} menuWidth={288} defaultOpen={openCondition} value={gate.cond} onChange={(v) => onChange?.({ ...gate, cond: v as Condition, otherwise: v === "no-reply" ? undefined : gate.otherwise ?? "stop" })}
+        options={(Object.keys(CONDITION_SHORT) as Condition[]).map((c) => ({ value: c, label: CONDITION_SHORT[c], meta: c === "no-reply" ? "default" : undefined, hint: CONDITION_HINT[c] }))} />
       {gate.cond !== "no-reply" && <>
         <span className="q-gate__w">otherwise</span>
         <Select label={`Everyone else at step ${n}`} width={148} value={gate.otherwise ?? "stop"} onChange={(v) => onChange?.({ ...gate, otherwise: v as Gate["otherwise"] })}
           options={[{ value: "stop", label: "Stop" }, { value: "skip", label: "Skip this step" }]} />
       </>}
+      {gate.cond === "opened-no-reply" && <p className="q-gate__note">{OPENS_NOTE}</p>}
     </div>
   );
 }

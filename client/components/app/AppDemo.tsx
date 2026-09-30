@@ -4,10 +4,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LEADS, THREADS, type Thread } from "./data";
-import { Avatar, Button, FitBar, Kbd, Logo, Receipt, Receipts, Tag } from "./primitives";
+import { Avatar, Button, FitBar, Logo, Receipt, Receipts, Tag } from "./primitives";
 import { Icon } from "./icons";
 import { AppShell, APP_NAV, SAVED_SEGMENTS, type ShellAccountProp, type ViewId } from "./Shell";
-import { ContextRail, ReadingPane, ThreadList } from "./Unibox";
 import { SegmentTable } from "./SegmentTable";
 import { CommandPalette, type Command } from "./CommandPalette";
 import { Dialog, DropdownMenu, Tooltip } from "./Overlays";
@@ -25,6 +24,8 @@ import type { DiscoveryReviewState } from "@/lib/discovery/state";
 import { SequencesView, seedFor, type SeqTab } from "./sequences";
 import type { SequenceReviewState } from "@/lib/sequences/state";
 import { poolSummary } from "@/lib/sequences/sequence";
+import { UniboxView, UNIBOX_TABS, needsYou, UNIBOX_THREADS, uniboxSeedFor, type UniboxTab } from "./unibox";
+import type { UniboxReviewState } from "@/lib/unibox/state";
 
 /** Fixed "today" for the demo so static renders are deterministic. Replace with new Date(). */
 export const DEMO_TODAY = new Date(2026, 8, 29);
@@ -54,33 +55,6 @@ export function buildCommands(h: CommandHandlers) {
 }
 
 /* ------------------------------------------------------------ views */
-const TABS = [{ id: "needs", label: "Needs you", count: 7 }, { id: "meetings", label: "Meetings", count: 1 }, { id: "snoozed", label: "Snoozed" }, { id: "all", label: "All", count: 214 }];
-
-function UniboxView({ threads, active, setActive, tab, setTab, pane, setPane }: {
-  threads: Thread[]; active: string; setActive: (id: string) => void; tab: string; setTab: (t: string) => void; pane: "list" | "read"; setPane: (p: "list" | "read") => void;
-}) {
-  const shown = tab === "meetings" ? threads.filter((t) => t.status === "Meeting booked") : tab === "snoozed" ? [] : threads;
-  const t = shown.find((x) => x.id === active) ?? shown[0];
-  return (
-    <div className="c-view">
-      <div className="c-subbar"><Tabs label="Unibox" tabs={TABS.map((x) => (x.id === "needs" ? { ...x, count: threads.length } : x))} value={tab} onChange={setTab} /><span className="c-subbar__keys"><Kbd>J</Kbd><Kbd>K</Kbd> move<Kbd>E</Kbd> archive<Kbd>⌘K</Kbd> jump</span></div>
-      {shown.length === 0 ? (
-        <EmptyState art="range" title="Nothing snoozed">Press <span className="c-kbd">H</span> on a thread to hide it until a date. It comes back to the top of Needs you on that morning.</EmptyState>
-      ) : (
-        <div className="c-ux" data-pane={pane}>
-          <div className="c-ux__list"><ThreadList threads={shown} active={t.id} title={TABS.find((x) => x.id === tab)!.label} count={shown.length}
-            onPick={(id) => { setActive(id); setPane("read"); }} /></div>
-          <div className="c-ux__pane">
-            <button type="button" className="c-ux__back" onClick={() => setPane("list")}><Icon name="back" />Needs you</button>
-            <ReadingPane t={t} />
-          </div>
-          <div className="c-ux__rail"><ContextRail t={t} /></div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function ContactsView() {
   const [ready, setReady] = useState(false);
   useEffect(() => { const t = setTimeout(() => setReady(true), 900); return () => clearTimeout(t); }, []);
@@ -149,10 +123,12 @@ export type AppDemoProps = {
   discovery?: DiscoveryReviewState;
   /** Sequences / mailbox pool review state (M6): /app?view=sequences&state=… */
   sequences?: SequenceReviewState;
+  /** Unibox review state (M7): /app?view=unibox&state=… */
+  unibox?: UniboxReviewState;
 };
 export function AppDemo(p: AppDemoProps) { return <ToastProvider><Demo {...p} /></ToastProvider>; }
 
-function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, drawer = false, dialog = false, frame = "viewport", hotkeys = true, className, account, onSignOut, sessionError, kb, leads, discovery, sequences }: AppDemoProps) {
+function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, drawer = false, dialog = false, frame = "viewport", hotkeys = true, className, account, onSignOut, sessionError, kb, leads, discovery, sequences, unibox }: AppDemoProps) {
   const router = useRouter();
   const toast = useToast();
   const signOut = useCallback(() => {
@@ -165,10 +141,11 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
   const [segment, setSegment] = useState<string | undefined>(initialView === "segments" ? SAVED_SEGMENTS[0][0] : undefined);
   const [collapsed, setCollapsed] = useState(c0);
   const [palette, setPalette] = useState(cmdk);
-  const [threads, setThreads] = useState(THREADS);
-  const [active, setActive] = useState("brian");
-  const [tab, setTab] = useState("needs");
-  const [pane, setPane] = useState<"list" | "read">("list");
+  const [ub] = useState(() => uniboxSeedFor(unibox));
+  const [threads, setThreads] = useState<Thread[]>(() => (ub.empty ? UNIBOX_THREADS.filter((t) => t.handled) : UNIBOX_THREADS));
+  const [active, setActive] = useState(ub.active);
+  const [tab, setTab] = useState<UniboxTab>(ub.tab);
+  const [pane, setPane] = useState<"list" | "read">(ub.pane);
   const [enrollFor, setEnrollFor] = useState({ n: 3, replied: true });
   const [enroll, setEnroll] = useState(dialog);
   const [importOpen, setImportOpen] = useState(false);
@@ -207,7 +184,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
     },
   }), [go, router, toast, signOut]);
 
-  // Global keys: ⌘K, G-sequences, J/K/E in the Unibox
+  // Global keys: ⌘K and G-sequences. The Unibox handles its own keys (J K E 1–6 T R ⌘↵ …) in <UniboxView>.
   const gAt = useRef(0);
   useEffect(() => {
     if (!hotkeys) return;
@@ -222,20 +199,14 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
         gAt.current = 0; if (n) { go(n.id); return; }
       }
       if (key === "g") { gAt.current = Date.now(); return; }
-      if (view === "unibox" && tab !== "snoozed") {
-        const list = tab === "meetings" ? threads.filter((x) => x.status === "Meeting booked") : threads;
-        const i = list.findIndex((x) => x.id === active);
-        if (key === "j" || key === "k") { e.preventDefault(); setActive(list[(i + (key === "j" ? 1 : list.length - 1)) % list.length].id); }
-        if (key === "e" && active) archive(active);
-      }
     };
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);
-  }, [hotkeys, palette, enroll, kbAdd, importOpen, setupOpen, view, tab, threads, active, go, archive]);
+  }, [hotkeys, palette, enroll, kbAdd, importOpen, setupOpen, go]);
 
   const label = APP_NAV.find((n) => n.id === view)!.label;
   const ws = typeof account === "object" ? account.workspace : account === undefined ? "ColdTrace" : "Corral";
-  const crumbs = view === "unibox" ? [ws, "Unibox", TABS.find((x) => x.id === tab)!.label]
+  const crumbs = view === "unibox" ? [ws, "Unibox", UNIBOX_TABS.find((x) => x.id === tab)!.label]
     : view === "knowledge" ? [ws, "Knowledge base", PRODUCT.name]
     : view === "sequences" && seqTab === "pool" ? [ws, "Sequences", "Mailbox pool"]
     : segment ? [ws, "Segments", segment] : [ws, label];
@@ -264,9 +235,11 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
     <>
       <AppShell frame={frame} className={className} active={view} onNavigate={go} crumbs={sessionError ? [ws, "Not connected"] : crumbs} actions={sessionError ? null : actions} collapsed={collapsed} onCollapsedChange={setCollapsed}
         onSearch={() => setPalette(true)} segment={segment} onSegment={(s) => { setView("segments"); setSegment(s); setBuilderOpen(false); }} defaultDrawer={drawer} hotkeys={hotkeys} account={account} onSignOut={signOut}
-        pool={{ sent: poolNow.sent, cap: poolNow.cap, mailboxes: poolNow.total, attention: poolNow.attention }} onPool={() => { go("sequences"); setSeqTab("pool"); }}>
+        pool={{ sent: poolNow.sent, cap: poolNow.cap, mailboxes: poolNow.total, attention: poolNow.attention }} onPool={() => { go("sequences"); setSeqTab("pool"); }}
+        counts={{ unibox: String(needsYou(threads)) }}>
         {sessionError ? <SessionUnavailable {...sessionError} /> : <>
-        {view === "unibox" && <UniboxView threads={threads} active={active} setActive={setActive} tab={tab} setTab={setTab} pane={pane} setPane={setPane} />}
+        {view === "unibox" && <UniboxView key={unibox ?? "live"} state={unibox} threads={threads} setThreads={setThreads} active={active} setActive={setActive} tab={tab} setTab={setTab} pane={pane} setPane={setPane}
+          onArchive={archive} hotkeys={hotkeys && !palette && !enroll && !kbAdd && !importOpen && !setupOpen} />}
         {table && <LeadsView key={`${view}-${segment ?? ""}`} view={view} state={leads} segment={segment} importOpen={importOpen} onImportOpenChange={setImportOpen}
           builderOpen={builderOpen} onBuilderOpenChange={setBuilderOpen} enrollAllSignal={enrollAll} onFind={findCompanies} onEnroll={(n, replied) => { setEnrollFor({ n, replied }); setEnroll(true); }} />}
         {view === "discovery" && <DiscoveryView key={discovery ?? "live"} state={discovery} setupOpen={setupOpen} onSetupOpenChange={setSetupOpen} onOpenCompanies={() => go("companies")} />}

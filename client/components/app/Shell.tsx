@@ -114,9 +114,10 @@ function PoolWidget({ pool = SAMPLE_POOL, onPool }: { pool?: ShellPool; onPool?:
   return onPool ? <button type="button" className="c-pool c-pool--btn" title="Mailbox pool" onClick={onPool}>{body}</button> : <div className="c-pool" title="Mailbox pool">{body}</div>;
 }
 
-export function SideNav({ active, onNavigate, collapsed, onSearch, segment, onSegment, account, onSignOut, pool, onPool }: {
+export function SideNav({ active, onNavigate, collapsed, onSearch, segment, onSegment, account, onSignOut, pool, onPool, counts }: {
   active: ViewId; onNavigate?: (v: ViewId) => void; collapsed?: boolean; onSearch?: () => void; segment?: string; onSegment?: (s: string) => void;
   account?: ShellAccountProp; onSignOut?: () => void; pool?: ShellPool; onPool?: () => void;
+  /** Live nav counts (M7: Unibox = threads that need you); omitted views keep the sample count. */ counts?: Partial<Record<ViewId, string>>;
 }) {
   const router = useRouter();
   const signOut = onSignOut ?? (() => router.push("/sign-in"));
@@ -131,7 +132,7 @@ export function SideNav({ active, onNavigate, collapsed, onSearch, segment, onSe
       <div className="c-side__head"><WorkspaceSwitcher collapsed={collapsed} account={account} onSignOut={signOut} /></div>
       <NavRow icon="search" label="Search" kbd="⌘K" collapsed={collapsed} onClick={onSearch} />
       <div className="c-side__gap" />
-      {top.map((n) => <NavRow key={n.id} icon={n.icon} label={n.label} count={offline ? undefined : n.count} dot={collapsed && !offline && !!n.count} active={active === n.id && !(n.id === "segments" && segment)} collapsed={collapsed} onClick={() => onNavigate?.(n.id)} />)}
+      {top.map((n) => { const count = counts?.[n.id] ?? n.count; return <NavRow key={n.id} icon={n.icon} label={n.label} count={offline ? undefined : count} dot={collapsed && !offline && !!count} active={active === n.id && !(n.id === "segments" && segment)} collapsed={collapsed} onClick={() => onNavigate?.(n.id)} />; })}
       {!collapsed && <>
         <div className="c-side__label">Saved segments</div>
         {SAVED_SEGMENTS.map(([s, n]) => (
@@ -180,12 +181,13 @@ export function TopBar({ crumbs, actions, onToggleSide, onMenu, onSearch, collap
 /* ------------------------------------------------------------ Shell
    Full app frame. Collapses to a 56px icon rail ([), and below 768px of its own width
    (container query) becomes a top bar + drawer. frame="viewport" fills the window. */
-export function AppShell({ active, onNavigate, crumbs, actions, children, collapsed: ctl, onCollapsedChange, defaultCollapsed = false, defaultDrawer = false, onSearch, frame = "viewport", segment, onSegment, hotkeys = true, className, account, onSignOut, pool, onPool }: {
+export function AppShell({ active, onNavigate, crumbs, actions, children, collapsed: ctl, onCollapsedChange, defaultCollapsed = false, defaultDrawer = false, onSearch, frame = "viewport", segment, onSegment, hotkeys = true, className, account, onSignOut, pool, onPool, counts }: {
   active: ViewId; onNavigate?: (v: ViewId) => void; crumbs: ReactNode[]; actions?: ReactNode; children: ReactNode;
   collapsed?: boolean; onCollapsedChange?: (v: boolean) => void; defaultCollapsed?: boolean; defaultDrawer?: boolean; onSearch?: () => void;
   frame?: "viewport" | "contained"; segment?: string; onSegment?: (s: string) => void; hotkeys?: boolean; className?: string;
   /** Signed-in person; omit for the sample person. */ account?: ShellAccountProp; /** Replaces the default "go to /sign-in". */ onSignOut?: () => void;
   /** Sidebar pool summary (M6); omit for the sample. */ pool?: ShellPool; /** Makes the pool summary a button (opens the pool). */ onPool?: () => void;
+  /** Live nav counts (M7); omit for the sample counts. */ counts?: Partial<Record<ViewId, string>>;
 }) {
   const [own, setOwn] = useState(defaultCollapsed);
   const collapsed = ctl ?? own;
@@ -206,7 +208,7 @@ export function AppShell({ active, onNavigate, crumbs, actions, children, collap
     <div className={cx("c-shellbox", frame === "viewport" && "c-shellbox--viewport", className)}>
       <div className={cx("c-shell c-app", collapsed && "is-collapsed", drawer && "is-drawer")}>
         <div className="c-shell__side">
-          <SideNav active={active} onNavigate={go} collapsed={collapsed && !drawer} onSearch={() => { setDrawer(false); onSearch?.(); }} segment={segment} onSegment={(s) => { onSegment?.(s); setDrawer(false); }} account={account} onSignOut={onSignOut} pool={pool} onPool={onPool ? () => { onPool(); setDrawer(false); } : undefined} />
+          <SideNav active={active} onNavigate={go} collapsed={collapsed && !drawer} onSearch={() => { setDrawer(false); onSearch?.(); }} segment={segment} onSegment={(s) => { onSegment?.(s); setDrawer(false); }} account={account} onSignOut={onSignOut} pool={pool} onPool={onPool ? () => { onPool(); setDrawer(false); } : undefined} counts={counts} />
         </div>
         {drawer && <div className="c-shell__scrim" onClick={() => setDrawer(false)} aria-hidden="true" />}
         <div className="c-shell__main">
