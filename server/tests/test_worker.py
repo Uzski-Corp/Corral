@@ -10,6 +10,7 @@ from arq.jobs import Job, JobStatus
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from app.db.session import Database
+from app.kb.embeddings import HashingEmbedder
 from app.models import Lead
 from app.worker.jobs import count_org_leads, retry_delay_s
 from app.worker.main import WorkerSettings, build_worker_kwargs, redis_settings
@@ -25,10 +26,16 @@ def test_retry_delay_is_exponential_and_capped(job_try: int, delay: float) -> No
 
 def test_worker_kwargs_follow_settings() -> None:
     kwargs = build_worker_kwargs(
-        make_settings(worker_job_timeout_s=7, worker_max_tries=3, worker_shutdown_grace_s=9)
+        make_settings(
+            worker_job_timeout_s=7,
+            worker_max_tries=3,
+            worker_shutdown_grace_s=9,
+            kb_ingest_timeout_s=11,
+        )
     )
-    (job,) = kwargs["functions"]
+    job, ingest = kwargs["functions"]
     assert (job.name, job.timeout_s, job.max_tries) == ("count_org_leads", 7, 3)
+    assert (ingest.name, ingest.timeout_s, ingest.max_tries) == ("ingest_source", 11, 3)
     assert kwargs["job_completion_wait"] == 9
     assert kwargs["queue_name"] == QUEUE_NAME
     assert kwargs["retry_jobs"] is True
@@ -56,6 +63,8 @@ async def test_lifecycle_hooks_own_the_database() -> None:
     ctx: dict[str, Any] = {}
     await kwargs["on_startup"](ctx)
     assert isinstance(ctx["db"], Database)
+    assert isinstance(ctx["embedder"], HashingEmbedder)
+    assert ctx["settings"].kb_embedding_provider == "hashing"
     await kwargs["on_shutdown"](ctx)
     await kwargs["on_shutdown"]({})  # tolerate a failed startup
 

@@ -1,4 +1,5 @@
 from app.models.domain import InboxThread, KnowledgeItem, Lead, Segment, Sequence
+from app.models.knowledge import KbSource, Product
 from app.repositories.base import TenantRepository
 
 
@@ -20,3 +21,11 @@ class InboxThreadRepository(TenantRepository[InboxThread]):
 
 class KnowledgeRepository(TenantRepository[KnowledgeItem]):
     model = KnowledgeItem
+
+
+class ProductRepository(TenantRepository[Product]):
+    model = Product
+
+
+class SourceRepository(TenantRepository[KbSource]):
+    model = KbSource

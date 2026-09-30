@@ -13,6 +13,9 @@ from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 AppEnv = Literal["local", "test", "staging", "production"]
+EmbeddingProvider = Literal["hashing", "openai"]
+DedupeScope = Literal["product", "org", "off"]
+MIB = 1024 * 1024
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR"]
 
 
@@ -73,6 +76,50 @@ class Settings(BaseSettings):
     auth_code_verify_per_ip: int = Field(default=50, ge=1)
     auth_code_ip_window_s: int = Field(default=600, ge=1)
 
+    # --- Knowledge base (ENG-65/66). Every default here is a product assumption listed in the
+    # PR under "Decisions for Sean"; change them per environment without a deploy.
+    # Upload limits (the client checks the same numbers first: client/lib/kb/upload.ts).
+    kb_max_file_bytes: int = Field(default=25 * MIB, ge=1, le=512 * MIB)
+    kb_max_sources_per_product: int = Field(default=200, ge=1)
+    kb_max_bytes_per_product: int = Field(default=1024 * MIB, ge=1)
+    kb_uploads_per_user: int = Field(default=60, ge=1)
+    kb_upload_window_s: int = Field(default=600, ge=1)
+    # "product": the same bytes (or URL) can't be added twice to one product's KB.
+    # "org": not twice anywhere in the workspace. "off": no duplicate check.
+    kb_dedupe_scope: DedupeScope = "product"
+    # Parsing guards (per source)
+    kb_max_pages: int = Field(default=500, ge=1)
+    kb_max_text_chars: int = Field(default=2_000_000, ge=1_000)
+    # A PDF page with less text than this is treated as a scan and skipped (no OCR yet).
+    kb_min_page_chars: int = Field(default=20, ge=0)
+    kb_ingest_timeout_s: int = Field(default=900, ge=1)  # whole job, incl. a 40-page crawl
+    kb_parse_timeout_s: float = Field(default=120.0, gt=0, le=3600)
+    kb_reject_active_content: bool = True  # macros, embedded files, PDF JavaScript
+    kb_zip_max_entries: int = Field(default=2_000, ge=1)
+    kb_zip_max_uncompressed_bytes: int = Field(default=200 * MIB, ge=1)
+    kb_zip_max_ratio: int = Field(default=100, ge=1)
+    # Chunking
+    kb_chunk_chars: int = Field(default=1_200, ge=200, le=8_000)
+    kb_chunk_overlap_chars: int = Field(default=150, ge=0, le=2_000)
+    # Embeddings. "hashing" is a local, deterministic lexical embedder (no network): fine
+    # for dev/tests, weaker than a model. "openai" calls any OpenAI-compatible endpoint.
+    kb_embedding_provider: EmbeddingProvider = "hashing"
+    kb_embedding_model: str = "text-embedding-3-small"
+    kb_embedding_api_base: str = "https://api.openai.com/v1"
+    kb_embedding_api_key: SecretStr = SecretStr("")
+    kb_embedding_batch_size: int = Field(default=64, ge=1, le=2048)
+    kb_embedding_timeout_s: float = Field(default=30.0, gt=0, le=300)
+    # Retrieval
+    kb_search_max_results: int = Field(default=20, ge=1, le=100)
+    # Web pages
+    kb_url_timeout_s: float = Field(default=15.0, gt=0, le=120)
+    kb_url_max_bytes: int = Field(default=5 * MIB, ge=1_024)
+    kb_url_max_redirects: int = Field(default=5, ge=0, le=20)
+    kb_url_allowed_ports: list[int] = [80, 443]
+    kb_crawl_max_pages: int = Field(default=40, ge=1, le=1_000)
+    kb_url_user_agent: str = "CorralBot/0.1 (+https://corral.app/bot)"
+    kb_respect_robots_txt: bool = True
+
     @field_validator("workos_cookie_password")
     @classmethod
     def _cookie_password_is_fernet_key(cls, value: SecretStr) -> SecretStr:
@@ -93,6 +140,19 @@ class Settings(BaseSettings):
         if "*" in value:
             raise ValueError("CORS_ORIGINS must list explicit origins; '*' is not allowed")
         return value
+
+    @model_validator(mode="after")
+    def _kb_limits_are_consistent(self) -> "Settings":
+        if self.kb_chunk_overlap_chars >= self.kb_chunk_chars:
+            raise ValueError("KB_CHUNK_OVERLAP_CHARS must be smaller than KB_CHUNK_CHARS")
+        if self.kb_max_file_bytes > self.kb_max_bytes_per_product:
+            raise ValueError("KB_MAX_FILE_BYTES cannot exceed KB_MAX_BYTES_PER_PRODUCT")
+        if (
+            self.kb_embedding_provider == "openai"
+            and not self.kb_embedding_api_key.get_secret_value()
+        ):
+            raise ValueError("KB_EMBEDDING_API_KEY is required when KB_EMBEDDING_PROVIDER=openai")
+        return self
 
     @model_validator(mode="after")
     def _deployed_envs_require_auth(self) -> "Settings":

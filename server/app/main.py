@@ -17,6 +17,7 @@ from opentelemetry.sdk.trace.export import SpanExporter
 
 from app.api import meta
 from app.api.v1.router import api_router
+from app.api.v1.routes.kb import UPLOAD_PATH_SUFFIX
 from app.auth.session import SessionManager
 from app.auth.workos_client import build_workos_client
 from app.core.config import Settings, get_settings
@@ -28,12 +29,16 @@ from app.core.middleware import (
     RequestContextMiddleware,
     SecurityHeadersMiddleware,
     TimeoutMiddleware,
+    UploadLimitMiddleware,
 )
 from app.core.telemetry import build_telemetry
 from app.db.session import Database
+from app.kb.embeddings import build_embedder
 from app.worker.queue import JobQueue
 
 log = structlog.get_logger(__name__)
+
+MULTIPART_OVERHEAD_BYTES = 64 * 1024
 
 
 def create_app(
@@ -50,8 +55,10 @@ def create_app(
         telemetry.instrument_engine(db.engine)
         queue = JobQueue.from_settings(settings)
         workos = build_workos_client(settings)
+        embedder = build_embedder(settings)
         app.state.db = db
         app.state.queue = queue
+        app.state.embedder = embedder
         app.state.draining = False
         app.state.session_manager = (
             SessionManager(
@@ -72,6 +79,7 @@ def create_app(
             log.info("shutdown_started")
             if workos is not None:
                 await workos.close()
+            await embedder.aclose()
             await queue.close()
             await db.dispose()
             telemetry.shutdown()
@@ -84,7 +92,13 @@ def create_app(
 
     # Starlette wraps middleware in reverse order of registration: the last one added is
     # outermost. Effective order: RequestContext > SecurityHeaders > Metrics > Timeout >
-    # CORS > routes.
+    # CORS > UploadLimit > routes.
+    app.add_middleware(
+        UploadLimitMiddleware,
+        path_suffix=UPLOAD_PATH_SUFFIX,
+        # The multipart envelope (boundary, part headers, form fields) on top of the file.
+        max_bytes=settings.kb_max_file_bytes + MULTIPART_OVERHEAD_BYTES,
+    )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,

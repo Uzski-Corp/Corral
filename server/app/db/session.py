@@ -4,7 +4,9 @@ The engine is created in the application lifespan and stored on ``app.state.db``
 there is no import-time engine, so importing the app never opens connections.
 """
 
+import uuid
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import Request
 from sqlalchemy import text
@@ -16,7 +18,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.core.config import Settings
-from app.db.tenancy import enforce_app_role
+from app.db.tenancy import apply_tenant_context, enforce_app_role
 
 
 class Database:
@@ -67,4 +69,14 @@ async def get_db(request: Request) -> AsyncIterator[AsyncSession]:
     async with database.sessionmaker() as session:
         enforce_app_role(session)
         async with session.begin():
+            yield session
+
+
+@asynccontextmanager
+async def tenant_transaction(database: Database, org_id: uuid.UUID) -> AsyncIterator[AsyncSession]:
+    """A background-job transaction: ``corral_app`` role, pinned to ``org_id`` (no user)."""
+    async with database.sessionmaker() as session:
+        enforce_app_role(session)
+        async with session.begin():
+            await apply_tenant_context(session, org_id=org_id)
             yield session

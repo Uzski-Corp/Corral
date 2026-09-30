@@ -188,3 +188,40 @@ class SecurityHeadersMiddleware:
             await send(message)
 
         await self.app(scope, receive, send_wrapper)
+
+
+class UploadLimitMiddleware:
+    """Refuse oversized uploads from the headers, before any body byte is read or spooled.
+
+    Applies to ``POST`` paths ending in ``path_suffix``. ``Content-Length`` is required
+    (411 without it) and must be at most ``max_bytes`` (413). The ASGI server enforces the
+    declared length, so the body can't be longer than the header says. Sits inside CORS so
+    the browser can read the error.
+    """
+
+    def __init__(self, app: ASGIApp, *, path_suffix: str, max_bytes: int) -> None:
+        self.app = app
+        self.path_suffix = path_suffix
+        self.max_bytes = max_bytes
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if (
+            scope["type"] != "http"
+            or scope["method"] != "POST"
+            or not scope["path"].endswith(self.path_suffix)
+        ):
+            await self.app(scope, receive, send)
+            return
+        raw = dict(scope["headers"]).get(b"content-length")
+        problem: tuple[int, str, str] | None = None
+        if raw is None or not raw.isdigit():
+            problem = (411, "length_required", "Send the file with a Content-Length header.")
+        elif int(raw) > self.max_bytes:
+            problem = (413, "too_large", f"Uploads can be up to {self.max_bytes} bytes.")
+        if problem is None:
+            await self.app(scope, receive, send)
+            return
+        status, error, detail = problem
+        log.info("upload_refused", status=status, path=scope["path"])
+        response = JSONResponse({"error": error, "detail": detail}, status_code=status)
+        await response(scope, receive, send)

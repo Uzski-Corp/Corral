@@ -10,14 +10,24 @@ from app.models.domain import (
     TenantModel,
 )
 from app.models.identity import Membership, Organization, User
+from app.models.knowledge import KB_TABLES, KbChunk, KbSource, KbSourceFile, Product
+
+ALL_TENANT_TABLES: tuple[str, ...] = (*TENANT_TABLES, *KB_TABLES)
+"""Every org-scoped table with a ``tenant_isolation`` row-level security policy."""
 
 __all__ = [
+    "ALL_TENANT_TABLES",
+    "KB_TABLES",
     "TENANT_TABLES",
     "InboxThread",
+    "KbChunk",
+    "KbSource",
+    "KbSourceFile",
     "KnowledgeItem",
     "Lead",
     "Membership",
     "Organization",
+    "Product",
     "Segment",
     "Sequence",
     "TenantModel",

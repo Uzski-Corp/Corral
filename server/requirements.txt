@@ -15,6 +15,11 @@ alembic==1.20.0
 httpx==0.28.1
 workos==10.5.0
 
+# Knowledge base: document parsing, safe XML, and pgvector types (no numpy needed)
+pypdf==6.19.0
+defusedxml==0.7.1
+pgvector==0.5.0
+
 # Background jobs
 arq==0.28.0
 redis==5.3.1  # arq requires redis<6

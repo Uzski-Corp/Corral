@@ -71,3 +71,21 @@ def test_get_settings_is_cached() -> None:
         assert get_settings() is get_settings()
     finally:
         get_settings.cache_clear()
+
+
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        ({"kb_chunk_chars": 500, "kb_chunk_overlap_chars": 500}, "KB_CHUNK_OVERLAP_CHARS"),
+        ({"kb_max_file_bytes": 2_000, "kb_max_bytes_per_product": 1_000}, "KB_MAX_FILE_BYTES"),
+        ({"kb_embedding_provider": "openai"}, "KB_EMBEDDING_API_KEY"),
+    ],
+)
+def test_inconsistent_kb_settings_are_rejected(overrides: dict[str, object], message: str) -> None:
+    with pytest.raises(ValidationError, match=message):
+        make_settings(**overrides)
+
+
+def test_openai_embeddings_with_a_key_are_accepted() -> None:
+    s = make_settings(kb_embedding_provider="openai", kb_embedding_api_key="sk-test")
+    assert s.kb_embedding_api_key.get_secret_value() == "sk-test"

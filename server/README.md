@@ -86,6 +86,40 @@ Operational requirements:
 - New org-scoped tables: subclass `TenantModel`, add a migration, and add the table to the
   RLS migration pattern (`ENABLE ROW LEVEL SECURITY` + `tenant_isolation` policy + grants).
 
+## Knowledge base (products, sources, retrieval)
+
+One knowledge base per product: `POST /api/v1/products`, then under
+`/api/v1/products/{id}/knowledge`:
+
+| Route | What it does |
+| --- | --- |
+| `POST /sources/files` | multipart `file` (PDF, DOCX, Markdown) + optional `replace_source_id`; `202` |
+| `POST /sources/urls` | `{"url", "scope": "page" \| "section"}`; `202` |
+| `GET /sources[/{id}]` | status for polling: `processing{stage,stage_pct,progress}`, `ready`, `partial{pages_read,pages_total,skipped,note}`, `failed{failure,failure_stage}` |
+| `GET /sources/{id}/passages` | the stored chunks, in order |
+| `DELETE /sources/{id}` / `POST .../restore` | soft delete (drops out of search at once) and undo |
+| `POST /sources/{id}/reread` | read again (new generation; older jobs become no-ops) |
+| `POST /search` | `{"query", "limit"}` -> passages by cosine similarity |
+
+- Ingestion runs in the worker (`ingest_source`): scan -> parse -> chunk -> embed -> store,
+  with progress written to the source row. Parsers are bounded (pages, characters, time,
+  zip entries/size/ratio), XML goes through `defusedxml`, and macros, embedded objects and
+  PDF JavaScript are rejected. URLs are fetched with SSRF protection: public addresses
+  only, the connection pinned to the checked IP, every redirect re-checked, robots.txt
+  honoured, bodies capped.
+- Uploads must send `Content-Length`; bodies over `KB_MAX_FILE_BYTES` are refused (413)
+  before they are read. Adds and re-reads are rate limited per user (429 + `Retry-After`).
+- Every write route requires an allow-listed `Origin` (CSRF).
+- **Postgres needs the `vector` extension (pgvector)**. Migration `0004_knowledge_base` runs
+  `CREATE EXTENSION IF NOT EXISTS vector`, which needs a superuser or a role allowed to
+  create it (managed Postgres: enable pgvector first). Tests use `pgvector/pgvector:pg16`.
+- Embeddings: `KB_EMBEDDING_PROVIDER=hashing` (default) is a local, deterministic lexical
+  embedder with no network access, good for dev and tests. `openai` calls any
+  OpenAI-compatible `/embeddings` endpoint (`KB_EMBEDDING_API_BASE`, `KB_EMBEDDING_MODEL`,
+  `KB_EMBEDDING_API_KEY`). The column is `vector(1536)`, so the model must return 1536
+  dimensions. Changing the model means re-reading every source.
+- All limits are `KB_*` settings (see `.env.example` and `app/core/config.py`).
+
 ## Background jobs & observability
 
 - Jobs live in `app/worker/jobs.py` and are registered in `app/worker/main.py`. Enqueue from

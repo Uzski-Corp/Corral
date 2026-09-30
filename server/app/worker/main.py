@@ -15,6 +15,8 @@ from arq.connections import RedisSettings
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
 from app.db.session import Database
+from app.kb.embeddings import Embedder, build_embedder
+from app.kb.ingest import ingest_source
 from app.worker.jobs import count_org_leads
 from app.worker.queue import QUEUE_NAME
 
@@ -33,12 +35,17 @@ def build_worker_kwargs(settings: Settings) -> dict[str, Any]:
     async def on_startup(ctx: dict[str, Any]) -> None:
         configure_logging(settings.app_env, settings.log_level)
         ctx["db"] = Database.from_settings(settings)
+        ctx["settings"] = settings
+        ctx["embedder"] = build_embedder(settings)
         log.info("worker_started", queue=QUEUE_NAME)
 
     async def on_shutdown(ctx: dict[str, Any]) -> None:
         db: Database | None = ctx.get("db")
         if db is not None:
             await db.dispose()
+        embedder: Embedder | None = ctx.get("embedder")
+        if embedder is not None:
+            await embedder.aclose()
         log.info("worker_stopped")
 
     return {
@@ -48,7 +55,13 @@ def build_worker_kwargs(settings: Settings) -> dict[str, Any]:
                 name="count_org_leads",
                 timeout=settings.worker_job_timeout_s,
                 max_tries=settings.worker_max_tries,
-            )
+            ),
+            func(
+                ingest_source,
+                name="ingest_source",
+                timeout=settings.kb_ingest_timeout_s,
+                max_tries=settings.worker_max_tries,
+            ),
         ],
         "on_startup": on_startup,
         "on_shutdown": on_shutdown,

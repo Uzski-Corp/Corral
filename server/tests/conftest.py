@@ -67,7 +67,7 @@ def database_url() -> Iterator[str]:
         pytest.skip("Postgres unavailable: set TEST_DATABASE_URL or start Docker")
     from testcontainers.postgres import PostgresContainer
 
-    with PostgresContainer("postgres:16-alpine", driver="asyncpg") as pg:
+    with PostgresContainer("pgvector/pgvector:pg16", driver="asyncpg") as pg:
         yield pg.get_connection_url()
 
 

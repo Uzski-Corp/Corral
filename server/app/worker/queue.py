@@ -9,6 +9,7 @@ from redis.asyncio import ConnectionPool
 from app.core.config import Settings
 
 QUEUE_NAME = "corral:queue"
+INGEST_DEFER_S = 1.0
 
 
 class JobQueue:
@@ -33,6 +34,24 @@ class JobQueue:
         """Returns ``None`` if an identical job (same id) is already queued."""
         return await self.redis.enqueue_job(
             "count_org_leads", str(org_id), _job_id=f"count_org_leads:{org_id}"
+        )
+
+    async def enqueue_ingest_source(
+        self, org_id: uuid.UUID, source_id: uuid.UUID, generation: int
+    ) -> Job | None:
+        """Read a knowledge-base source. One job per (source, generation).
+
+        Called *inside* the request transaction, so a Redis failure rolls the new source
+        back. The short defer gives that transaction time to commit; the job also retries
+        briefly if the row isn't visible yet.
+        """
+        return await self.redis.enqueue_job(
+            "ingest_source",
+            str(org_id),
+            str(source_id),
+            generation,
+            _job_id=f"ingest_source:{source_id}:{generation}",
+            _defer_by=INGEST_DEFER_S,
         )
 
     async def close(self) -> None:
