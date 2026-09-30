@@ -10,6 +10,9 @@
 // is processing for ~3s (scan → parse → chunk → embed), then ready. Scenarios: {"kbDown": true} makes
 // /products answer 503, {"kbEmpty": true} starts with no product, {"kbSlow": true} keeps new sources
 // processing until the next reset, {"deleteFails": true} makes removing a source a 503.
+// Lead CRM (PR #71 contract, signed in only): six companies (one a probable duplicate), their people, fits for p1 and one
+// segment; POST /companies/query filters, sorts and pages; bulk, merge, unsubscribe, segments and CSV imports (an import
+// runs for ~2s of polls). {"leadsDown": true} makes /companies/query answer 503, {"leadsEmpty": true} starts with none.
 import http from "node:http";
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -22,7 +25,7 @@ const ME = {
   role: "owner",
 };
 
-const FRESH = { deny: false, down: false, sendLimited: 0, kbDown: false, kbEmpty: false, kbSlow: false, deleteFails: false };
+const FRESH = { deny: false, down: false, sendLimited: 0, kbDown: false, kbEmpty: false, kbSlow: false, deleteFails: false, leadsDown: false, leadsEmpty: false };
 let scenario = { ...FRESH };
 let sends = new Map();
 let calls = [];
@@ -92,7 +95,7 @@ function multipart(req, buf) {
     const head = /name="([^"]+)"(?:; filename="([^"]*)")?/.exec(part);
     if (!head) continue;
     const body = part.slice(part.indexOf("\r\n\r\n") + 4).replace(/\r\n$/, "");
-    out[head[1]] = head[2] === undefined ? body : { filename: head[2], size: body.length };
+    out[head[1]] = head[2] === undefined ? body : { filename: head[2], size: body.length, text: body };
   }
   return out;
 }
@@ -169,6 +172,180 @@ function kbRoute(req, res, path, url) {
   return true;
 }
 
+/* ------------------------------------------------------------ lead CRM */
+let crm = { companies: [], people: [], fits: {}, segments: [], imports: [], seq: 0 };
+const company = (over) => ({ domain: `${over.id}.co.ke`, country: "Kenya", size: "51-200", industry: "Dairy", notes: null, source: "search", reply_status: "not_contacted",
+  reply_status_set_by: "corral", last_activity_at: null, import_id: null, created_at: iso(Date.now() - 20 * 86_400_000), updated_at: iso(Date.now() - 86_400_000), ...over });
+const person = (over) => ({ email: null, first_name: null, last_name: null, title: null, phone: null, linkedin_url: null, email_status: "verified", is_primary: true,
+  unsubscribed_at: null, created_at: iso(Date.now() - 20 * 86_400_000), updated_at: iso(Date.now() - 86_400_000), ...over });
+function resetCrm() {
+  const day = (d) => iso(Date.now() - d * 86_400_000);
+  crm = { seq: 0, imports: [], companies: [], people: [], fits: {}, segments: [] };
+  if (scenario.leadsEmpty) return;
+  crm.companies = [
+    company({ id: "c1", name: "Kilima Dairies", domain: "kilima.co.ke", size: "201-1000", reply_status: "interested", last_activity_at: iso(Date.now() - 2 * 3_600_000), created_at: day(30), notes: "Board meeting in November." }),
+    company({ id: "c2", name: "Pwani Fresh", domain: "pwanifresh.com", industry: "Seafood", reply_status: "objection", last_activity_at: day(1), created_at: day(29) }),
+    company({ id: "c3", name: "Savanna Juice Co.", domain: "savannajuice.africa", industry: "Beverages", source: "import", created_at: day(28) }),
+    company({ id: "c4", name: "Tamu Bakeries", domain: "tamu.ug", country: "Uganda", industry: "Bakery", reply_status: "contacted", last_activity_at: day(3), created_at: day(27) }),
+    company({ id: "c5", name: "Mara Cold Stores", domain: "maracold.com", industry: "Cold storage", source: "manual", created_at: day(26) }),
+    company({ id: "c6", name: "Kilima Dairies Ltd", domain: null, source: "import", created_at: day(1), import_id: "i0" }),
+  ];
+  crm.people = [
+    person({ id: "l1", company_id: "c1", email: "wanjiru@kilima.co.ke", first_name: "Wanjiru", last_name: "Mwangi", title: "Head of Supply Chain" }),
+    person({ id: "l1b", company_id: "c1", email: "joseph@kilima.co.ke", first_name: "Joseph", last_name: "Kariuki", title: "Plant Manager, Nakuru", is_primary: false, email_status: "catch_all" }),
+    person({ id: "l2", company_id: "c2", email: "brian@pwanifresh.com", first_name: "Brian", last_name: "Kamau", title: "COO" }),
+    person({ id: "l3", company_id: "c3", email: "amara@savannajuice.africa", first_name: "Amara", last_name: "Nwosu", title: "Ops Director", email_status: "catch_all" }),
+    person({ id: "l4", company_id: "c4", email: "reza@tamu.ug", first_name: "Reza", last_name: "Santos", title: "Plant Manager", email_status: "unverified" }),
+    person({ id: "l6", company_id: "c6", email: "wanjiru.m@kilima.co.ke", first_name: "Wanjiru", last_name: "M.", title: "Supply Chain", email_status: "unverified" }),
+  ];
+  crm.fits = { c1: 94, c2: 91, c3: 88, c4: 72, c6: 85 };
+  crm.segments = [{ id: "sg1", name: "Kenya dairy", rules: [{ field: "industry", op: "is", value: ["Dairy"] }, { field: "country", op: "is", value: ["Kenya"] }], match: "all", pins: [], created_at: day(10) }];
+}
+const primaryOf = (c) => crm.people.find((p) => p.company_id === c.id && p.is_primary) ?? null;
+const fitOf = (c) => (c.id in crm.fits ? crm.fits[c.id] : null);
+function ruleHit(c, r) {
+  if (r.field === "fit") { const f = fitOf(c); return f !== null && (r.op === "gte" ? f >= r.value : f <= r.value); }
+  if (r.field === "title") return String(primaryOf(c)?.title ?? "").toLowerCase().includes(String(r.value).toLowerCase());
+  const got = r.field === "email" ? primaryOf(c)?.email_status : r.field === "reply" ? c.reply_status : c[r.field];
+  const hit = got != null && r.value.map((v) => v.toLowerCase()).includes(String(got).toLowerCase());
+  return r.op === "is" ? hit : !hit;
+}
+const matches = (c, rules = [], match = "all", empty = true) => (!rules.length ? empty : match === "any" ? rules.some((r) => ruleHit(c, r)) : rules.every((r) => ruleHit(c, r)));
+const inSegment = (s, c) => s.pins.includes(c.id) || matches(c, s.rules, s.match, false);
+const companyOut = (c) => ({ ...c, fit: fitOf(c), primary: primaryOf(c) });
+const detailOut = (c) => ({ ...companyOut(c), people: crm.people.filter((p) => p.company_id === c.id), fits: c.id in crm.fits ? [{ product_id: "p1", score: crm.fits[c.id] }] : [] });
+const segmentOut = (s) => ({ id: s.id, name: s.name, match: s.match, created_at: s.created_at, updated_at: s.created_at });
+const segmentDetail = (s) => ({ ...segmentOut(s), rules: s.rules, pinned: s.pins.length, count: crm.companies.filter((c) => inSegment(s, c)).length });
+const REPLY_ORDER = ["meeting_booked", "interested", "objection", "referral", "ooo", "contacted", "not_contacted", "not_interested", "unsubscribed"];
+function pageOf(rows, b) {
+  const sort = b.sort ?? { key: "created", dir: "desc" };
+  const hits = rows.filter((c) => matches(c, b.rules, b.match, true));
+  const key = (c) => sort.key === "company" ? c.name.toLowerCase() : sort.key === "fit" ? fitOf(c) ?? -1 : sort.key === "reply" ? REPLY_ORDER.indexOf(c.reply_status)
+    : sort.key === "person" ? [primaryOf(c)?.first_name, primaryOf(c)?.last_name].join(" ").toLowerCase() : c.created_at;
+  hits.sort((a, z) => { const x = key(a), y = key(z); return (x < y ? -1 : x > y ? 1 : 0) * (sort.dir === "asc" ? 1 : -1) || a.id.localeCompare(z.id); });
+  const start = b.cursor ? Number(b.cursor) : 0, limit = Math.min(200, b.limit ?? 50);
+  const next = start + limit < hits.length ? String(start + limit) : null;
+  return { data: hits.slice(start, start + limit).map(companyOut), next_cursor: next, has_more: next !== null, total: hits.length };
+}
+const selected = (sel) => (Array.isArray(sel?.ids) ? crm.companies.filter((c) => sel.ids.includes(c.id)) : crm.companies.filter((c) => matches(c, sel?.rules, sel?.match, true)));
+const LEADS_ROUTE = /^\/api\/v1\/(companies|segments|leads|lead-imports)(?:\/([^/]+))?(?:\/([^/]+))?$/;
+const IMPORT_MS = 2_000;
+function importNow(row) {
+  const ms = Date.now() - Date.parse(row.created_at);
+  if (ms >= IMPORT_MS) {
+    if (row.status !== "done") {
+      row.status = "done"; row.progress_pct = 100; row.finished_at = iso();
+      for (const [i, name] of row.names.entries()) {
+        const id = `ci${++crm.seq}`;
+        crm.companies.push(company({ id, name, domain: null, source: "import", import_id: row.id, created_at: iso() }));
+        if (i === 0) crm.fits[id] = 82;
+      }
+      row.created_count = row.names.length;
+    }
+  } else { row.status = "running"; row.progress_pct = Math.round((ms / IMPORT_MS) * 100); }
+  const { names: _n, ...out } = row; void _n;
+  return out;
+}
+
+function leadsRoute(req, res, path) {
+  const m = LEADS_ROUTE.exec(path);
+  if (!m) return false;
+  if (!signedIn(req)) { json(res, 401, { detail: "Session invalid or expired" }); return true; }
+  const [, kind, id, action] = m;
+  const method = req.method;
+  const write = method !== "GET" && !(kind === "companies" && id === "query") && !(action === "companies") && !(id === "preview") && !(id === "enroll-plan");
+  if (write && req.headers.origin !== FRONTEND) { json(res, 403, { detail: "Origin not allowed" }); return true; }
+  const nf = () => json(res, 404, { error: "not_found", detail: "Not found." });
+  if (kind === "lead-imports") {
+    if (method === "POST" && !id) {
+      readBody(req).then((buf) => {
+        const f = multipart(req, buf);
+        const lines = String(f.file?.text ?? "").trim().split(/\r?\n/).slice(1).filter(Boolean);
+        const mapping = JSON.parse(f.mapping ?? "[]"), col = mapping.indexOf("company");
+        const names = lines.map((l) => l.split(",")[Math.max(0, col)]?.trim()).filter(Boolean);
+        const known = names.filter((n) => crm.companies.some((c) => c.name.toLowerCase() === n.toLowerCase()));
+        const fresh = names.filter((n) => !known.includes(n));
+        if (f.dry_run === "true") {
+          const update = f.policy === "skip" ? 0 : known.length;
+          return json(res, 200, { plan: { total: names.length, create: fresh.length, update, skipped: known.length - update, errors: 0, in_file: 0, existing: known.length }, headers: [], errors: [] });
+        }
+        const row = { id: `i${++crm.seq}`, filename: f.file?.filename ?? "import.csv", byte_size: f.file?.size ?? 0, policy: f.policy ?? "skip", status: "queued", progress_pct: 0,
+          total_rows: names.length, created_count: 0, updated_count: 0, skipped_count: known.length, error_count: 0, in_file_duplicates: 0, existing_duplicates: known.length,
+          people_created: 0, failure: null, note: null, has_errors_file: false, finished_at: null, created_at: iso(), updated_at: iso(), names: fresh };
+        crm.imports.push(row);
+        json(res, 202, importNow(row));
+      });
+      return true;
+    }
+    const row = crm.imports.find((x) => x.id === id);
+    if (method === "GET" && row) { json(res, 200, importNow(row)); return true; }
+    nf(); return true;
+  }
+  readJson(req).then((b) => {
+    if (kind === "companies") {
+      if (id === "query" && method === "POST") return scenario.leadsDown ? json(res, 503, { detail: "Service Unavailable" }) : json(res, 200, pageOf(crm.companies, b));
+      if (id === "bulk" && method === "POST") {
+        const rows = selected(b.selection);
+        if (b.action === "set_reply_status") {
+          const locked = rows.filter((c) => c.reply_status === "unsubscribed");
+          for (const c of rows) if (c.reply_status !== "unsubscribed") { c.reply_status = b.reply_status; c.reply_status_set_by = "user"; }
+          return json(res, 200, { matched: rows.length, changed: rows.length - locked.length, skipped: locked.length ? [{ reason: "unsubscribed", n: locked.length }] : [] });
+        }
+        if (b.action === "add_to_segment") {
+          const s = crm.segments.find((x) => x.id === b.segment_id); if (!s) return nf();
+          const fresh = rows.filter((c) => !s.pins.includes(c.id)); s.pins.push(...fresh.map((c) => c.id));
+          return json(res, 200, { matched: rows.length, changed: fresh.length, skipped: [] });
+        }
+        crm.companies = crm.companies.filter((c) => !rows.includes(c));
+        return json(res, 200, { matched: rows.length, changed: rows.length, skipped: [] });
+      }
+      if (id === "enroll-plan" && method === "POST") {
+        const rows = selected(b.selection);
+        const unsub = rows.filter((c) => c.reply_status === "unsubscribed" || c.reply_status === "not_interested").length;
+        const noMail = rows.filter((c) => !["unsubscribed", "not_interested"].includes(c.reply_status) && primaryOf(c)?.email_status !== "verified").length;
+        const will = rows.length - unsub - noMail;
+        return json(res, 200, { matched: rows.length, will_enroll: will, skipped: [...(unsub ? [{ reason: "unsubscribed", n: unsub }] : []), ...(noMail ? [{ reason: "no_verified_email", n: noMail }] : [])], sends_per_day: 210, days: Math.ceil(will / 210) });
+      }
+      const c = crm.companies.find((x) => x.id === id); if (!c) return nf();
+      if (!action && method === "GET") return json(res, 200, detailOut(c));
+      if (!action && method === "PATCH") { Object.assign(c, b); return json(res, 200, detailOut(c)); }
+      if (action === "merge" && method === "POST") {
+        const dup = crm.companies.find((x) => x.id === b.duplicate_id); if (!dup) return nf();
+        for (const k of ["domain", "country", "size", "industry", "notes"]) if (c[k] == null) c[k] = dup[k];
+        for (const p of crm.people) if (p.company_id === dup.id) { p.company_id = c.id; p.is_primary = false; }
+        crm.companies = crm.companies.filter((x) => x.id !== dup.id);
+        return json(res, 200, detailOut(c));
+      }
+      return json(res, 405, { detail: "Method Not Allowed" });
+    }
+    if (kind === "leads") {
+      const p = crm.people.find((x) => x.id === id); if (!p) return nf();
+      if (action === "unsubscribe" && method === "POST") { p.unsubscribed_at = iso(); const c = crm.companies.find((x) => x.id === p.company_id); if (c) c.reply_status = "unsubscribed"; return json(res, 200, { ...p, company_name: null }); }
+      if (!action && method === "PATCH") { Object.assign(p, b); return json(res, 200, { ...p, company_name: null }); }
+      return json(res, 405, { detail: "Method Not Allowed" });
+    }
+    // segments
+    if (!id && method === "GET") return json(res, 200, [...crm.segments].sort((a, z) => z.created_at.localeCompare(a.created_at)).map(segmentOut));
+    if (id === "preview" && method === "POST") {
+      const hits = crm.companies.filter((c) => matches(c, b.rules, b.match, false));
+      return json(res, 200, { count: hits.length, peek: hits.slice(0, 5).map((c) => ({ ...companyOut(c), primary: null })) });
+    }
+    if (!id && method === "POST") {
+      if (crm.segments.some((s) => s.name === b.name)) return json(res, 409, { error: "duplicate", detail: "A segment with this name already exists." });
+      const pins = [...(b.company_ids ?? []), ...(b.from_import_id ? crm.companies.filter((c) => c.import_id === b.from_import_id).map((c) => c.id) : [])];
+      const s = { id: `sg${++crm.seq + 1}`, name: b.name, rules: b.rules ?? [], match: b.match ?? "all", pins, created_at: iso() };
+      crm.segments.push(s);
+      return json(res, 201, segmentDetail(s));
+    }
+    const s = crm.segments.find((x) => x.id === id); if (!s) return nf();
+    if (!action && method === "GET") return json(res, 200, segmentDetail(s));
+    if (!action && method === "PATCH") { Object.assign(s, b); return json(res, 200, segmentDetail(s)); }
+    if (action === "companies" && method === "POST") return json(res, 200, pageOf(crm.companies.filter((c) => inSegment(s, c)), b));
+    return json(res, 405, { detail: "Method Not Allowed" });
+  });
+  return true;
+}
+
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, SELF);
   const path = url.pathname;
@@ -183,13 +360,14 @@ const server = http.createServer((req, res) => {
   if (path === "/health") return json(res, 200, { status: "ok" });
   if (path === "/__mock/scenario" && req.method === "POST") {
     let body = ""; req.on("data", (c) => (body += c)); req.on("end", () => {
-      const was = scenario.kbEmpty;
+      const was = scenario.kbEmpty, wasLeads = scenario.leadsEmpty;
       scenario = { ...scenario, ...JSON.parse(body || "{}") };
       if (scenario.kbEmpty !== was) resetKb();
+      if (scenario.leadsEmpty !== wasLeads) resetCrm();
       json(res, 200, scenario);
     }); return;
   }
-  if (path === "/__mock/reset" && req.method === "POST") { scenario = { ...FRESH }; calls = []; sends = new Map(); resetKb(); return json(res, 200, {}); }
+  if (path === "/__mock/reset" && req.method === "POST") { scenario = { ...FRESH }; calls = []; sends = new Map(); resetKb(); resetCrm(); return json(res, 200, {}); }
   if (path === "/__mock/calls") return json(res, 200, calls);
 
   if (path === "/api/v1/auth/login" && req.method === "GET") {
@@ -244,6 +422,7 @@ const server = http.createServer((req, res) => {
     return;
   }
   if (kbRoute(req, res, path, url)) return;
+  if (leadsRoute(req, res, path)) return;
   if (path === "/api/v1/auth/logout" && req.method === "POST") {
     return json(res, 200, { logout_url: `${FRONTEND}/` }, { "Set-Cookie": clearSession });
   }
@@ -251,5 +430,6 @@ const server = http.createServer((req, res) => {
 });
 
 resetKb();
+resetCrm();
 server.listen(PORT, () => console.log(`mock Corral API on ${SELF}, frontend ${FRONTEND}`));
 for (const sig of ["SIGINT", "SIGTERM"]) process.on(sig, () => { server.closeAllConnections(); process.exit(0); });

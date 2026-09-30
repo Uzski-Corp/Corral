@@ -27,11 +27,13 @@ export function loosenHint(leads: LeadLike[], rules: Rule[], match: Match): stri
  * Segment builder: rules on the left, the live count on the right. Rules are the same model as the
  * filter chips on Companies, so "Save as segment" and "Edit rules" are one component.
  */
-export function SegmentBuilder({ rules, onRules, match, onMatch, leads, name, onName, onSave, onCancel, saveLabel = "Save segment", total }: {
+export function SegmentBuilder({ rules, onRules, match, onMatch, leads, name, onName, onSave, onCancel, saveLabel = "Save segment", total, preview }: {
   rules: Rule[]; onRules: (r: Rule[]) => void; match: Match; onMatch: (m: Match) => void; leads: LeadLike[];
   name?: string; onName?: (n: string) => void; onSave: () => void; onCancel: () => void; saveLabel?: string; total?: number;
+  /** Live (ENG-81): the API's count and first matches for these rules, instead of filtering `leads`. */ preview?: { count: number; peek: LeadLike[] };
 }) {
-  const hits = useMemo(() => filterLeads(leads, rules, match), [leads, rules, match]);
+  const local = useMemo(() => filterLeads(leads, rules, match), [leads, rules, match]);
+  const hits = preview ? { length: preview.count, slice: (a: number, b: number) => preview.peek.slice(a, b) } : local;
   const issues = rules.filter((r) => ruleIssue(r)).length;
   const put = (id: string, patch: Partial<Rule>) => onRules(rules.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   const hint = hits.length === 0 ? loosenHint(leads, rules, match) : null;

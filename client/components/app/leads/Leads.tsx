@@ -24,6 +24,9 @@ import { handoffFor } from "../handoff/data";
 import { DEMO_TODAY_M4, STALE_IDS, STALE_TOTAL, provOf } from "../discovery/data";
 import { FIT_OPEN, fitStatusFor, scoreFor } from "../fit/data";
 import { barOf, shownValue, type FitScore, type FitStatus } from "@/lib/fit/score";
+import type { LeadsApi, EnrollPlan } from "@/lib/api/leads";
+import { skipLines } from "@/lib/leads/map";
+import { useLiveLeads, useLivePreview, type LiveSegments } from "./live";
 import { FIELD_LABEL } from "@/lib/discovery/provenance";
 
 const f = (n: number) => n.toLocaleString("en");
@@ -54,15 +57,20 @@ export function importSeed(s?: LeadsReviewState): ImportSeed | undefined {
   return { step: s === "import-review" ? "review" : s === "import-running" ? "running" : "done", file: t, mapping: m, progress: 46 };
 }
 
-export function LeadsView({ view, state, segment, importOpen, onImportOpenChange, builderOpen, onBuilderOpenChange, onEnroll, onFind, reviewSample = true, enrollAllSignal = 0 }: {
+/** Signed in against the API (ENG-81): the lead CRM endpoints, whose fit to show, and the saved segments. */
+export type LeadsLive = { api: LeadsApi; product: { productId: string | null; ready: boolean }; segments: LiveSegments };
+
+export function LeadsView({ view, state, segment, importOpen, onImportOpenChange, builderOpen, onBuilderOpenChange, onEnroll, onFind, reviewSample = true, enrollAllSignal = 0, live: liveIn }: {
   view: "companies" | "segments"; state?: LeadsReviewState; segment?: string;
   importOpen: boolean; onImportOpenChange: (o: boolean) => void; builderOpen: boolean; onBuilderOpenChange: (o: boolean) => void;
   /** small selections open the shell's enroll dialog; large ones confirm here */ onEnroll: (n: number, includesReplied: boolean) => void;
   onFind: () => void; reviewSample?: boolean; /** bump to enroll everything in the view (segments: "Enroll segment") */ enrollAllSignal?: number;
+  /** Present when signed in against the API; a review state always shows the sample. */ live?: LeadsLive;
 }) {
   const toast = useToast();
   const frozen = !!state;
-  const seg = view === "segments" ? segment ?? SAVED_SEGMENTS[0][0] : undefined;
+  const live = state ? undefined : liveIn;
+  const seg = view === "segments" ? segment ?? (live ? live.segments.list[0]?.name : SAVED_SEGMENTS[0][0]) : undefined;
   const [phase, setPhase] = useState<"loading" | "error" | "ready">(state === "loading" ? "loading" : state === "error" ? "error" : "ready");
   const [rows, setRows] = useState<Lead[]>(() => state === "empty" ? [] : state === "partial"
     ? LEAD_ROWS.map((l, i) => (i >= 14 && i < 24 ? { ...l, scoring: true } : l))
@@ -75,7 +83,7 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
   const [rechecking, setRechecking] = useState<string | null>(null);
   const [staleCount, setStaleCount] = useState(state === "stale" ? STALE_TOTAL : 0);
   const [tab, setTab] = useState(state === "select-all" || state === "bulk-confirm" || state === "bulk-running" || state === "partial" || state === "duplicate" || FIT_OPEN[state!]?.tab === "all" ? "all" : "fit");
-  const [rules, setRules] = useState<Rule[]>(() => seg ? (SEGMENT_RULES[seg] ?? SEGMENT_RULES["F&B · East Africa"])()
+  const [rules, setRules] = useState<Rule[]>(() => live ? [] : seg ? (SEGMENT_RULES[seg] ?? SEGMENT_RULES["F&B · East Africa"])()
     : state === "no-results" ? [{ ...newRule("fit"), value: 90 }, { ...newRule("country"), value: ["Ethiopia"] }] : []);
   const [match, setMatch] = useState<Match>("all");
   const [draft, setDraft] = useState<{ rules: Rule[]; match: Match; name?: string } | null>(() => {
@@ -93,6 +101,18 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
   const [confirm, setConfirm] = useState(state === "bulk-confirm");
   const [running, setRunning] = useState<number | null>(state === "bulk-running" ? 38 : null);
   const [seq, setSeq] = useState("pilot");
+  const [pins, setPins] = useState<{ ids?: string[]; importId?: string }>({});
+  const [plan, setPlan] = useState<EnrollPlan | null>(null);
+
+  // Live (ENG-81): the table comes from the API, filtered and sorted there. The sample state above stays for review states.
+  const lv = useLiveLeads(live ? { api: live.api, productId: live.product.productId, productReady: live.product.ready, segments: live.segments } : null, { seg, tab, rules, match, sort });
+  const liveSeg = live && seg ? live.segments.byName(seg) : undefined;
+  const [segShown, setSegShown] = useState<string | null>(null);
+  if (liveSeg && segShown !== liveSeg.id) { setSegShown(liveSeg.id); setRules(liveSeg.rules); setMatch(liveSeg.match); }
+  const preview = useLivePreview(live?.api ?? null, { rules: draft?.rules ?? [], match: draft?.match ?? "all", productId: live?.product.productId ?? null, enabled: !!live && builderOpen && !!draft });
+  const data = lv ? lv.rows : rows;
+  const loadDetail = lv?.loadDetail;
+  useEffect(() => { if (open) loadDetail?.(open); }, [open, loadDetail]);
 
   // Opening the builder starts a draft from the current rules (adjusted during render, not in an effect)
   if (builderOpen && !draft) setDraft({ rules: rules.length ? rules : [newRule("fit")], match, name: seg ? undefined : "" });
@@ -112,8 +132,9 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
     toast({ tone: "success", children: "Enrolled 1,072 companies in Cold-room pilot", meta: "sends spread over 6 days", action: { label: "View the 212 skipped", onClick: () => setTab("all") } });
   }, [running, toast]);
 
-  const shown = useMemo(() => sortLeads(filterLeads(rows.filter((l) => seg || inTab(l, tab)), rules, match), sort), [rows, tab, rules, match, sort, seg]);
-  const total = seg || rules.length ? shown.length : TABS.find((t) => t.id === tab)!.total;
+  const sampleShown = useMemo(() => sortLeads(filterLeads(rows.filter((l) => seg || inTab(l, tab)), rules, match), sort), [rows, tab, rules, match, sort, seg]);
+  const shown = lv ? lv.rows : sampleShown;
+  const total = lv ? lv.total : seg || rules.length ? shown.length : TABS.find((t) => t.id === tab)!.total;
   const n = selectedCount(sel, total);
   const allOnPage = shown.length > 0 && shown.every((l) => sel.ids.has(l.id));
   const clear = useCallback(() => setSel({ ids: new Set(), all: false }), []);
@@ -169,12 +190,22 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
     onAddField: (fld: keyof typeof FIELD_LABEL) => toast({ icon: "pen", children: `Add ${FIELD_LABEL[fld].toLowerCase()} for ${l.company}`, meta: "then Corral rescores" }),
   });
 
-  const setStatus = (ids: string[], s: Status, field: "reply" | "email" = "reply") => {
+  const setStatus = (ids: string[] | "all", s: Status, field: "reply" | "email" = "reply") => {
+    if (lv) { lv.setStatus(ids, s, field); return; }
+    if (ids === "all") ids = shown.map((l) => l.id);
     const before = rows;
     setRows((r) => r.map((l) => (ids.includes(l.id) ? { ...l, [field]: s } : l)));
     const who = ids.length === 1 ? rows.find((l) => l.id === ids[0])!.company : `${f(ids.length)} companies`;
     toast({ tone: "success", children: `${who} set to ${s}`, meta: s === "Unsubscribed" || s === "Not interested" ? "removed from sequences" : field === "reply" ? "Corral changes it again only if they reply" : undefined, action: { label: "Undo", onClick: () => setRows(before) } });
   };
+  // Live: the confirm dialog's numbers are the API's dry run for this selection.
+  const enrollPlan = lv?.enrollPlan;
+  useEffect(() => {
+    if (!confirm || !enrollPlan) return;
+    let off = false;
+    void enrollPlan(sel.all ? "all" : [...sel.ids]).then((r) => { if (!off && r.ok) setPlan(r.value); });
+    return () => { off = true; setPlan(null); };
+  }, [confirm, enrollPlan, sel]);
   const enroll = () => {
     if (n >= BULK_CONFIRM_AT) { setConfirm(true); return; }
     onEnroll(n, sel.ids.has("pwani"));
@@ -193,37 +224,52 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
     if (total < BULK_CONFIRM_AT) onEnroll(total, shown.some((l) => l.id === "pwani"));
   }, [signal, total, shown, onEnroll]);
   const selectedIds = sel.all ? shown.map((l) => l.id) : [...sel.ids];
-  const lead = open ? rows.find((l) => l.id === open) : undefined;
-  const willEnroll = n - BULK_SKIPS.reduce((a, [k]) => a + (n >= BULK_CONFIRM_AT ? k : 0), 0);
+  const lead = open ? data.find((l) => l.id === open) : undefined;
+  const skips = plan ? skipLines(plan.skipped) : BULK_SKIPS;
+  const willEnroll = plan ? plan.willEnroll : n - BULK_SKIPS.reduce((a, [k]) => a + (n >= BULK_CONFIRM_AT ? k : 0), 0);
+  const perDay = plan ? plan.sendsPerDay : POOL_PER_DAY;
 
   const saveDraft = () => {
     if (!draft) return;
+    if (lv) {
+      const d = draft;
+      void (seg ? lv.saveSegmentRules(d.rules, d.match) : lv.createSegment({ name: d.name ?? "", rules: d.rules, match: d.match, companyIds: pins.ids, fromImportId: pins.importId })).then((saved) => {
+        if (!saved) return;
+        if (seg) { setRules(d.rules); setMatch(d.match); }
+        setPins({}); setDraft(null); onBuilderOpenChange(false);
+      });
+      return;
+    }
     if (seg) { setRules(draft.rules); setMatch(draft.match); toast({ tone: "success", icon: "layers", children: `Saved ${seg}`, meta: `${f(filterLeads(rows, draft.rules, draft.match).length)} companies match` }); }
     else toast({ tone: "success", icon: "layers", children: `Saved segment “${draft.name}”`, meta: "in the sidebar under Saved segments" });
     setDraft(null); onBuilderOpenChange(false);
   };
   const applyDraftAsFilters = () => { if (draft) { setRules(draft.rules.filter((r) => r)); setMatch(draft.match); } };
 
-  if (phase === "loading") return <div className="c-view l-leads"><Subbar view={view} tab={tab} setTab={setTab} /><div className="c-view__scroll"><SkeletonTable rows={10} label={seg ? `Loading ${seg}` : "Loading companies"} /></div></div>;
-  if (phase === "error") return (
+  const phaseNow = lv ? lv.phase : phase;
+  const counts = lv ? lv.counts : undefined;
+  const importLive = lv ? { existing: lv.existing, runner: lv.importer, sample: undefined } : { existing: EXISTING, runner: undefined, sample: reviewSample ? sampleTradeShow : undefined };
+  const loadMore = lv ? (e: React.UIEvent<HTMLDivElement>) => { const el = e.currentTarget; if (lv.hasMore && el.scrollTop + el.clientHeight > el.scrollHeight - 400) lv.more(); } : undefined;
+  if (phaseNow === "loading") return <div className="c-view l-leads"><Subbar view={view} tab={tab} setTab={setTab} counts={counts} /><div className="c-view__scroll"><SkeletonTable rows={10} label={seg ? `Loading ${seg}` : "Loading companies"} /></div></div>;
+  if (phaseNow === "error") return (
     <div className="c-view c-view--center">
-      <ErrorState title={seg ? `Couldn’t load ${seg}` : "Couldn’t load companies"} detail="GET /api/v1/companies?view=fit · 503"
-        actions={<Button variant="primary" onClick={() => { setPhase("loading"); setTimeout(() => setPhase("ready"), 700); }}><Icon name="refresh" />Try again</Button>}>
+      <ErrorState title={seg ? `Couldn’t load ${seg}` : "Couldn’t load companies"} detail={lv ? lv.errorDetail : "GET /api/v1/companies?view=fit · 503"}
+        actions={<Button variant="primary" onClick={() => { if (lv) { lv.retry(); return; } setPhase("loading"); setTimeout(() => setPhase("ready"), 700); }}><Icon name="refresh" />Try again</Button>}>
         Nothing changed. Sequences keep sending while this page is down.
       </ErrorState>
     </div>
   );
-  if (rows.length === 0) return (
+  if (lv ? lv.empty : rows.length === 0) return (
     <div className="c-view">
       <div className="c-view__scroll"><FirstRun onImport={() => onImportOpenChange(true)} onFind={onFind} /></div>
-      <ImportDialog open={importOpen} onClose={() => onImportOpenChange(false)} existing={EXISTING} seed={importSeed(state)} sample={reviewSample ? sampleTradeShow : undefined}
-        onDone={(m) => { setRows(LEAD_ROWS); toast({ tone: "success", children: m }); }} />
+      <ImportDialog open={importOpen} onClose={() => onImportOpenChange(false)} existing={importLive.existing} seed={importSeed(state)} sample={importLive.sample} runner={importLive.runner}
+        onDone={(m) => { if (!lv) setRows(LEAD_ROWS); toast({ tone: "success", children: m }); }} />
     </div>
   );
 
   return (
     <div className={cx("c-view l-leads", lead && "has-detail")}>
-      {!seg && <Subbar view={view} tab={tab} setTab={(t) => { setTab(t); clear(); }} />}
+      {!seg && <Subbar view={view} tab={tab} setTab={(t) => { setTab(t); clear(); }} counts={counts} />}
       <div className="c-filters l-filters">
         {rules.map((r) => (
           <span key={r.id} className="c-chip l-chip"><button type="button" className="l-chip__main" onClick={() => onBuilderOpenChange(true)}>{describeRule(r)}</button>
@@ -238,10 +284,10 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
 
       {builderOpen && draft && (
         <SegmentBuilder rules={draft.rules} onRules={(r) => { setDraft({ ...draft, rules: r }); if (!seg && draft.name === undefined) applyDraftAsFilters(); }} match={draft.match} onMatch={(m) => setDraft({ ...draft, match: m })}
-          leads={rows} name={draft.name} onName={draft.name !== undefined ? (v) => setDraft({ ...draft, name: v }) : undefined}
+          leads={data} preview={preview ?? undefined} name={draft.name} onName={draft.name !== undefined ? (v) => setDraft({ ...draft, name: v }) : undefined}
           saveLabel={seg ? "Save changes" : draft.name !== undefined ? "Save segment" : "Apply filters"}
           onSave={() => { if (!seg && draft.name === undefined) { applyDraftAsFilters(); setDraft(null); onBuilderOpenChange(false); } else saveDraft(); }}
-          onCancel={() => { setDraft(null); onBuilderOpenChange(false); }} />
+          onCancel={() => { setDraft(null); setPins({}); onBuilderOpenChange(false); }} />
       )}
 
       {staleCount > 0 && <div className="l-banner"><Banner tone="caution" icon="clock" title={`Contact details for ${f(staleCount)} companies were last checked over 90 days ago.`}
@@ -251,7 +297,7 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
       {state === "partial" && <div className="l-banner"><Banner tone="info" title="Corral is still scoring 212 of 1,284 companies.">Rows fill in as each website is read, usually within the hour. Scored rows are final; you can select and enroll them now.</Banner></div>}
 
       <div className={cx("l-split", lead && "has-detail")}>
-        <div className="l-split__list c-view__scroll">
+        <div className="l-split__list c-view__scroll" onScroll={loadMore}>
           {(sel.all || (allOnPage && total > shown.length)) && (
             <div className="l-allbar" role="status">
               {sel.all ? <>All <b>{f(total)}</b> companies in {seg ?? TABS.find((t) => t.id === tab)!.label} are selected. <button type="button" className="c-link k-linkbtn" onClick={clear}>Clear selection</button></>
@@ -261,16 +307,19 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
           {shown.length === 0 ? (
             <EmptyState compact icon="filter" title="No companies match these filters"
               actions={<><Button onClick={() => setRules(rules.slice(0, -1))}>Remove the last filter</Button><Button variant="quiet" onClick={() => setRules([])}>Clear filters</Button></>}>
-              {loosenHint(rows.filter((l) => seg || inTab(l, tab)), rules, match) ?? "Try fewer filters, or switch the tab to All."}
+              {loosenHint(lv ? data : rows.filter((l) => seg || inTab(l, tab)), rules, match) ?? "Try fewer filters, or switch the tab to All."}
             </EmptyState>
           ) : (
             <SegmentTable leads={shown} label={seg ? `Segment: ${seg}` : `Companies: ${TABS.find((t) => t.id === tab)!.label}`} selected={sel.all ? new Set(shown.map((l) => l.id)) : sel.ids}
               onToggle={toggle} onToggleAll={toggleAll} allChecked={sel.all || allOnPage ? true : sel.ids.size ? "mixed" : false}
-              sort={sort} onSort={(k) => setSort(nextSort(sort, k))} onOpen={setOpen} active={open} fitOf={(l) => (fits[l.id] ? barOf(fits[l.id], true) : { value: l.fit })} />
+              sort={sort} onSort={(k) => setSort(nextSort(sort, k))} onOpen={setOpen} active={open} fitOf={lv ? (l) => { const st = lv.fitOf(l.id); return st ? barOf(st, true) : { value: l.fit }; } : (l) => (fits[l.id] ? barOf(fits[l.id], true) : { value: l.fit })} />
           )}
           {shown.length > 0 && shown.length < total && <p className="l-more c-faint">Showing the first {f(shown.length)}. The rest load as you scroll.</p>}
         </div>
-        {lead && <div className="l-split__detail"><LeadDetail lead={lead} onClose={() => setOpen(undefined)}
+        {lead && lv && <div className="l-split__detail"><LeadDetail lead={lead} onClose={() => setOpen(undefined)} detail={lv.detailOf(lead.id)} findLead={lv.findLead} today={new Date()}
+          onStatus={(id, s, fld) => setStatus([id], s, fld)} onEnroll={() => onEnroll(1, false)} onOpenLead={setOpen} fit={lv.fitOf(lead.id)}
+          onMerge={(id) => { void lv.merge(id).then((keep) => { if (keep) setOpen(keep); }); }} onKeepBoth={(id) => lv.keepBoth(id)} /></div>}
+        {lead && !lv && <div className="l-split__detail"><LeadDetail lead={lead} onClose={() => setOpen(undefined)}
           prov={provOf(lead, lead.enrich?.kind === "stale" ? lead.enrich.days : 0)} today={DEMO_TODAY_M4} provOpen={state === "provenance" ? "email" : undefined} rechecking={rechecking === lead.id}
           onRecheck={(id) => { setRechecking(id); setTimeout(() => { setRechecking(null); setRows((rs) => rs.map((l) => (l.id === id ? { ...l, enrich: undefined } : l))); setStaleCount((n) => Math.max(0, n - 1));
             toast({ tone: "success", icon: "refresh", children: `${rows.find((l) => l.id === id)?.company} re-checked`, meta: "email still works · 2 credits" }); }, 1200); }} onStatus={(id, s, fld) => setStatus([id], s, fld)} onEnroll={() => onEnroll(1, lead.id === "pwani")}
@@ -294,8 +343,10 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
             <span className="l-bulk__sep" aria-hidden="true" />
             <Button variant="primary" onClick={enroll}><Icon name="seq" />Enroll{n >= BULK_CONFIRM_AT ? ` ${f(n)}` : ""}</Button>
             <span className="l-bulk__more">
-              <StatusMenu label="Set status for the selection" side="top" defaultOpen={state === "status-menu"} onChange={(s) => setStatus(selectedIds, s)} />
-              <DropdownMenu label="Add to segment" side="top" width={240} items={[{ heading: "Add to a segment" }, ...SAVED_SEGMENTS.map(([s, c]) => ({ label: s, meta: String(c), onSelect: () => toast({ tone: "success", icon: "layers", children: `Added ${f(n)} to ${s}`, meta: "pinned, even if rules change" }) })), "separator", { label: "New segment from selection", icon: "plus", onSelect: () => { setDraft({ rules: rules.length ? rules : [newRule("fit")], match, name: "" }); onBuilderOpenChange(true); } }]}
+              <StatusMenu label="Set status for the selection" side="top" defaultOpen={state === "status-menu"} onChange={(s) => setStatus(lv && sel.all ? "all" : selectedIds, s)} />
+              <DropdownMenu label="Add to segment" side="top" width={240} items={[{ heading: "Add to a segment" }, ...(live ? live.segments.list.map((s) => ({ label: s.name, meta: String(s.count), onSelect: () => lv?.addToSegment(s, sel.all ? "all" : [...sel.ids]) }))
+                : SAVED_SEGMENTS.map(([s, c]) => ({ label: s, meta: String(c), onSelect: () => toast({ tone: "success", icon: "layers", children: `Added ${f(n)} to ${s}`, meta: "pinned, even if rules change" }) }))),
+                "separator", { label: "New segment from selection", icon: "plus", onSelect: () => { if (!sel.all) setPins({ ids: [...sel.ids] }); setDraft({ rules: rules.length ? rules : [newRule("fit")], match, name: "" }); onBuilderOpenChange(true); } }]}
                 trigger={(tp) => <button type="button" className="c-btn" {...tp}><Icon name="layers" />Add to segment<Icon name="down" size={12} /></button>} />
               <Button onClick={() => toast({ icon: "upload", children: `Exporting ${f(n)} companies`, meta: "CSV lands in your downloads" })}>Export</Button>
             </span>
@@ -311,20 +362,20 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
         <Select label="Sequence" value={seq} onChange={setSeq} icon="seq" options={[{ value: "pilot", label: "Cold-room pilot", meta: "4 steps · 12 days" }, { value: "proof", label: "Dairy proof drip", meta: "3 steps · 9 days" }]} />
         <ul className="l-plan">
           <li className="is-main"><span className="l-plan__n">{f(willEnroll)}</span><span>will be enrolled</span></li>
-          {BULK_SKIPS.map(([k, why]) => <li key={why}><span className="l-plan__n">{f(k)}</span><span>skipped: {why}</span></li>)}
+          {skips.map(([k, why]) => <li key={why}><span className="l-plan__n">{f(k)}</span><span>skipped: {why}</span></li>)}
         </ul>
-        <Banner tone="info" title={`Sends spread over ${Math.ceil(willEnroll / POOL_PER_DAY)} working days.`}>Your mailbox pool sends {POOL_PER_DAY} a day, so the first emails go out Thursday 08:10 and the last next Wednesday.</Banner>
+        <Banner tone="info" title={`Sends spread over ${plan ? plan.days : Math.ceil(willEnroll / perDay)} working days.`}>Your mailbox pool sends {perDay} a day, so the first emails go out Thursday 08:10 and the last next Wednesday.</Banner>
       </Dialog>
-      <ImportDialog open={importOpen} onClose={() => onImportOpenChange(false)} existing={EXISTING} seed={importSeed(state)} sample={reviewSample ? sampleTradeShow : undefined}
+      <ImportDialog open={importOpen} onClose={() => onImportOpenChange(false)} existing={importLive.existing} seed={importSeed(state)} sample={importLive.sample} runner={importLive.runner}
         onDone={(m) => toast({ tone: "success", children: m, meta: "scoring now" })}
-        onSegment={() => { onImportOpenChange(false); setDraft({ rules: [{ ...newRule("source"), value: ["CSV import"] }], match: "all", name: "Trade show · Sep" }); onBuilderOpenChange(true); }} />
+        onSegment={(importId) => { onImportOpenChange(false); if (lv) setPins({ importId }); setDraft({ rules: [{ ...newRule("source"), value: ["CSV import"] }], match: "all", name: lv ? "" : "Trade show · Sep" }); onBuilderOpenChange(true); }} />
     </div>
   );
 }
 
-function Subbar({ view, tab, setTab }: { view: string; tab: string; setTab: (t: string) => void }) {
+function Subbar({ view, tab, setTab, counts }: { view: string; tab: string; setTab: (t: string) => void; /** live tab counts; a missing one shows blank until it answers */ counts?: Partial<Record<string, number>> }) {
   if (view !== "companies") return null;
-  return <div className="c-subbar"><Tabs label="Companies" value={tab} onChange={setTab} tabs={TABS.map((t) => ({ id: t.id, label: t.label, count: f(t.total) }))} /></div>;
+  return <div className="c-subbar"><Tabs label="Companies" value={tab} onChange={setTab} tabs={TABS.map((t) => ({ id: t.id, label: t.label, count: counts ? (counts[t.id] === undefined ? "" : f(counts[t.id]!)) : f(t.total) }))} /></div>;
 }
 
 function FirstRun({ onImport, onFind }: { onImport: () => void; onFind: () => void }) {

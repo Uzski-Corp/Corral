@@ -5,7 +5,7 @@ import { Icon } from "../icons";
 import { Banner } from "../States";
 import type { Lead } from "../data";
 import { StatusMenu, EMAIL_STATUSES } from "./parts";
-import { detailOf, leadById } from "./data";
+import { detailOf, leadById, type LeadDetailData } from "./data";
 import { ProvenanceList, StaleBanner } from "../discovery/Provenance";
 import { enrichBusy, enrichLabel, fitPending } from "@/lib/discovery/run";
 import type { FieldProv, ProvField } from "@/lib/discovery/provenance";
@@ -16,7 +16,7 @@ import { FitReasoning, type FitActions } from "../fit/Reasoning";
  * Lead detail: one company, the person Corral writes to, why it fits, where it is in a sequence, and
  * everything that happened. Opens beside the table (rail 400) or full screen on a phone.
  */
-export function LeadDetail({ lead, onClose, onStatus, onEnroll, onMerge, onKeepBoth, onOpenLead, prov, today, provOpen, onRecheck, rechecking, foundVia, backLabel = "All companies", fit, fitActions, fitForm, fitBusy, fitFocus, handoff }: {
+export function LeadDetail({ lead, onClose, onStatus, onEnroll, onMerge, onKeepBoth, onOpenLead, prov, today, provOpen, onRecheck, rechecking, foundVia, backLabel = "All companies", fit, fitActions, fitForm, fitBusy, fitFocus, handoff, detail, findLead = leadById }: {
   lead: Lead; onClose: () => void; onStatus: (id: string, s: Status, field?: "reply" | "email") => void; onEnroll: (id: string) => void;
   onMerge?: (id: string) => void; onKeepBoth?: (id: string) => void; onOpenLead?: (id: string) => void;
   /** M4 provenance: every field with its evidence chain. `today` anchors freshness (the demo's fixed date). */
@@ -26,8 +26,10 @@ export function LeadDetail({ lead, onClose, onStatus, onEnroll, onMerge, onKeepB
   fit?: FitStatus; fitActions?: FitActions; fitForm?: "override" | "disagree"; fitBusy?: boolean;
   /** Scroll to the reasoning when the detail opens (review state `fit`). */ fitFocus?: boolean;
   /** M8: the meeting and its handoffs (Cal.com, Phoenix ERP, AutoSend), shown before the sequence. */ handoff?: ReactNode;
+  /** Live (ENG-81): people, notes and history from the API, and the rows to find a duplicate among. Default: the sample. */
+  detail?: LeadDetailData; findLead?: (id: string) => Lead | undefined;
 }) {
-  const d = detailOf(lead);
+  const d = detail ?? detailOf(lead);
   const root = useRef<HTMLElement>(null);
   const [provFocus, setProvFocus] = useState<{ field: ProvField; n: number } | null>(null);
   useEffect(() => {
@@ -39,7 +41,7 @@ export function LeadDetail({ lead, onClose, onStatus, onEnroll, onMerge, onKeepB
   const focusWhy = () => { const w = root.current?.querySelector<HTMLElement>(".f-why"); if (w) scrollInPane(w, "start"); };
   const useFit = !!fit && !pendingOf(lead);
   useEffect(() => { const w = fitFocus && root.current?.querySelector<HTMLElement>(".f-why"); if (w) scrollInPane(w, "start", true); }, [fitFocus]);
-  const dup = lead.dupOf ? leadById(lead.dupOf) : undefined;
+  const dup = lead.dupOf ? findLead(lead.dupOf) : undefined;
   const blocked = lead.reply === "Unsubscribed" || lead.reply === "Not interested" || lead.email === "Bounced";
   const e = lead.enrich?.kind;
   const pending = !!lead.scoring || fitPending(lead.enrich);
