@@ -5,7 +5,7 @@ import { defineConfig, devices } from "@playwright/test";
  * Corral API auth contract (PR #2). Both run on localhost so the API's cookie reaches the app,
  * as it does in dev with the real server.
  *
- * The "review" project (e2e/{kb,leads,discovery,sequences,unibox,settings,pages}.*.spec.ts) runs against a second server with NEXT_PUBLIC_DESIGN_REVIEW=1,
+ * The "review" project (e2e/{kb,leads,discovery,contacts,sequences,unibox,settings,pages}.*.spec.ts) runs against a second server with NEXT_PUBLIC_DESIGN_REVIEW=1,
  * because `?state=` review states are off in production builds. It is `next dev`, whose output lives in
  * .next/dev, so it doesn't clash with the production build in .next.
  *
@@ -17,7 +17,7 @@ const REVIEW_PORT = Number(process.env.E2E_REVIEW_PORT ?? 3101);
 const WEB = `http://localhost:${WEB_PORT}`;
 const API = `http://localhost:${API_PORT}`;
 const REVIEW = `http://localhost:${REVIEW_PORT}`;
-const REVIEW_SPECS = /(kb|leads|discovery|sequences|unibox|settings|pages)\.[\w-]+\.spec\.ts$/;
+const REVIEW_SPECS = /(kb|leads|discovery|contacts|sequences|unibox|settings|pages)\.[\w-]+\.spec\.ts$/;
 
 export default defineConfig({
   testDir: "./e2e",
