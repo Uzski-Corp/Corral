@@ -33,7 +33,7 @@ export function PricingFooter() {
       </div>
       <footer className="or-foot or-wrap">
         <div className="or-foot__top">
-          <Link className="or-logo" href={ROUTES.openRange}><Mark size={34} /><span>Corral</span></Link>
+          <Link className="or-logo" href={ROUTES.home}><Mark size={34} /><span>Corral</span></Link>
           <div className="or-foot__cols">
             {FOOTER.map((c) => <div key={c.title}><h4>{c.title}</h4>{c.links.map((l) => <Link key={l.label} href={l.href}>{l.label}</Link>)}</div>)}
           </div>

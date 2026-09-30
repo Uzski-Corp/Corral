@@ -7,6 +7,7 @@ export const LAUNCH = "2026-10-07";
 
 /** Every public marketing route. The sitemap, the nav, the footer and the tests read this. */
 export const ROUTES = {
+  home: "/",
   openRange: "/open-range",
   fenceline: "/fenceline",
   pricing: "/pricing",
@@ -21,10 +22,19 @@ export const ROUTES = {
 export type SiteRoute = (typeof ROUTES)[keyof typeof ROUTES];
 export const PUBLIC_ROUTES: SiteRoute[] = Object.values(ROUTES);
 
-/** Which landing the shared pages link home to. Both stay live; which one is "/" is open for launch. */
+/** Which landing is home. Open Range is `/` since ENG-87 (Aegon's call); /open-range stays as an alias with `/` as
+    canonical, and Fenceline stays live at /fenceline, noindex (HANDOFF §18 "Pick /"). */
 export type Landing = "open-range" | "fenceline";
 export const HOME: Landing = "open-range";
-export const homeOf = (l: Landing = HOME) => (l === "open-range" ? ROUTES.openRange : ROUTES.fenceline);
+export const homeOf = (l: Landing = HOME) => (l === "open-range" ? ROUTES.home : ROUTES.fenceline);
+
+/** What the sitemap lists: every public page except sign-in, the /open-range alias (canonical `/`), the landing that
+    isn't home, and the legal stubs until counsel's text is in. */
+export function sitemapRoutes(legalConfirmed = isConfirmed("legal"), home: Landing = HOME): SiteRoute[] {
+  const legal: string[] = [ROUTES.terms, ROUTES.privacy, ROUTES.dpa];
+  const other = home === "open-range" ? ROUTES.fenceline : ROUTES.openRange;
+  return PUBLIC_ROUTES.filter((r) => r !== ROUTES.signIn && r !== ROUTES.openRange && r !== other && (legalConfirmed || !legal.includes(r)));
+}
 
 export const NAV: { label: string; href: SiteRoute }[] = [
   { label: "Pricing", href: ROUTES.pricing },
@@ -35,8 +45,8 @@ export const NAV: { label: string; href: SiteRoute }[] = [
 
 export const FOOTER: { title: string; links: { label: string; href: SiteRoute | `${SiteRoute}#${string}` }[] }[] = [
   { title: "Product", links: [
-    { label: "Segments and fit", href: `${ROUTES.openRange}#product` }, { label: "Unibox", href: `${ROUTES.openRange}#unibox` },
-    { label: "Sequences and pools", href: `${ROUTES.openRange}#sequences` }, { label: "Handoffs", href: `${ROUTES.openRange}#handoffs` }] },
+    { label: "Segments and fit", href: `${ROUTES.home}#product` }, { label: "Unibox", href: `${ROUTES.home}#unibox` },
+    { label: "Sequences and pools", href: `${ROUTES.home}#sequences` }, { label: "Handoffs", href: `${ROUTES.home}#handoffs` }] },
   { title: "Corral", links: [
     { label: "Pricing", href: ROUTES.pricing }, { label: "Changelog", href: ROUTES.changelog }, { label: "Security", href: ROUTES.security }, { label: "Sign in", href: ROUTES.signIn }] },
   { title: "Developers", links: [

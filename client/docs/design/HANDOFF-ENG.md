@@ -23,7 +23,9 @@ cd client && pnpm install && pnpm dev     # pnpm 12 (see packageManager)
 | `/app?view=settings` → Developers | Settings → Developers (M9): **MCP** (connect Cursor, Claude, Claude Code, VS Code or any client with a copyable config; connected clients, what each may do, every call, errors, disconnect; the OAuth consent page), **API keys** (create with scopes per area, the secret once, last used, rotate with a 24 h overlap, revoke, an expired key still being called) and **Docs** (the MCP server and API: connect, 15 tools with calls and results, guardrails, errors, limits) (live: create / rotate / revoke / replace keys, connect → waiting → connected, disconnect, search and open tools) | `&state=mcp` · `mcp-empty` · `mcp-connect` · `mcp-connect-claude` · `mcp-connect-key` · `mcp-consent` · `mcp-waiting` · `mcp-connected` · `mcp-activity` · `mcp-error` · `mcp-revoke` · `mcp-loading` · `keys` · `keys-empty` · `key-create` · `key-create-errors` · `key-reveal` · `key-rotate` · `key-rotated` · `key-revoke` · `key-expired` · `keys-error` · `docs` · `docs-tool` · `docs-search-empty` (see §17) |
 | `/app?view=segments` | A saved segment (live rules, same table) and the segment builder | `&state=builder` · `builder-empty` · `builder-error` · `loading` · `error` · `selected` · `detail` (see §11) |
 | `/app?view=contacts` | Contacts (M10 states): the table, with its loading, empty and error states | `&state=loading` · `empty` · `error` (see §18) |
-| `/open-range` · `/fenceline` | The two landings (M10: real app screens and components, not mock-ups; which one is `/` at launch is open) | — |
+| `/` | **The home page: the Open Range landing** (ENG-87, Aegon's call). Public, never gated; the proxy only finishes the post-login landing here | — |
+| `/open-range` · `/fenceline` | The two landings (M10: real app screens and components, not mock-ups). `/open-range` is an alias of `/` (canonical `/`, not in the sitemap); `/fenceline` stays live, `noindex` | — |
+| `/styleguide/landings` | The design index that was `/` until ENG-87 (both landings side by side), `noindex` | — |
 | `/pricing` · `/security` · `/mcp` · `/changelog` · `/legal/terms` · `/legal/privacy` · `/legal/dpa` | The marketing pages (M10, §18). Legal is an outline, `noindex` until Counsel's text lands | — |
 | any unknown URL | The 404 (`app/not-found.tsx`) | — |
 | `/styleguide/share` | The seven 1200×630 share images, composed from live components; screenshotted to each route's `opengraph-image.jpg` (M10) | — |
@@ -1115,7 +1117,7 @@ Logic: `lib/marketing/site.ts` (`SITE_URL`, `LAUNCH`, `ROUTES`, `PUBLIC_ROUTES`,
 - **axe**: add the marketing routes, the 404, `/app?view=contacts&state=…`, `/app?state=…` and the four key states. The simplest way is to walk `allStates()` from `lib/states` instead of each spec's own list. Scroll marketing pages to the end before scanning so every frame mounts.
 - **Real endpoints behind the states:** `GET /api/v1/contacts`; the role on `/me` (owner / member) for the key views; `403 key_cannot_send` on the server.
 - **Sign-up:** there is no self-serve sign-up route; every *Start* CTA goes to `/sign-in` (`CTA.start`). Change it in one place when there is one.
-- **Pick `/`:** `app/page.tsx` is still the design index linking both landings. At launch it should be the chosen landing (`HOME`), with the other removed or `noindex`.
+- ~~**Pick `/`:** `app/page.tsx` is still the design index linking both landings. At launch it should be the chosen landing (`HOME`), with the other removed or `noindex`.~~ Done in ENG-87: `/` renders `OpenRangeLanding`, the index is `/styleguide/landings`, Fenceline is `noindex` and out of the sitemap (`sitemapRoutes`).
 
 ### Tests
 - Totals: 55 files, 640 tests, coverage 99.1% statements / 98.0% branches. Added: `lib/marketing/site.test.ts` (9: every link is a real route, the footer anchors exist on the home landing and /mcp, CTAs, changelog order and links, keys can't send, the claims and owners, plans and the compare table incl. 1 credit; the share cards), `lib/states/index.test.ts` (8: no surface without empty, loading and error or a reason; overrides and reasons are honest; the M10 states are indexed; kinds; links; route files; counts), `components/app/Contacts.test.tsx` (4), the key tests in §17 (owner and member views, `keys-member-key`, no Send on key-create, the lock line, the curl note), updated `leads`, `kb`, `discovery`, `sequences`, `fit` tests for ’ and the detail lines.
@@ -1127,7 +1129,7 @@ Logic: `lib/marketing/site.ts` (`SITE_URL`, `LAUNCH`, `ROUTES`, `PUBLIC_ROUTES`,
 | 1 | **Photographs**: every photo and app avatar is a reference stand-in, not model-released; replace or remove before any public page ships | `docs/design/IMAGE-SOURCES.md` (launch-blocker table) | Aegon → Bau | **Blocking** |
 | 2 | **Claims** in `CLAIMS`: prices; data region, encryption, retention; subprocessors; legal text; MCP host, key prefix, Test keys | `lib/marketing/site.ts` (pills on the pages) | Aegon · Krak · Counsel | **Blocking** |
 | 3 | **Legal pages**: real Terms, Privacy notice and DPA; then drop `noindex` and add them to the sitemap | `/legal/*` | Counsel | **Blocking** |
-| 4 | **Which landing is `/`** (Open Range is `HOME` today) | `app/page.tsx`, `HOME` | Aegon | Open |
+| 4 | **Which landing is `/`**: Open Range (ENG-87) | `app/page.tsx`, `HOME` | Aegon | Decided |
 | 5 | **Sign-up route** (CTAs go to /sign-in) | `CTA.start` | Krak | Open |
 | 6 | **Host** (`SITE_URL` https://corral.app, `MCP_URL`), **security contact** (security@corral.app), walkthrough address (hello@corral.app) are placeholders | `lib/marketing/site.ts`, `lib/mcp/tools.ts` | Aegon | Open |
 | 7 | **Products view** is still the M1 placeholder ("designed in a later milestone"); it's in the nav | `AppDemo` `PendingView` | Aegon (scope) → Bau | **Decide**: design it or hide it for launch |
@@ -1147,7 +1149,7 @@ Logic: `lib/marketing/site.ts` (`SITE_URL`, `LAUNCH`, `ROUTES`, `PUBLIC_ROUTES`,
 - **Launch readiness:** no new blocker. PR #67's limits and defaults (25 MiB, 200 sources / 1 GiB, no OCR, 40-page crawl, product-scoped SHA-256 dedupe) are Krak's assumptions pending Sean; the copy follows them and changes in one place (`lib/kb/upload.ts`) if they move.
 
 ### Open questions
-1. **For Aegon:** which landing is `/` at launch, Open Range or Fenceline? (Both are launch quality; the pages link home to `HOME`.)
+1. ~~**For Aegon:** which landing is `/` at launch, Open Range or Fenceline?~~ Open Range (ENG-87).
 2. **For Aegon:** the real host and contact addresses (`corral.app`, security@, hello@) and the prices.
 3. **For Aegon:** Products, Team and Billing: design them before Oct 7, or hide Products and ship Settings with those three as "coming soon"?
 4. **For Krak:** is there a sign-up route coming, or does sign-in create the workspace (M1 onboarding)? The CTAs assume the latter.

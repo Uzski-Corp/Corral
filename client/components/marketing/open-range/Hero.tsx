@@ -7,7 +7,7 @@ import { ProductFrame, Screen } from "../site";
 export function OpenRangeNav() {
   return (
     <nav className="or-nav or-wrap" aria-label="Main">
-      <Link className="or-logo" href={ROUTES.openRange}><Mark size={22} /><span>Corral</span></Link>
+      <Link className="or-logo" href={ROUTES.home}><Mark size={22} /><span>Corral</span></Link>
       <div className="or-nav__links"><a href="#product">Product</a><a href="#unibox">Unibox</a><Link href={ROUTES.pricing}>Pricing</Link><Link href={ROUTES.mcp}>MCP</Link><Link href={ROUTES.security}>Security</Link></div>
       <div className="or-nav__cta"><Link href={ROUTES.signIn} className="or-nav__signin">Sign in</Link><a className="c-btn c-btn--ink c-btn--lg" href={CTA.walkthrough}>Book a walkthrough</a></div>
     </nav>

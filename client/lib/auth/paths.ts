@@ -3,7 +3,8 @@
 export const SIGN_IN = "/sign-in";
 export const APP_HOME = "/app";
 export const ONBOARDING = "/onboarding";
-/** Where the API's callback lands after a successful sign-in (backend FRONTEND_URL). */
+/** Where the API's callback lands after a successful sign-in (backend FRONTEND_URL). Also the public home page
+    (ENG-87): it is never protected, and the gate only redirects it when a session arrives with a return cookie. */
 export const POST_LOGIN_LANDING = "/";
 
 export const PROTECTED_PREFIXES = [APP_HOME, ONBOARDING] as const;

@@ -24,6 +24,8 @@ export function proxy(request: NextRequest) {
   return response;
 }
 
+/** "/" is the public home page (the Open Range landing, ENG-87) and is never gated: it's matched only so the
+    API's post-login callback, which always lands on FRONTEND_URL "/", can be finished (lib/auth/gate.ts). */
 export const config = {
   matcher: ["/", "/app/:path*", "/onboarding/:path*"],
 };
