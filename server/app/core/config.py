@@ -148,6 +148,20 @@ class Settings(BaseSettings):
     leads_replied_window_days: int = Field(default=30, ge=0)
     leads_enroll_allow_catch_all: bool = False
 
+    # Workspace logo. WorkOS organizations have no logo (AuthKit branding is one mark for
+    # the whole environment), so a company logo is stored in Cloudflare R2. Leave these
+    # empty until the keys exist: upload then answers 503 instead of pretending to save.
+    r2_account_id: str = ""
+    r2_access_key_id: SecretStr = SecretStr("")
+    r2_secret_access_key: SecretStr = SecretStr("")
+    r2_bucket: str = ""
+    # Public base the browser loads, no trailing slash. A custom domain or r2.dev URL.
+    r2_public_base_url: str = ""
+    logo_max_bytes: int = Field(default=2 * MIB, ge=1, le=20 * MIB)
+    # Onboarding site read: few pages, short timeout, so it finishes inside REQUEST_TIMEOUT_S.
+    onboarding_site_max_pages: int = Field(default=6, ge=1, le=20)
+    onboarding_site_timeout_s: float = Field(default=8.0, gt=0, le=20)
+
     @field_validator("workos_cookie_password")
     @classmethod
     def _cookie_password_is_fernet_key(cls, value: SecretStr) -> SecretStr:
@@ -182,6 +196,22 @@ class Settings(BaseSettings):
             raise ValueError("KB_EMBEDDING_API_KEY is required when KB_EMBEDDING_PROVIDER=openai")
         if self.leads_bulk_max_ids > self.leads_bulk_max_rows:
             raise ValueError("LEADS_BULK_MAX_IDS cannot exceed LEADS_BULK_MAX_ROWS")
+        r2 = (
+            self.r2_account_id,
+            self.r2_access_key_id.get_secret_value(),
+            self.r2_secret_access_key.get_secret_value(),
+            self.r2_bucket,
+            self.r2_public_base_url,
+        )
+        if any(r2) and not all(r2):
+            raise ValueError(
+                "Logo storage needs R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, "
+                "R2_BUCKET and R2_PUBLIC_BASE_URL together"
+            )
+        if self.r2_public_base_url and not self.r2_public_base_url.startswith(
+            ("https://", "http://")
+        ):
+            raise ValueError("R2_PUBLIC_BASE_URL must be an http(s) URL")
         return self
 
     @model_validator(mode="after")
@@ -204,6 +234,16 @@ class Settings(BaseSettings):
     @property
     def cookie_secure(self) -> bool:
         return self.app_env not in ("local", "test")
+
+    @property
+    def r2_configured(self) -> bool:
+        return bool(
+            self.r2_account_id
+            and self.r2_access_key_id.get_secret_value()
+            and self.r2_secret_access_key.get_secret_value()
+            and self.r2_bucket
+            and self.r2_public_base_url
+        )
 
 
 @lru_cache

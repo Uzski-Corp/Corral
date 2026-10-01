@@ -11,7 +11,7 @@ describe("decodeMe", () => {
   it("maps the API's snake_case into the client model", () => {
     expect(decodeMe(ME_BODY)).toEqual({ ok: true, value: {
       user: { id: ME_BODY.user.id, email: "wanjiru@kilima.co.ke", firstName: "Wanjiru", lastName: "Mwangi", profilePictureUrl: "https://img.test/w.jpg" },
-      organization: { id: ME_BODY.organization.id, name: "Kilima Dairies", slug: "kilima" },
+      organization: { id: ME_BODY.organization.id, name: "Kilima Dairies", slug: "kilima", onboarded: false, logoUrl: null },
       role: "owner",
     } });
   });
@@ -25,6 +25,12 @@ describe("decodeMe", () => {
     b.user.profile_picture_url = "javascript:alert(1)";
     const r2 = decodeMe(b);
     expect(r2.ok && r2.value.user.profilePictureUrl).toBeNull();
+    b.organization.logo_url = "https://cdn.example/logo.png";
+    const withLogo = decodeMe(b);
+    expect(withLogo.ok && withLogo.value.organization.logoUrl).toBe("https://cdn.example/logo.png");
+    b.organization.logo_url = "javascript:alert(1)";
+    const r3 = decodeMe(b);
+    expect(r3.ok && r3.value.organization.logoUrl).toBeNull();
   });
 
   it("keeps unknown roles instead of failing sign-in", () => {

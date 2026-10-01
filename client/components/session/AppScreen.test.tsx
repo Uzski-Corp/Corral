@@ -23,7 +23,7 @@ describe("shellAccount", () => {
     expect(shellAccount(s({ status: "review" }))).toBeUndefined();
     expect(shellAccount(s({ status: "loading" }))).toBe("loading");
     expect(shellAccount(s({ status: "error" }))).toBe("unavailable");
-    const a = { name: "A", email: "a@b.co", role: "Owner", avatarUrl: null, workspace: "W" };
+    const a = { name: "A", email: "a@b.co", role: "Owner", avatarUrl: null, workspace: "W", logoUrl: null };
     expect(shellAccount(s({ status: "authenticated", account: a }))).toBe(a);
   });
 });

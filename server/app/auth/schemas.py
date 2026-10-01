@@ -20,6 +20,11 @@ class OrganizationOut(BaseModel):
     id: uuid.UUID
     name: str
     slug: str
+    # True once onboarding has been saved. The web app still sets corral_onboarded for the
+    # edge gate; /me is the source of truth a new browser can catch up from.
+    onboarded: bool = False
+    # Public R2 URL. WorkOS organizations have no logo, so this is the only mark the shell has.
+    logo_url: str | None = None
 
 
 class MeResponse(BaseModel):

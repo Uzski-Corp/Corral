@@ -18,7 +18,7 @@ export function sourceRow(over: Partial<Row> & { id: string; name: string }): Ro
     added_by_user_id: ME_BODY.user.id, created_at: T0, updated_at: T0, processed_at: T0, deleted_at: null, ...over,
   };
 }
-export const productRow = (id: string, name: string, created_at = T0) => ({ id, name, description: null, created_at, updated_at: created_at });
+export const productRow = (id: string, name: string, created_at = T0, description: string | null = null) => ({ id, name, description, created_at, updated_at: created_at });
 
 export type KbMock = {
   products: ReturnType<typeof productRow>[];
@@ -45,9 +45,9 @@ const put = (row: Row) => { kb.sources = [row, ...kb.sources.filter((s) => s.id 
 export const kbHandlers = [
   http.get(P, () => HttpResponse.json(kb.products)),
   http.post(P, async ({ request }) => {
-    const { name } = (await request.json()) as { name: string };
+    const { name, description } = (await request.json()) as { name: string; description?: string | null };
     if (kb.products.some((p) => p.name === name)) return HttpResponse.json({ error: "name_taken", detail: "A product has that name." }, { status: 409 });
-    const p = productRow(`p${kb.products.length + 1}`, name, new Date().toISOString());
+    const p = productRow(`p${kb.products.length + 1}`, name, new Date().toISOString(), description?.trim() || null);
     kb.products.push(p);
     return HttpResponse.json(p, { status: 201 });
   }),

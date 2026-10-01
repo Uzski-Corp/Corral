@@ -35,6 +35,12 @@ def test_accepts_fernet_cookie_password() -> None:
     )
 
 
+def test_r2_keys_are_all_or_nothing() -> None:
+    with pytest.raises(ValidationError, match="R2_ACCOUNT_ID"):
+        make_settings(r2_account_id="acct")
+    assert make_settings().r2_configured is False
+
+
 def test_rejects_wildcard_cors() -> None:
     with pytest.raises(ValidationError, match="explicit origins"):
         make_settings(cors_origins=["*"])

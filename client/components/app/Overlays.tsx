@@ -15,16 +15,18 @@ export function Dialog({ open, onClose, title, description, children, footer, wi
 }) {
   const id = useId();
   const box = useRef<HTMLDivElement>(null);
+  const close = useRef(onClose);
+  close.current = onClose;
   useFocusTrap(box, open && !inline);
   useEffect(() => {
     if (!open || inline) return;
     const prev = document.activeElement as HTMLElement | null;
     const first = box.current?.querySelector<HTMLElement>("input:not([readonly]), textarea");
     (first ?? box.current)?.focus();
-    const key = (e: globalThis.KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const key = (e: globalThis.KeyboardEvent) => { if (e.key === "Escape") close.current(); };
     document.addEventListener("keydown", key);
     return () => { document.removeEventListener("keydown", key); prev?.focus?.(); };
-  }, [open, inline, onClose]);
+  }, [open, inline]);
   if (!open) return null;
   return (
     <div className={cx("c-scrim c-app", inline && "c-scrim--inline")} onPointerDown={(e) => { if (e.target === e.currentTarget && !inline) onClose(); }}>
