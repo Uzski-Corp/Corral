@@ -137,7 +137,7 @@ docker compose up --build
 
 That builds and starts Postgres 16 (pgvector), Redis, the API, the background worker, and the Next.js app.
 
-- App: http://localhost:3000
+- App: http://localhost:3010
 - API docs: http://localhost:8000/docs
 - Liveness: http://localhost:8000/healthz
 - Readiness (Compose waits on this): http://localhost:8000/readyz
