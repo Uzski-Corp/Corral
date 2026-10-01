@@ -1,7 +1,8 @@
 # Local Corral stack. From the repo root:
 #   docker compose up --build
 #
-# App  http://localhost:3010   (host port 3000 is often already taken; override with WEB_PORT)
+# App  http://localhost:3000
+# Next prints :3000, which is the port inside the container. The host port is WEB_PORT (default 3000).
 # API  http://localhost:8000/docs
 #
 # Postgres and Redis match server/.env.example (user/password/db: corral).
@@ -25,8 +26,8 @@ x-api-env: &api-env
   APP_ENV: local
   DATABASE_URL: postgresql+asyncpg://corral:corral@172.31.210.10:5432/corral
   REDIS_URL: redis://172.31.210.11:6379/0
-  FRONTEND_URL: http://localhost:${WEB_PORT:-3010}
-  CORS_ORIGINS: '["http://localhost:${WEB_PORT:-3010}"]'
+  FRONTEND_URL: http://localhost:${WEB_PORT:-3000}
+  CORS_ORIGINS: '["http://localhost:${WEB_PORT:-3000}"]'
   WORKOS_REDIRECT_URI: http://localhost:8000/api/v1/auth/callback
   CORRAL_IN_COMPOSE: "1"
 
@@ -114,7 +115,7 @@ services:
       args:
         NEXT_PUBLIC_API_URL: http://localhost:8000
     ports:
-      - "${WEB_PORT:-3010}:3000"
+      - "${WEB_PORT:-3000}:3000"
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000
     depends_on:
