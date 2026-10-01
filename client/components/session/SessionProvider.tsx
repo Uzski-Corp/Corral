@@ -31,6 +31,7 @@ export type ShellAccount = {
   role: string;
   avatarUrl: string | null;
   workspace: string;
+  logoUrl: string | null;
 };
 
 export type SessionStatus = "review" | "loading" | "authenticated" | "error";
@@ -65,6 +66,7 @@ export function toAccount(me: Me): ShellAccount {
     role: roleLabel(me.role),
     avatarUrl: me.user.profilePictureUrl,
     workspace: me.organization.name,
+    logoUrl: me.organization.logoUrl,
   };
 }
 

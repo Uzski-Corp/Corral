@@ -17,7 +17,7 @@ beforeEach(() => { resetKb(); server.use(...kbHandlers); api = kbApiFor(testConf
 
 const httpErr = (status: number, code?: string, extra: Partial<Extract<ApiError, { kind: "http" }>> = {}): ApiError =>
   ({ kind: "http", op: "POST /x", status, message: "The server said no", ...(code ? { code } : {}), ...extra });
-const product = (id = "p1", name = "Kilima Dairies"): Product => ({ id, name, description: null, createdAt: "2026-09-30T06:00:00Z", updatedAt: "2026-09-30T06:00:00Z" });
+const product = (id = "p1", name = "Kilima Dairies"): Product => ({ id, name, description: null, sourceCount: null, createdAt: "2026-09-30T06:00:00Z", updatedAt: "2026-09-30T06:00:00Z" });
 const productsOf = (over: Partial<KbProducts> = {}): KbProducts => ({
   phase: "ready", error: null, products: [product()], selected: product(), select: vi.fn(), retry: vi.fn(),
   ensure: vi.fn(async () => ok(product())), firstName: "Kilima Dairies", setFirstName: vi.fn(), ...over,

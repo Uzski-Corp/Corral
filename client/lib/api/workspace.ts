@@ -19,6 +19,7 @@ import type { ApiError } from "./errors";
 export const WORKSPACE_PATHS = {
   workspace: "/api/v1/workspace",
   logo: "/api/v1/workspace/logo",
+  picture: "/api/v1/workspace/picture",
   site: "/api/v1/workspace/site",
 } as const;
 
@@ -147,8 +148,16 @@ export type WorkspaceApi = {
   get(signal?: AbortSignal): Promise<Result<Workspace, ApiError>>;
   update(body: WorkspaceUpdate, signal?: AbortSignal): Promise<Result<Workspace, ApiError>>;
   uploadLogo(file: Blob & { name?: string }, signal?: AbortSignal): Promise<Result<Workspace, ApiError>>;
+  uploadPicture(file: Blob & { name?: string }, signal?: AbortSignal): Promise<Result<{ pictureUrl: string }, ApiError>>;
   readSite(url: string, signal?: AbortSignal): Promise<Result<Workspace, ApiError>>;
 };
+
+function decodePicture(input: unknown): Result<{ pictureUrl: string }, string> {
+  if (!isRecord(input)) return err("picture: expected an object");
+  const url = field(input, "profile_picture_url", isNonEmptyString, "string", "picture");
+  if (!url.ok) return url;
+  return ok({ pictureUrl: url.value });
+}
 
 export function createWorkspaceApi(client: ApiClient): WorkspaceApi {
   return {
@@ -158,6 +167,11 @@ export function createWorkspaceApi(client: ApiClient): WorkspaceApi {
       const form = new FormData();
       form.append("file", file, file.name ?? "logo");
       return client.request(WORKSPACE_PATHS.logo, { method: "POST", form, decode: decodeWorkspace, signal, timeoutMs: 60_000 });
+    },
+    uploadPicture(file, signal) {
+      const form = new FormData();
+      form.append("file", file, file.name ?? "photo");
+      return client.request(WORKSPACE_PATHS.picture, { method: "POST", form, decode: decodePicture, signal, timeoutMs: 60_000 });
     },
     readSite: (url, signal) => client.request(WORKSPACE_PATHS.site, { method: "POST", body: { url }, decode: decodeWorkspace, signal, timeoutMs: SITE_TIMEOUT_MS }),
   };

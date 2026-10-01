@@ -33,6 +33,7 @@ import { UniboxView, UNIBOX_TABS, needsYou, UNIBOX_THREADS, uniboxSeedFor, type 
 import type { UniboxReviewState } from "@/lib/unibox/state";
 import { appPath, viewFromSearch } from "@/lib/appPath";
 import { SettingsView, settingsTabLabel, settingsTabOf } from "./handoff";
+import { ProductsView } from "./products/Products";
 import type { SettingsReviewState } from "@/lib/integrations/state";
 import { SECTION_TITLE, sectionOf, type McpReviewState } from "@/lib/mcp/state";
 
@@ -191,6 +192,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
   const [seqTab, setSeqTab] = useState<SeqTab>(() => seedFor(sequences).tab);
   const [pool, setPool] = useState(() => seedFor(sequences).pool);
   const [newSeq, setNewSeq] = useState(0);
+  const [adding, setAdding] = useState(false);
   const poolNow = poolSummary(pool);
   // Signed in against the API (and not showing a review state): the knowledge base uses real data.
   const data = useAppData();
@@ -262,12 +264,12 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
       else if (id === "signout") signOut();
       else if (id === "invite") router.push("/onboarding?step=5");
       else if (id === "mailbox") router.push("/onboarding?step=4");
-      else if (id === "product") router.push("/onboarding?step=2");
+      else if (id === "product") { if (data) { place("products"); setAdding(true); } else router.push("/onboarding?step=2"); }
       else if (id === "segment") { place("companies"); toast({ icon: "layers", children: "Filters ready. Press S to save them as a segment." }); }
       else if (id === "find") { place("discovery"); setSetupOpen(true); }
       else toast({ icon: "mail", children: label, meta: "sample action" });
     },
-  }), [go, place, router, toast, signOut]);
+  }), [data, go, place, router, toast, signOut]);
 
   // Global keys: ⌘K and G-sequences. The Unibox handles its own keys (J K E 1–6 T R ⌘↵ …) in <UniboxView>.
   const gAt = useRef(0);
@@ -318,6 +320,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
       ? <Button onClick={() => router.push("/onboarding?step=4")}><Icon name="plus" />Connect a mailbox</Button>
       : sequences !== "empty" && sequences !== "loading" && sequences !== "error" ? <Button variant="primary" onClick={() => setNewSeq((x) => x + 1)}><Icon name="plus" />New sequence</Button> : null)
     : view === "segments" ? <><Button onClick={() => toast({ icon: "upload", children: `Exporting ${segment}`, meta: "CSV lands in your downloads" })}>Export</Button><Button variant="primary" onClick={() => setEnrollAll((x) => x + 1)}><Icon name="seq" />Enroll segment</Button></>
+    : view === "products" && data ? <Button variant="primary" onClick={() => setAdding(true)}><Icon name="plus" />Add a product</Button>
     : null;
 
   return (
@@ -336,7 +339,8 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
         {view === "contacts" && <ContactsView state={contacts} onFind={() => place("discovery")} />}
         {view === "settings" && <SettingsView key={`${settings ?? developer ?? "live"}-${tabNow ?? "integrations"}`} state={settings} developer={developer} tab={tabNow} onSection={(label, id) => { setSetSection(label); place("settings", { tab: id }); }} />}
         {view === "knowledge" && <KnowledgeBase key={kbLive ? "live" : "sample"} state={kb} addOpen={kbAdd} onAddOpenChange={setKbAdd} contained={frame === "contained"} live={kbLive} />}
-        {!table && view !== "unibox" && view !== "contacts" && view !== "knowledge" && view !== "discovery" && view !== "sequences" && view !== "settings" && <PendingView id={view} onSearch={() => setPalette(true)} />}
+        {view === "products" && data && <ProductsView adding={adding} onAddingChange={setAdding} onChanged={() => kbProducts?.retry()} onOpen={(id) => { kbProducts?.select(id); place("knowledge"); }} />}
+        {!table && view !== "unibox" && view !== "contacts" && view !== "knowledge" && view !== "discovery" && view !== "sequences" && view !== "settings" && !(view === "products" && data) && <PendingView id={view} onSearch={() => setPalette(true)} />}
         </>}
       </AppShell>
       {palette && <CommandPalette open onClose={() => setPalette(false)} {...cmds} />}

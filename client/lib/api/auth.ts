@@ -41,7 +41,7 @@ export type User = {
   lastName: string | null;
   profilePictureUrl: string | null;
 };
-export type Organization = { id: string; name: string; slug: string; onboarded: boolean };
+export type Organization = { id: string; name: string; slug: string; onboarded: boolean; logoUrl: string | null };
 /** Backend roles today are owner | admin | member; kept open so a new role doesn't break sign-in. */
 export type Role = "owner" | "admin" | "member" | (string & {});
 export type Me = { user: User; organization: Organization; role: Role };
@@ -64,12 +64,14 @@ export const decodeMe: Decoder<Me> = (input) => {
   const role = field(input, "role", isNonEmptyString, "string", "me"); if (!role.ok) return role;
   const onboarded = o.onboarded === undefined ? false : o.onboarded;
   if (typeof onboarded !== "boolean") return err("me.organization.onboarded: expected boolean");
+  const logo = o.logo_url === undefined ? null : o.logo_url;
+  if (logo !== null && typeof logo !== "string") return err("me.organization.logo_url: expected string or null");
   return ok({
     user: {
       id: id.value, email: email.value, firstName: opt(first.value), lastName: opt(last.value),
       profilePictureUrl: isHttpUrl(pic.value) ? pic.value : null,
     },
-    organization: { id: orgId.value, name: name.value, slug: slug.value, onboarded },
+    organization: { id: orgId.value, name: name.value, slug: slug.value, onboarded, logoUrl: isHttpUrl(logo) ? logo : null },
     role: role.value,
   });
 };

@@ -218,6 +218,6 @@ describe("SessionProvider and the marketing visitor hint (M10c)", () => {
 describe("toAccount", () => {
   it("shapes /me for the shell", async () => {
     const r = await authApiFor(testConfig()).me();
-    expect(r.ok && toAccount(r.value)).toEqual({ name: "Wanjiru Mwangi", email: "wanjiru@kilima.co.ke", role: "Owner", avatarUrl: "https://img.test/w.jpg", workspace: "Kilima Dairies" });
+    expect(r.ok && toAccount(r.value)).toEqual({ name: "Wanjiru Mwangi", email: "wanjiru@kilima.co.ke", role: "Owner", avatarUrl: "https://img.test/w.jpg", workspace: "Kilima Dairies", logoUrl: null });
   });
 });

@@ -22,6 +22,13 @@ describe("Settings tab param", () => {
     expect(screen.getByRole("button", { name: "Integrations" })).toHaveAttribute("aria-current", "page");
   });
 
+  it("opens the profile from tab=profile", () => {
+    render(<ToastProvider><SettingsView tab="profile" /></ToastProvider>);
+    expect(screen.getByRole("button", { name: "Profile" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("button", { name: "Add a photo" })).toBeInTheDocument();
+    expect(screen.getByText("tomas@coldtrace.io")).toBeInTheDocument();
+  });
+
   it("opens the workspace form from tab=workspace", () => {
     render(<ToastProvider><SettingsView tab="workspace" /></ToastProvider>);
     expect(screen.getByRole("button", { name: "Workspace" })).toHaveAttribute("aria-current", "page");

@@ -45,7 +45,12 @@ export const SOURCE_STATUSES = ["processing", "ready", "partial", "failed"] as c
 /** `skipped_reason` (PR #67 follow-up): one list, in lib/kb/upload.ts with its copy (M10c), re-exported here. */
 export { SKIP_REASONS, type SkipReason };
 
-export type Product = { id: string; name: string; description: string | null; createdAt: string; updatedAt: string };
+export type Product = {
+  id: string; name: string; description: string | null;
+  /** Sources in the knowledge base, when the API sent `source_count`. */
+  sourceCount: number | null;
+  createdAt: string; updatedAt: string;
+};
 
 /** SourceOut, camel-cased. Timestamps stay ISO strings; lib/kb/map.ts formats them. */
 export type ApiSource = {
@@ -66,7 +71,7 @@ export type Passage = { id: string; ordinal: number; loc: string | null; text: s
 export type SearchHit = { passageId: string; sourceId: string; sourceName: string; sourceKind: SourceKind; loc: string | null; text: string; score: number };
 
 const readProduct = (r: Reader): Product => ({
-  id: r.str("id"), name: r.str("name"), description: r.optStr("description"), createdAt: r.str("created_at"), updatedAt: r.str("updated_at"),
+  id: r.str("id"), name: r.str("name"), description: r.optStr("description"), sourceCount: r.optNum("source_count"), createdAt: r.str("created_at"), updatedAt: r.str("updated_at"),
 });
 
 export const readSource = (r: Reader): ApiSource => ({
