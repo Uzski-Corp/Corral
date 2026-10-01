@@ -8,6 +8,10 @@
 # If server/.env exists, Compose loads it (WorkOS keys). The URLs below still
 # win, so the containers talk to each other on the Compose network while the
 # browser keeps using localhost.
+#
+# Postgres is published on host port 5433 so it does not collide with a
+# Postgres already bound to 5432. From the host: localhost:5433.
+# Override with POSTGRES_HOST_PORT=5432 docker compose up --build.
 
 name: corral
 
@@ -27,7 +31,7 @@ services:
       POSTGRES_USER: corral
       POSTGRES_PASSWORD: corral
     ports:
-      - "5432:5432"
+      - "${POSTGRES_HOST_PORT:-5433}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
