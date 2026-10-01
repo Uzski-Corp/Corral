@@ -58,6 +58,20 @@ describe("M11 search", () => {
     expect(container.querySelectorAll("mark")).toHaveLength(2);
     expect(mark("x", [])).toEqual(["x"]);
   });
+  it("a passage that is only its heading shows the heading label, and no empty text row", async () => {
+    const search = vi.fn().mockResolvedValue(ok([
+      hit(0, { sourceName: "coldtrace-overview.md", sourceKind: "md", loc: "## Who buys it", text: "## Who buys it" }),
+      hit(1, { sourceName: "coldtrace-pricing-faq.md", sourceKind: "md", loc: "## Pricing", text: "## Pricing\nFrom $12 a sensor a month." }),
+    ]));
+    const { container } = render(<KbSearch search={search} searchable={40} onOpen={() => {}}><p>the list</p></KbSearch>);
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "buys" } });
+    const only = await screen.findByRole("button", { name: /coldtrace-overview\.md/ });
+    expect(within(only).getByText("Who buys it")).toBeInTheDocument();
+    expect(only.querySelector(".k-hit__txt")).toBeNull();
+    const withText = screen.getByRole("button", { name: /coldtrace-pricing-faq\.md/ });
+    expect(withText.querySelector(".k-hit__txt")).toHaveTextContent("From $12 a sensor a month.");
+    expect(container.querySelectorAll(".k-hit__txt:empty")).toHaveLength(0);
+  });
   it("searches as you type: loading, results with source and label, show more to 20, open a source", async () => {
     let resolve: ((v: ReturnType<typeof ok<SearchHit[]>>) => void) | undefined;
     const search = vi.fn((_q: string, limit: number) => new Promise<ReturnType<typeof ok<SearchHit[]>>>((r) => { resolve = (v) => r(v); void limit; }));

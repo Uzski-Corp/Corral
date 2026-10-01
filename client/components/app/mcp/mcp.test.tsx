@@ -235,11 +235,11 @@ describe("MCP connections", () => {
     expect(screen.getByText("2 connections are failing.")).toBeInTheDocument();
     expect(screen.getByText(/Asked for send_reply 3 times/)).toBeInTheDocument();
     expect(screen.getByText(/Its key “Zapier \(old\)” expired Sep 21/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Replace the key" })).toHaveAttribute("href", "/app?view=settings&state=key-expired");
+    expect(screen.getByRole("link", { name: "Replace the key" })).toHaveAttribute("href", "/app?view=settings&tab=keys&state=key-expired");
     await userEvent.click(screen.getByRole("button", { name: "See the calls" }));
     expect(screen.getByText(/can draft but not send/)).toBeInTheDocument();
     expect(screen.getAllByText("403 insufficient_scope")).toHaveLength(4);
-    expect(screen.getByRole("link", { name: "Allow sending" })).toHaveAttribute("href", "/app?view=settings&state=mcp-consent");
+    expect(screen.getByRole("link", { name: "Allow sending" })).toHaveAttribute("href", "/app?view=settings&tab=mcp&state=mcp-consent");
   });
 
   it("activity, what it may do, and disconnect", async () => {

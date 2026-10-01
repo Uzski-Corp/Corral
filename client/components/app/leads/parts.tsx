@@ -5,6 +5,8 @@ import { Icon } from "../icons";
 
 /** The lead statuses a person can set. Corral sets the same ones from replies; a manual change sticks until they reply again. */
 export const LEAD_STATUSES: Status[] = ["Not contacted", "Contacted", "Interested", "Objection", "Meeting booked", "Referral", "OOO", "Not interested", "Unsubscribed", "Disqualified"];
+/** Signed in (ENG-81): the API has no "Disqualified", so it isn't offered (review states keep Bau's full list). */
+export const LIVE_STATUSES: Status[] = LEAD_STATUSES.filter((s) => s !== "Disqualified");
 export const EMAIL_STATUSES: Status[] = ["Verified", "Catch-all", "Unverified", "Bounced"];
 export const STATUS_HELP: Partial<Record<Status, string>> = {
   "Not contacted": "Never written to", Contacted: "Written to, no reply yet", Interested: "Wants to talk or try it", Objection: "Replied with a concern",

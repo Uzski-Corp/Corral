@@ -102,17 +102,18 @@ export function KbSearch({ search, searchable, onOpen, onAdd, initial, children 
             <>
               <p className="k-results__sum" role="status"><b>{st.hits.length} {st.hits.length === 1 ? "passage" : "passages"}</b> closest to “{st.query}”</p>
               <ol className="k-hits">
-                {st.hits.map((h) => (
+                {st.hits.map((h) => { const txt = plainPassage(h.text, h.loc ?? undefined); return (
                   <li key={h.passageId}>
                     <button type="button" className="k-hit" onClick={() => onOpen(h.sourceId)}>
                       <FileTile kind={h.sourceKind} size={20} />
                       <span className="k-hit__body">
                         <span className="k-hit__src"><b>{h.sourceName}</b>{h.loc && <PassageLabel loc={h.loc} ordinal={0} inert />}</span>
-                        <span className="k-hit__txt">{mark(plainPassage(h.text, h.loc ?? undefined), termsOf(q || st.query))}</span>
+                        {/* A passage that is only its heading: the heading label says it all, no empty text row. */}
+                        {txt && <span className="k-hit__txt">{mark(txt, termsOf(q || st.query))}</span>}
                       </span>
                     </button>
                   </li>
-                ))}
+                ); })}
               </ol>
               {st.hits.length >= st.limit && st.limit < SEARCH_MAX && <div className="k-results__more"><Button onClick={() => run(st.query, SEARCH_MAX)}>Show more</Button></div>}
               {st.limit >= SEARCH_MAX && st.hits.length >= SEARCH_MAX && <p className="k-results__cap">These are the {SEARCH_MAX} closest passages. Add a word or two to find others.</p>}

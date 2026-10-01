@@ -2,7 +2,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { Mark } from "@/components/app/icons";
 import { PLANS, priceWords } from "@/lib/marketing/plans";
-import { CTA, FOOTER, ROUTES, SAMPLE_NOTE, claim } from "@/lib/marketing/site";
+import { CTA, CTA_SIGNED_IN, FOOTER, ROUTES, SAMPLE_NOTE, claim } from "@/lib/marketing/site";
+import { VisitorLink } from "@/components/marketing/site/VisitorLink";
 import { ToConfirm } from "../site";
 
 export { SAMPLE_NOTE };
@@ -25,7 +26,7 @@ export function PricingFooter() {
               <div className="or-plan__price"><span className="or-plan__n">{priceWords(p)}</span>{p.price !== null && <span>a month</span>}</div>
               <div className="or-plan__meter" style={{ ["--m" as string]: p.meter }}><i /></div>
               <p className="or-plan__reads">{p.reads ? `${p.reads.toLocaleString("en")} companies read a month` : "25,000 and up"}</p>
-              <Link className={`c-btn c-btn--lg${p.primary ? " c-btn--primary" : ""}`} href={p.price === null ? CTA.walkthrough : CTA.start}>{p.cta}</Link>
+              <VisitorLink className={`c-btn c-btn--lg${p.primary ? " c-btn--primary" : ""}`} href={p.price === null ? CTA.walkthrough : CTA.start} signedInHref={p.price === null ? CTA.walkthrough : CTA_SIGNED_IN.start}>{p.cta}</VisitorLink>
             </div>
           ))}
         </div>

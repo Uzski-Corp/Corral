@@ -8,7 +8,7 @@ Node 22 (`.nvmrc`, `engines` in `package.json`): `nvm use` in this folder.
 
 ```bash
 pnpm install
-cp .env.example .env.local   # API origin only; WorkOS keys stay in server/.env
+cp .env.example .env.local   # API origin + optional flags; WorkOS keys stay in server/.env
 pnpm dev:review   # design review: no auth, sample person, every review state (?view=, ?step=, ?state=, …)
 pnpm dev          # real auth against the API at NEXT_PUBLIC_API_URL (default http://localhost:8000)
 ```
