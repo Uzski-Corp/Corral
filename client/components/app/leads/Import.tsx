@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Dialog } from "../Overlays";
 import { Button, Receipt, Receipts, cx } from "../primitives";
 import { Icon } from "../icons";
@@ -12,9 +12,12 @@ import {
   type Csv, type DupPolicy, type Existing, type Mapping, type Target,
 } from "@/lib/leads/import";
 import { formatBytes } from "@/lib/kb/upload";
+import { errorDetail } from "@/lib/api/errors";
+import type { ApiImport, ImportFileInput } from "@/lib/api/leads";
+import type { ImportRunner } from "./live";
 
 export type ImportStep = "file" | "map" | "review" | "running" | "done";
-export type ImportFile = { name: string; size: number; csv: Csv };
+export type ImportFile = { name: string; size: number; csv: Csv; /** the file itself, for a live upload */ blob?: Blob };
 export type ImportSeed = { step: ImportStep; file?: ImportFile; mapping?: Mapping; error?: { title: string; fix: string }; policy?: DupPolicy; progress?: number };
 
 const STEPS: [ImportStep, string][] = [["file", "File"], ["map", "Columns"], ["review", "Review"]];
@@ -24,10 +27,11 @@ const TARGETS = [{ value: "skip", label: "Don't import" }, ...FIELDS.map((f) => 
  * Import CSV: pick a file → map columns → review duplicates and bad rows → import in the background.
  * Nothing is written until the last step; every problem says which row or column and the one fix.
  */
-export function ImportDialog({ open, onClose, existing, seed = { step: "file" }, onDone, onSegment, sample, inline }: {
+export function ImportDialog({ open, onClose, existing, seed = { step: "file" }, onDone, onSegment, sample, inline, runner }: {
   open: boolean; onClose: () => void; existing: Existing[]; seed?: ImportSeed; inline?: boolean;
   /** Called when the import finishes, with the summary line for the toast */ onDone?: (summary: string) => void;
-  onSegment?: () => void; /** review/demo only: offers a sample file */ sample?: () => ImportFile;
+  onSegment?: (importId?: string) => void; /** review/demo only: offers a sample file */ sample?: () => ImportFile;
+  /** Live (ENG-81): the server's dry run for the review numbers, then the real upload and its progress. */ runner?: ImportRunner;
 }) {
   const [step, setStep] = useState<ImportStep>(seed.step);
   const [file, setFile] = useState<ImportFile | undefined>(seed.file);
@@ -41,12 +45,43 @@ export function ImportDialog({ open, onClose, existing, seed = { step: "file" },
     const f = files[0]; if (!f) return;
     const ok = checkCsvFile(f); if (!ok.ok) { setError(ok); return; }
     const csv = parseCsv(await f.text()); const shape = checkCsvShape(csv); if (!shape.ok) { setError(shape); return; }
-    take({ name: f.name, size: f.size, csv });
+    take({ name: f.name, size: f.size, csv, blob: f });
   };
   const issues = useMemo(() => mappingIssues(mapping), [mapping]);
-  const plan = useMemo(() => (file ? importPlan(file.csv, mapping, existing, policy) : undefined), [file, mapping, existing, policy]);
+  const local = useMemo(() => (file ? importPlan(file.csv, mapping, existing, policy) : undefined), [file, mapping, existing, policy]);
+  // Live: the server's plan for this file, mapping and policy (a dry run stores nothing).
+  const input = useMemo<ImportFileInput | null>(() => (runner && file ? { file: file.blob ?? csvBlob(file.csv), name: file.name, mapping, policy } : null), [runner, file, mapping, policy]);
+  const [server, setServer] = useState<{ for: ImportFileInput; plan: NonNullable<typeof local> } | null>(null);
+  const [finished, setFinished] = useState<ApiImport | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
+  const abort = useRef<AbortController | null>(null);
+  useEffect(() => {
+    if (!runner || !input || step !== "review") return;
+    const c = new AbortController();
+    void runner.plan(input, c.signal).then((r) => {
+      if (c.signal.aborted || !r.ok) return;
+      const p = r.value.plan;
+      setServer({ for: input, plan: { total: p.total, create: p.create, update: p.update, skipped: p.skipped, errors: p.errors, inFile: p.inFile, existingDup: p.existing } });
+    });
+    return () => c.abort();
+  }, [runner, input, step]);
+  useEffect(() => () => abort.current?.abort(), []);
+  const done = finished ? { ...local!, create: finished.created, update: finished.updated, skipped: finished.skipped, errors: finished.errors } : undefined;
+  const plan = done ?? (server && server.for === input ? server.plan : local);
   const run = () => {
-    setStep("running"); setProgress(0);
+    setStep("running"); setProgress(0); setFailure(null);
+    if (runner && input) {
+      const c = new AbortController(); abort.current = c;
+      void runner.run(input, (pct) => setProgress(Math.round(pct)), c.signal).then((r) => {
+        if (c.signal.aborted) return;
+        if (!r.ok || r.value.status === "failed") {
+          setFailure(r.ok ? r.value.failure ?? r.value.note ?? "The import stopped." : errorDetail(r.error)); setStep("review"); return;
+        }
+        setFinished(r.value); setStep("done");
+        onDone?.(`Imported ${r.value.created + r.value.updated} companies from ${file!.name}`);
+      });
+      return;
+    }
     let p = 0; const t = setInterval(() => { p += 17; setProgress(Math.min(100, p)); if (p >= 100) { clearInterval(t); setStep("done"); onDone?.(`Imported ${plan!.create + plan!.update} companies from ${file!.name}`); } }, 260);
   };
 
@@ -57,7 +92,7 @@ export function ImportDialog({ open, onClose, existing, seed = { step: "file" },
       <Button onClick={() => { setStep("file"); setFile(undefined); }}>Change file</Button><Button variant="primary" disabled={issues.length > 0} onClick={() => setStep("review")}>Continue</Button></>
     : step === "review" && plan ? <><Button onClick={() => setStep("map")}>Back</Button><Button variant="primary" disabled={plan.create + plan.update === 0} onClick={run}>{plan.update ? `Import ${plan.create}, update ${plan.update}` : `Import ${plan.create} companies`}</Button></>
     : step === "running" ? <><span className="l-imp__why">Keeps going if you close this.</span><Button onClick={onClose}>Hide</Button></>
-    : <><Button onClick={onClose}>View companies</Button>{onSegment && <Button variant="primary" onClick={onSegment}><Icon name="layers" />Make a segment from this import</Button>}</>;
+    : <><Button onClick={onClose}>View companies</Button>{onSegment && <Button variant="primary" onClick={() => onSegment(finished?.id)}><Icon name="layers" />Make a segment from this import</Button>}</>;
 
   return (
     <Dialog open={open} onClose={onClose} width={step === "map" || step === "review" ? 760 : 560} inline={inline} title={title} description={desc} footer={footer}>
@@ -100,6 +135,7 @@ export function ImportDialog({ open, onClose, existing, seed = { step: "file" },
         </div>
       </>}
 
+      {step === "review" && failure && <Banner tone="error" title="The import didn’t finish">{failure}</Banner>}
       {step === "review" && file && plan && <Review file={file} mapping={mapping} existing={existing} policy={policy} setPolicy={setPolicy} plan={plan} />}
 
       {step === "running" && plan && <div className="l-imp__run">
@@ -114,7 +150,7 @@ export function ImportDialog({ open, onClose, existing, seed = { step: "file" },
           {plan.update > 0 && <Receipt meta={DUP_POLICY[policy].label.toLowerCase()}>{plan.update} already in Corral, updated</Receipt>}
           {plan.skipped > 0 && <Receipt meta="kept the first">{plan.skipped} duplicates skipped</Receipt>}
         </Receipts>
-        {plan.errors > 0 && <p className="l-imp__left"><Icon name="alert" size={12} />{plan.errors} rows weren&rsquo;t imported. <button type="button" className="c-link k-linkbtn">Download them as CSV</button> to fix and import again.</p>}
+        {plan.errors > 0 && <p className="l-imp__left"><Icon name="alert" size={12} />{plan.errors} rows weren&rsquo;t imported. <button type="button" className="c-link k-linkbtn" onClick={finished?.hasErrorsFile && runner ? () => window.open(runner.errorsUrl(finished.id), "_blank") : undefined}>Download them as CSV</button> to fix and import again.</p>}
       </div>}
     </Dialog>
   );
@@ -147,4 +183,10 @@ function Review({ file, mapping, existing, policy, setPolicy, plan }: {
         <button type="button" className="c-link k-linkbtn l-review__dl">Download these {plan.errors} rows</button></section>}
     </div>
   );
+}
+
+/** A parsed file back to CSV, for a live import of a file that came without its bytes. */
+function csvBlob(csv: Csv): Blob {
+  const q = (c: string) => (/[",\n;\t]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c);
+  return new Blob([[csv.headers, ...csv.rows].map((r) => r.map(q).join(",")).join("\n")], { type: "text/csv" });
 }
