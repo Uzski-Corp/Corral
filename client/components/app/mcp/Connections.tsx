@@ -90,7 +90,7 @@ function ConnList({ conns, onConnect, onOpen }: { conns: Connection[]; onConnect
           <ul className="m-picker" aria-label="Clients">{CLIENTS.map((c) => (
             <li key={c.id}><button type="button" className="m-pick" onClick={() => onConnect(c.id)}><Mark label={c.mark} tone={c.id} />
               <span className="m-pick__txt"><span className="c-strong">{c.name}</span><span className="c-mono">{c.where}</span></span><Icon name="chev" size={12} /></button></li>))}</ul>
-          <p className="m-start__foot"><Icon name="book" size={12} /><span>What a client can do, tool by tool: <a className="c-link" href="/app?view=settings&state=docs">the MCP docs</a>.</span></p>
+          <p className="m-start__foot"><Icon name="book" size={12} /><span>What a client can do, tool by tool: <a className="c-link" href="/app?view=settings&tab=docs&state=docs">the MCP docs</a>.</span></p>
         </div>
       ) : <>
         {bad.length > 0 && <Banner tone="error" title={`${bad.length} connections are failing.`}>Nothing they asked for happened, and nothing was sent. Each says what’s wrong below.</Banner>}
@@ -107,7 +107,7 @@ function ConnList({ conns, onConnect, onOpen }: { conns: Connection[]; onConnect
               </div>
               <div className="m-conn__scopes"><Scopes scopes={scopesOf(c.access)} max={3} /></div>
               <div className="m-conn__acts">{c.health === "scope" ? <Button onClick={() => onOpen(c.id)}>See the calls</Button>
-                : c.health === "expired" ? <a className="c-btn" href="/app?view=settings&state=key-expired">Replace the key</a>
+                : c.health === "expired" ? <a className="c-btn" href="/app?view=settings&tab=keys&state=key-expired">Replace the key</a>
                 : <Button variant="quiet" onClick={() => onOpen(c.id)}>Activity</Button>}</div>
             </li>
           );
@@ -132,7 +132,7 @@ function ConnPage({ c, problems, onBack, onRevoke }: { c: Connection; problems: 
         <div className="m-dhead__id"><Mark label={MARK[c.client]} tone={c.client} /><div><h2>{c.name}</h2><span className="m-dhead__sub">{c.device} · {c.who}<Status tone={h.tone}>{h.word}</Status></span></div></div>
         <div className="m-dhead__acts"><Button onClick={onRevoke}>Disconnect</Button></div>
       </div>
-      {err && <Banner tone="caution" title="Claude Code asked to send a reply. This connection can draft but not send." action={<a className="c-btn" href="/app?view=settings&state=mcp-consent">Allow sending</a>}>
+      {err && <Banner tone="caution" title="Claude Code asked to send a reply. This connection can draft but not send." action={<a className="c-btn" href="/app?view=settings&tab=mcp&state=mcp-consent">Allow sending</a>}>
         3 calls to <span className="c-mono">send_reply</span> got <span className="c-mono">403 insufficient_scope</span>; nothing was sent. Brian’s draft is in the Unibox. {errorFor("insufficient_scope")!.fix}</Banner>}
       <div className="i-tabs"><Tabs label={`${c.name} sections`} value={tab} onChange={setTab} tabs={[{ id: "activity", label: "Activity", count: calls.length }, { id: "access", label: "What it may do" }]} /></div>
       {tab === "activity" ? (
@@ -176,7 +176,7 @@ function Connect({ pick, setPick, auth, setAuth, onClose, onCopied }: { pick: Cl
         {pick === "cursor" && a === "oauth" && <div className="m-oneclick"><a className="c-btn c-btn--ink" href={cursorDeeplink()}><Mark label="Cu" tone="cursor" />Add to Cursor</a><span className="c-muted">Opens Cursor and adds Corral. Or copy the config:</span></div>}
         <ol className="m-steps">{steps.map((s, i) => <li key={i}><span className="m-steps__n">{i + 1}</span><span>{s}</span></li>)}</ol>
         <CopyBlock label={c.lang === "shell" ? "Command" : c.lang === "steps" ? "Connector" : "Config"} where={c.where} text={configFor(pick, a)} what={c.lang === "shell" ? "the command" : "the config"} />
-        {a === "key" && <p className="m-note"><Icon name="key" size={12} /><span>{pick === "vscode" ? "No key in the file: VS Code asks for it when the server starts and keeps it in its secret storage." : "Replace YOUR_CORRAL_API_KEY with a key."} Need one? <a className="c-link" href="/app?view=settings&state=key-create">Create a key</a> with only the areas this client needs.</span></p>}
+        {a === "key" && <p className="m-note"><Icon name="key" size={12} /><span>{pick === "vscode" ? "No key in the file: VS Code asks for it when the server starts and keeps it in its secret storage." : "Replace YOUR_CORRAL_API_KEY with a key."} Need one? <a className="c-link" href="/app?view=settings&tab=keys&state=key-create">Create a key</a> with only the areas this client needs.</span></p>}
       </div>
     </Dialog>
   );
@@ -239,7 +239,7 @@ export function Consent({ onDone }: { onDone?: (ok: boolean) => void }) {
     <div className="m-consent"><div className="m-consent__card m-consent__card--done" role="status">
       <Icon name={done === "allowed" ? "check" : "x"} size={16} /><h1>{done === "allowed" ? "Claude Code is connected" : "Claude Code wasn’t connected"}</h1>
       <p className="c-muted">{done === "allowed" ? "You can close this tab and go back to your terminal." : "Nothing was shared. You can close this tab."}</p>
-      <a className="c-link" href="/app?view=settings&state=mcp">Back to Corral</a></div></div>
+      <a className="c-link" href="/app?view=settings&tab=mcp&state=mcp">Back to Corral</a></div></div>
   );
   return (
     <div className="m-consent">
