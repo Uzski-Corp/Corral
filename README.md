@@ -126,24 +126,24 @@ corral/
 
 ---
 
-### 1. Spin up Infrastructure (Database & Redis)
+### 1. Start the stack
 
-Start PostgreSQL 16 (with `pgvector`) and Redis:
+From the repo root:
 
 ```bash
-docker run -d \
-  --name corral-postgres \
-  -e POSTGRES_DB=corral \
-  -e POSTGRES_USER=corral_user \
-  -e POSTGRES_PASSWORD=corral_password \
-  -p 5432:5432 \
-  pgvector/pgvector:pg16
-
-docker run -d \
-  --name corral-redis \
-  -p 6379:6379 \
-  redis:7-alpine
+docker compose up --build
 ```
+
+That builds and starts Postgres 16 (pgvector), Redis, the API, the background worker, and the Next.js app.
+
+- App: http://localhost:3000
+- API docs: http://localhost:8000/docs
+
+Database defaults match `server/.env.example` (`corral` / `corral`, database `corral`). Copy that file to `server/.env` and add WorkOS keys when you want real sign-in; Compose loads it if it is present. Until those keys are set, auth answers 503.
+
+Only the databases: `docker compose up postgres redis`.
+
+Steps 2 and 3 are the same stack without Docker.
 
 ---
 
