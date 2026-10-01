@@ -19,7 +19,27 @@ const DEAL_TONE: Record<DealState, string> = { pushed: "positive", updated: "pos
 const NURTURE_WORD: Record<NurtureState, string> = { scheduled: "Scheduled", moved: "Moved", stopped: "Stopped", paused: "Held", waiting: "Waiting", off: "Off" };
 const NURTURE_TONE: Record<NurtureState, string> = { scheduled: "positive", moved: "positive", stopped: "neutral", paused: "neutral", waiting: "caution", off: "neutral" };
 
-export const Tile = ({ label, small }: { label: string; small?: boolean }) => <span className={cx("h-tile", small && "h-tile--sm")} aria-hidden="true">{label}</span>;
+/** Cal.com’s wordmark (https://cal.com/logo.svg) and AutoSend’s square mark. Phoenix stays two letters. */
+const CAL_LOGO = "/assets/cal-logo.svg";
+const AUTOSEND_LOGO = "/assets/AutosendLogoSquareIndigo.svg";
+
+export const Tile = ({ label, small }: { label: string; small?: boolean }) => {
+  if (label === "Ca") return <img className={cx("h-logo h-logo--cal", small && "is-sm")} src={CAL_LOGO} alt="" />;
+  if (label === "As") return (
+    <span className={cx("h-tile h-tile--logo", small && "h-tile--sm")} aria-hidden="true"><img src={AUTOSEND_LOGO} alt="" /></span>
+  );
+  return <span className={cx("h-tile", small && "h-tile--sm")} aria-hidden="true">{label}</span>;
+};
+
+/** Logo plus the words, for a title. The image is decorative; `children` keeps the accessible name. */
+export function BrandLockup({ brand, children }: { brand: "cal" | "autosend"; children: ReactNode }) {
+  return (
+    <span className="h-lockup">
+      {brand === "cal" ? <img className="h-logo h-logo--cal" src={CAL_LOGO} alt="" /> : <img className="h-logo h-logo--as" src={AUTOSEND_LOGO} alt="" />}
+      <span>{children}</span>
+    </span>
+  );
+}
 export const Pill = ({ tone, children }: { tone: string; children: ReactNode }) => <span className={cx("h-pill", `is-${tone}`)}>{children}</span>;
 
 /** The meeting, as an event in the thread (and, compact, on the lead). */
@@ -72,7 +92,7 @@ export function HandoffRail({ h }: { h: HandoffModel }) {
     <div className="c-rail__sec h-rail"><span className="c-rail__label">Handoffs</span>
       <HandoffSteps h={h} />
       <p className="h-rail__foot c-faint">{h.deal.note}</p>
-      <a className="c-link h-rail__link" href="/app?view=settings">Integrations</a>
+      <a className="c-link h-rail__link" href="/app/settings">Integrations</a>
     </div>
   );
 }
@@ -87,7 +107,7 @@ export function HandoffProblems({ h, lead }: { h: HandoffModel; lead?: boolean }
   if (d.state === "failed" && d.error) return (
     <div className="h-problem is-negative" role="alert"><Icon name="alert" size={13} />
       <div><b>Not in Phoenix yet: {d.error.code} {d.error.text}.</b> {d.error.why} <span className="c-faint">({d.error.tries})</span></div>
-      <div className="h-problem__acts"><a className="c-btn c-btn--primary" href="/app?view=settings&state=error">Update the secret</a>
+      <div className="h-problem__acts"><a className="c-btn c-btn--primary" href="/app/settings?state=error">Update the secret</a>
         <Button variant="quiet" onClick={() => toast({ tone: "error", children: "Phoenix still says 401. Update the secret first.", meta: "nothing was sent twice" })}>Try again now</Button></div>
     </div>
   );
@@ -108,7 +128,7 @@ export function HandoffProblems({ h, lead }: { h: HandoffModel; lead?: boolean }
   if (h.nurture.state === "waiting") return (
     <div className="h-problem is-caution" role="status"><Icon name="mail" size={13} />
       <div><b>{h.nurture.journey} can’t go: AutoSend isn’t connected.</b> {lead ? "It was due" : "It’s due"} {h.nurture.when}. Corral won’t send it from your cold mailboxes, where a reminder with an unsubscribe link would hurt their reputation.</div>
-      <div className="h-problem__acts"><a className="c-btn" href="/app?view=settings&state=connect-autosend">Connect AutoSend</a></div>
+      <div className="h-problem__acts"><a className="c-btn" href="/app/settings?state=connect-autosend">Connect AutoSend</a></div>
     </div>
   );
   return null;

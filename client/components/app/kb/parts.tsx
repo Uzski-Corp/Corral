@@ -7,13 +7,40 @@ import { Avatar, Monogram, cx } from "../primitives";
 import type { Source, SourceStatus } from "./data";
 
 /* File tile: the format, set in mono on a paper-coloured tile. Neutral on purpose: status colour
-   stays reserved for things that need you, so a list of forty PDFs reads calm.            */
+   stays reserved for things that need you, so a list of forty PDFs reads calm.
+   A web source keeps that same tile and shows the site's favicon, so a crawled host is
+   recognisable at a glance. No favicon, or it fails to load: the globe.            */
 const TILE: Record<SourceKind, string> = { pdf: "PDF", docx: "DOC", md: "MD", url: "" };
-/** `label` overrides the format text (e.g. "KEY" for a file Corral can't read). */
-export function FileTile({ kind, size = 28, label }: { kind: SourceKind; size?: 20 | 28 | 36; label?: string }) {
+const ICON = { 20: 11, 28: 14, 36: 16 } as const;
+
+/** A public hostname, or nothing. Favicon requests only go out for this shape. */
+export function faviconHost(host: string | undefined): string | undefined {
+  if (!host) return undefined;
+  const h = host.trim().toLowerCase().replace(/\.$/, "").replace(/^www\./, "");
+  if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/.test(h)) return undefined;
+  return h;
+}
+
+/** Google's favicon service reads the site's own icon, including pages we crawled. */
+export function faviconSrc(host: string) {
+  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`;
+}
+
+function SiteMark({ host, icon }: { host: string; icon: number }) {
+  const [off, setOff] = useState(false);
+  if (off) return <Icon name="globe" size={icon} />;
+  // Arbitrary crawled hosts: next/image can't whitelist them. The tile stays the globe if this fails.
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={faviconSrc(host)} alt="" width={icon} height={icon} referrerPolicy="no-referrer" onError={() => setOff(true)} />;
+}
+
+/** `label` overrides the format text (e.g. "KEY" for a file Corral can't read). `host` draws a web source's favicon. */
+export function FileTile({ kind, size = 28, label, host }: { kind: SourceKind; size?: 20 | 28 | 36; label?: string; host?: string }) {
+  const icon = ICON[size];
+  const site = kind === "url" ? faviconHost(host) : undefined;
   return (
-    <span className={cx("k-tile", `k-tile--${kind}`, size !== 28 && `k-tile--${size}`)} aria-hidden="true">
-      {label ? label.slice(0, 4) : kind === "url" ? <Icon name="globe" size={size === 36 ? 16 : size === 20 ? 11 : 14} /> : TILE[kind]}
+    <span className={cx("k-tile", `k-tile--${kind}`, size !== 28 && `k-tile--${size}`, site && "k-tile--mark")} aria-hidden="true">
+      {label ? label.slice(0, 4) : site ? <SiteMark host={site} icon={icon} /> : kind === "url" ? <Icon name="globe" size={icon} /> : TILE[kind]}
     </span>
   );
 }

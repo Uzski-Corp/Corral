@@ -28,9 +28,9 @@ export function HandoffsSection() {
         <h2 className="or-h2">When they say yes, the rest happens.</h2>
         <p className="or-lede">Grace books through your Cal.com. The deal opens in Phoenix ERP with the thread attached, and nurture moves to AutoSend, so nobody copies anything between tabs.</p>
         <Receipts className="c-app or-mt">
-          <Receipt meta="Cal.com">Grace Holloway booked Thu 10:30</Receipt>
+          <Receipt meta={<img className="h-logo h-logo--cal is-sm" src="/assets/cal-logo.svg" alt="Cal.com" />}>Grace Holloway booked Thu 10:30</Receipt>
           <Receipt meta="Phoenix ERP">Deal opened: Nyota Beverages, pilot</Receipt>
-          <Receipt meta="AutoSend">Moved to the booked-call nurture</Receipt>
+          <Receipt meta={<img className="h-logo h-logo--as" src="/assets/AutosendLogoSquareIndigo.svg" alt="AutoSend" />}>Moved to the booked-call nurture</Receipt>
         </Receipts>
       </div>
       <div className="or-hand__piece"><HandoffPiece /></div>

@@ -96,8 +96,8 @@ const STATES: [string, string, string][] = [
 ];
 export function LeadStatesDemo() {
   return (
-    <div className="sg-card c-app sg-m3-states"><Label>every state · /app?view=companies|segments&amp;state=</Label>
-      <ul className="sg-anatomy">{STATES.map(([v, s, d]) => <li key={v + s}><a className="c-link" href={`/app?view=${v}${s ? `&state=${s}` : ""}`}><code>{v}{s ? ` · ${s}` : ""}</code></a> · {d}</li>)}</ul>
+    <div className="sg-card c-app sg-m3-states"><Label>every state · /app/companies|segments&amp;state=</Label>
+      <ul className="sg-anatomy">{STATES.map(([v, s, d]) => <li key={v + s}><a className="c-link" href={`${v === "unibox" ? "/app" : `/app/${v}`}${s ? `?state=${s}` : ""}`}><code>{v}{s ? ` · ${s}` : ""}</code></a> · {d}</li>)}</ul>
     </div>
   );
 }

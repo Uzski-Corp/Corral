@@ -8,9 +8,9 @@ import { audit } from "./axe";
  * The mock reads a new source in ~3s (scan → parse → chunk → embed), so the list polls to "ready".
  */
 async function openKb(page: Page) {
-  await page.goto("/sign-in?next=%2Fapp%3Fview%3Dknowledge");
+  await page.goto("/sign-in?next=%2Fapp%2Fknowledge");
   await signInWithGoogle(page);
-  await expect(page).toHaveURL(`${WEB}/app?view=knowledge`);
+  await expect(page).toHaveURL(`${WEB}/app/knowledge`);
   await expect(page.getByRole("table", { name: "Sources" })).toBeVisible();
 }
 const row = (page: Page, name: string) => page.getByRole("table", { name: "Sources" }).getByRole("row").filter({ hasText: name });
@@ -119,7 +119,7 @@ test.describe("knowledge base on the API", () => {
 
   test("the API down: Bau's error state with the failed request, then Try again", async ({ page }) => {
     await scenario(page, { kbDown: true });
-    await page.goto("/sign-in?next=%2Fapp%3Fview%3Dknowledge");
+    await page.goto("/sign-in?next=%2Fapp%2Fknowledge");
     await signInWithGoogle(page);
     const alert = page.getByRole("alert").filter({ hasText: "Couldn’t load the knowledge base" });
     await expect(alert).toBeVisible();
@@ -132,7 +132,7 @@ test.describe("knowledge base on the API", () => {
 
   test("no product yet: the empty knowledge base, and the first file creates the product", async ({ page, mockApi }) => {
     await scenario(page, { kbEmpty: true });
-    await page.goto("/sign-in?next=%2Fapp%3Fview%3Dknowledge");
+    await page.goto("/sign-in?next=%2Fapp%2Fknowledge");
     await signInWithGoogle(page);
     await expect(page.getByRole("heading", { name: "Teach Corral what you sell" })).toBeVisible();
     expect(await audit(page)).toEqual([]);

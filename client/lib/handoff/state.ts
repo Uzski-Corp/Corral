@@ -1,6 +1,6 @@
 /**
- * Design-review states for handoffs (M8, ENG-58), shown in the thread (/app?view=unibox&state=…) and on the
- * lead (/app?view=companies&state=…), with the same names in both. Grace Holloway, Nyota Beverages.
+ * Design-review states for handoffs (M8, ENG-58), shown in the thread (/app?state=…) and on the
+ * lead (/app/companies?state=…), with the same names in both. Grace Holloway, Nyota Beverages.
  *
  *   meeting-booked       Grace booked through Cal.com: sequence stopped, deal opened in Phoenix, AutoSend's "before your call" set
  *   meeting-rescheduled  she moved it to Mon 5 Oct: the deal's meeting time and the AutoSend email move with it

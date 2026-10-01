@@ -72,10 +72,10 @@ def test_upgrade_downgrade_upgrade_round_trip(scratch_database_url: str) -> None
 def test_each_revision_steps_down_and_up(scratch_database_url: str) -> None:
     cfg = alembic_config(scratch_database_url)
     command.upgrade(cfg, "head")
-    for _ in range(5):
+    for _ in range(7):
         command.downgrade(cfg, "-1")
     assert tables(scratch_database_url) == {"alembic_version"}
-    for expected in ({"users"}, {"leads"}, set(), {"kb_chunks"}, {"companies"}):
+    for expected in ({"users"}, {"leads"}, set(), {"kb_chunks"}, {"companies"}, set(), set()):
         command.upgrade(cfg, "+1")
         assert expected <= tables(scratch_database_url)
     assert rls_tables(scratch_database_url) == RLS_TABLES

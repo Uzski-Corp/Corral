@@ -58,7 +58,7 @@ export default defineConfig({
     },
     {
       command: `exec ./node_modules/.bin/next dev -p ${REVIEW_PORT}`,
-      url: `${REVIEW}/app?view=knowledge`,
+      url: `${REVIEW}/app/knowledge`,
       env: { NEXT_PUBLIC_DESIGN_REVIEW: "1", NEXT_TELEMETRY_DISABLED: "1" },
       timeout: 180_000,
       reuseExistingServer: !process.env.CI,

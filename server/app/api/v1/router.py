@@ -10,6 +10,7 @@ from app.api.v1.routes import (
     products,
     segments,
     sequences,
+    workspace,
 )
 from app.auth import routes as auth
 from app.auth.deps import require_auth
@@ -28,5 +29,6 @@ for module in (
     knowledge,
     products,
     kb,
+    workspace,
 ):
     api_router.include_router(module.router, dependencies=[Depends(require_auth)])

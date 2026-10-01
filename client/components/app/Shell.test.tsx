@@ -23,8 +23,19 @@ describe("WorkspaceSwitcher", () => {
     expect(within(menu).getByRole("menuitemcheckbox", { name: /pwani fresh/ })).toHaveAttribute("aria-checked", "true");
     expect(within(menu).queryByText("ColdTrace")).toBeNull();
     expect(within(screen.getByRole("button", { name: "Switch workspace" })).getAllByText("P").length).toBeGreaterThan(0);
-    await userEvent.click(within(menu).getByRole("menuitem", { name: /Invite teammates/ }));
+    await userEvent.click(within(menu).getByRole("menuitem", { name: /Workspace settings/ }));
+    expect(router.push).toHaveBeenCalledWith("/app/settings/workspace");
+    expect(screen.getByRole("button", { name: "Switch workspace" }).querySelector("img")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Switch workspace" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /Invite teammates/ }));
     expect(router.push).toHaveBeenCalledWith("/onboarding?step=5");
+  });
+
+  it("renders the workspace logo in the switcher", () => {
+    render(<WorkspaceSwitcher account={{ ...acct, logoUrl: "https://cdn.example/logo.png" }} />);
+    const mark = screen.getByRole("button", { name: "Switch workspace" }).querySelector("img");
+    expect(mark).toHaveAttribute("src", "https://cdn.example/logo.png");
+    expect(within(screen.getByRole("button", { name: "Switch workspace" })).queryByText("P")).toBeNull();
   });
 
   it("shows skeletons while loading", () => {
@@ -44,6 +55,9 @@ describe("SideNav account", () => {
     expect(me.querySelector(".c-mono-av")).toHaveTextContent("AO");
     await userEvent.click(me);
     expect(screen.getByText("Amina Otieno · Admin")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("menuitem", { name: "Profile" }));
+    expect(router.push).toHaveBeenCalledWith("/app/settings/profile");
+    await userEvent.click(me);
     await userEvent.click(screen.getByRole("menuitem", { name: /Sign out/ }));
     expect(router.push).toHaveBeenCalledWith("/sign-in");
   });

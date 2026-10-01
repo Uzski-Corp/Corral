@@ -130,7 +130,7 @@ function ToastButtons() {
   return (
     <div className="c-actions" style={{ flexWrap: "wrap" }}>
       <Button onClick={() => toast({ tone: "success", children: "Enrolled 3 in Cold-room pilot", meta: "first send Thu 08:10", action: { label: "Undo", onClick: noop } })}>Success with undo</Button>
-      <Button onClick={() => toast({ icon: "cal", children: "Brian Kamau booked Thu 10:30", meta: "Cal.com" })}>Event</Button>
+      <Button onClick={() => toast({ icon: "cal", children: "Brian Kamau booked Thu 10:30", meta: <img className="h-logo h-logo--cal is-sm h-logo--on-dark" src="/assets/cal-logo.svg" alt="Cal.com" /> })}>Event</Button>
       <Button onClick={() => toast({ tone: "error", children: "Couldn’t send to sales@coldtrace.io", action: { label: "Retry", onClick: noop } })}>Error with retry</Button>
     </div>
   );
@@ -153,7 +153,7 @@ export function TabsToastDemo() {
       <div className="sg-toasts">
         <Label>toasts · ink, one line, at most one action</Label>
         <Toast tone="success" action={{ label: "Undo", onClick: noop }} onClose={noop} meta="first send Thu 08:10">Enrolled 3 in Cold-room pilot</Toast>
-        <Toast meta="Cal.com" onClose={noop}>Brian Kamau booked Thu 10:30</Toast>
+        <Toast meta={<img className="h-logo h-logo--cal is-sm h-logo--on-dark" src="/assets/cal-logo.svg" alt="Cal.com" />} onClose={noop}>Brian Kamau booked Thu 10:30</Toast>
         <Toast tone="error" action={{ label: "Retry", onClick: noop }} onClose={noop}>Couldn’t send to sales@coldtrace.io</Toast>
         <Toast tone="error" action={{ label: "Try again", onClick: noop }} onClose={noop}>Sign-out didn’t go through. You’re still signed in.</Toast>
         <Label>live · appear bottom-centre, 4s</Label>

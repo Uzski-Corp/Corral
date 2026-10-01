@@ -1,7 +1,7 @@
 /**
  * Design-review states for Settings → Developers (M9, ENG-59): MCP connections, API keys and the docs.
  * Honoured where review states are (outside production and in the review build). Plain module so the
- * server page can read it. Same view as Integrations: /app?view=settings&state=
+ * server page can read it. Same screen as Integrations: /app/settings?state=
  *
  * MCP
  *   mcp               connected clients: Cursor, Claude, Claude Code, and n8n on a key; what each may do, last call

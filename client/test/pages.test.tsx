@@ -3,11 +3,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { resetConfigCache } from "@/lib/config";
 import SignInPage from "@/app/sign-in/page";
 import OnboardingPage from "@/app/onboarding/page";
-import AppPage from "@/app/app/page";
+import AppPage from "@/app/app/[[...slug]]/page";
 import AppLayout from "@/app/app/layout";
 import OnboardingLayout from "@/app/onboarding/layout";
 
 const params = (q: Record<string, string | string[]>) => ({ params: Promise.resolve({}), searchParams: Promise.resolve(q) });
+const app = (slug: string[] | undefined, q: Record<string, string | string[]> = {}) =>
+  AppPage({ params: Promise.resolve({ slug }), searchParams: Promise.resolve(q) } as never);
 
 afterEach(() => { vi.unstubAllEnvs(); resetConfigCache(); });
 
@@ -41,7 +43,7 @@ describe("/onboarding and /app pages keep their review params", () => {
   it("renders the requested app view inside the session layout", async () => {
     vi.stubEnv("NEXT_PUBLIC_DESIGN_REVIEW", "1");
     resetConfigCache();
-    const page = await AppPage(params({ view: "companies", collapsed: "1" }) as never);
+    const page = await app(["companies"], { collapsed: "1" });
     render(AppLayout({ children: page, params: Promise.resolve({}) } as never));
     expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText("Companies")).toBeInTheDocument();
   });
@@ -49,7 +51,7 @@ describe("/onboarding and /app pages keep their review params", () => {
   it("opens a knowledge base review state", async () => {
     vi.stubEnv("NEXT_PUBLIC_DESIGN_REVIEW", "1");
     resetConfigCache();
-    const page = await AppPage(params({ view: ["knowledge"], state: "empty" }) as never);
+    const page = await app(["knowledge"], { state: "empty" });
     render(AppLayout({ children: page, params: Promise.resolve({}) } as never));
     expect(await screen.findByRole("heading", { name: "Teach Corral what you sell" })).toBeInTheDocument();
   });
@@ -57,7 +59,7 @@ describe("/onboarding and /app pages keep their review params", () => {
   it("opens a leads review state (M3)", async () => {
     vi.stubEnv("NEXT_PUBLIC_DESIGN_REVIEW", "1");
     resetConfigCache();
-    const page = await AppPage(params({ view: "companies", state: "empty" }) as never);
+    const page = await app(["companies"], { state: "empty" });
     render(AppLayout({ children: page, params: Promise.resolve({}) } as never));
     expect(await screen.findByRole("heading", { name: "Bring in the companies you already know" })).toBeInTheDocument();
   });
@@ -65,7 +67,7 @@ describe("/onboarding and /app pages keep their review params", () => {
   it("opens a discovery review state (M4)", async () => {
     vi.stubEnv("NEXT_PUBLIC_DESIGN_REVIEW", "1");
     resetConfigCache();
-    const page = await AppPage(params({ view: "discovery", state: "empty" }) as never);
+    const page = await app(["discovery"], { state: "empty" });
     render(AppLayout({ children: page, params: Promise.resolve({}) } as never));
     expect(await screen.findByText("Find companies that fit ColdTrace Sensors")).toBeInTheDocument();
   });
@@ -73,7 +75,7 @@ describe("/onboarding and /app pages keep their review params", () => {
   it("opens a sequences review state (M6)", async () => {
     vi.stubEnv("NEXT_PUBLIC_DESIGN_REVIEW", "1");
     resetConfigCache();
-    const page = await AppPage(params({ view: "sequences", state: "empty" }) as never);
+    const page = await app(["sequences"], { state: "empty" });
     render(AppLayout({ children: page, params: Promise.resolve({}) } as never));
     expect(await screen.findByText("Write your first sequence")).toBeInTheDocument();
   });
@@ -81,7 +83,7 @@ describe("/onboarding and /app pages keep their review params", () => {
   it("opens a unibox review state (M7)", async () => {
     vi.stubEnv("NEXT_PUBLIC_DESIGN_REVIEW", "1");
     resetConfigCache();
-    const page = await AppPage(params({ state: "refused" }) as never);
+    const page = await app(undefined, { state: "refused" });
     render(AppLayout({ children: page, params: Promise.resolve({}) } as never));
     expect(await screen.findByText("Corral won’t draft this one")).toBeInTheDocument();
   });
@@ -89,7 +91,7 @@ describe("/onboarding and /app pages keep their review params", () => {
   it("opens a settings review state (M8)", async () => {
     vi.stubEnv("NEXT_PUBLIC_DESIGN_REVIEW", "1");
     resetConfigCache();
-    const page = await AppPage(params({ view: "settings", state: "reauth" }) as never);
+    const page = await app(["settings"], { state: "reauth" });
     render(AppLayout({ children: page, params: Promise.resolve({}) } as never));
     expect(await screen.findByRole("heading", { name: "Cal.com" })).toBeInTheDocument();
     expect(screen.getAllByText(/sign-in expired/).length).toBeGreaterThan(0);
@@ -98,7 +100,7 @@ describe("/onboarding and /app pages keep their review params", () => {
   it("opens a unibox handoff state (M8)", async () => {
     vi.stubEnv("NEXT_PUBLIC_DESIGN_REVIEW", "1");
     resetConfigCache();
-    const page = await AppPage(params({ state: "meeting-cancelled" }) as never);
+    const page = await app(undefined, { state: "meeting-cancelled" });
     render(AppLayout({ children: page, params: Promise.resolve({}) } as never));
     expect(await screen.findByText("Grace cancelled the meeting")).toBeInTheDocument();
   });

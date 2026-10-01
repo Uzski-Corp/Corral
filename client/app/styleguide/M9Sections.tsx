@@ -14,8 +14,8 @@ export function DevelopersDemo() {
       <div className="sg-m8 sg-m8--settings">
         <div className="sg-card sg-m6-wide"><Label>Settings → Developers → MCP · live</Label>
           <div className="c-win c-win--flat c-app sg-m8-win"><SettingsView developer="mcp" /></div>
-          <Label>review states · /app?view=settings&amp;state=</Label>
-          <ul className="sg-anatomy sg-m6-cols">{MCP_REVIEW_STATES.map((s) => <li key={s}><a className="c-link" href={`/app?view=settings&state=${s}`}><code>{s}</code></a></li>)}</ul></div>
+          <Label>review states · /app/settings&amp;state=</Label>
+          <ul className="sg-anatomy sg-m6-cols">{MCP_REVIEW_STATES.map((s) => <li key={s}><a className="c-link" href={`/app/settings?state=${s}`}><code>{s}</code></a></li>)}</ul></div>
         <div className="sg-card"><Label>a signed-in connection · Send only on the Unibox</Label>
           <AccessPicker value={{ ...PRESETS[1].access, unibox: "send" }} /></div>
         <div className="sg-card"><Label>an API key · the Unibox stops at Write</Label>

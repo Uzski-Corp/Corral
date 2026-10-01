@@ -80,8 +80,8 @@ export function FitReasoningDemo() {
         {p("savanna", "fit-none", "not scored yet")}
         {p("kigali", "fit-error", "error · last score stands")}
       </div>
-      <div className="sg-card c-app"><Label>every state · /app?view=companies&amp;state=</Label>
-        <ul className="sg-anatomy">{STATES.map(([s, d]) => <li key={s}><a className="c-link" href={`/app?view=companies&state=${s}`}><code>{s}</code></a> · {d}</li>)}</ul></div>
+      <div className="sg-card c-app"><Label>every state · /app/companies&amp;state=</Label>
+        <ul className="sg-anatomy">{STATES.map(([s, d]) => <li key={s}><a className="c-link" href={`/app/companies?state=${s}`}><code>{s}</code></a> · {d}</li>)}</ul></div>
     </div>
   );
 }

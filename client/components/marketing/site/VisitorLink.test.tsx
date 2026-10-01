@@ -29,7 +29,7 @@ describe("VisitorLink (M10c signed-in CTAs)", () => {
     expect(link("Start with one product").getAttribute("href")).toBe("/app");
     b.unmount();
     render(<McpPage />);
-    expect(link("Sign in and connect").getAttribute("href")).toBe("/app?view=settings&tab=mcp");
+    expect(link("Sign in and connect").getAttribute("href")).toBe("/app/settings/mcp");
   });
 
   it("keeps sign-in for a signed-out visitor", () => {

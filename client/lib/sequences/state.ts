@@ -2,7 +2,7 @@
  * Design-review states for sequences and the mailbox pool (M6, ENG-56). Honoured where review
  * states are (outside production and in the review build). Plain module so the server page can read it.
  *
- * /app?view=sequences&state=
+ * /app/sequences?state=
  *   empty        no sequences yet: what a sequence is, Draft one with Corral
  *   loading      list and builder skeletons
  *   error        sequences couldn't load (sending carries on)

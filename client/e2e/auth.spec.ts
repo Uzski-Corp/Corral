@@ -4,8 +4,8 @@ import { expect, requestCode, signInWithGoogle, test, WEB } from "./fixtures";
 test.describe("route protection", () => {
   test("signed-out visits to /app and /onboarding go to sign-in with a return path", async ({ page, mockApi }) => {
     void mockApi;
-    await page.goto("/app?view=companies");
-    await expect(page).toHaveURL(`${WEB}/sign-in?next=%2Fapp%3Fview%3Dcompanies`);
+    await page.goto("/app/companies");
+    await expect(page).toHaveURL(`${WEB}/sign-in?next=%2Fapp%2Fcompanies`);
     await expect(page.getByRole("heading", { name: "Sign in to Corral" })).toBeVisible();
 
     await page.goto("/onboarding?step=2");
@@ -44,9 +44,9 @@ test.describe("route protection", () => {
 test.describe("sign-in", () => {
   test("a returning user signs in with Google and lands where they were going", async ({ page, mockApi, onboarded }) => {
     await onboarded();
-    await page.goto("/app?view=companies");
+    await page.goto("/app/companies");
     await signInWithGoogle(page);
-    await expect(page).toHaveURL(`${WEB}/app?view=companies`);
+    await expect(page).toHaveURL(`${WEB}/app/companies`);
     const account = page.getByRole("button", { name: "Account" });
     await expect(account).toContainText("Wanjiru Mwangi");
     await expect(account).toContainText("wanjiru@kilima.co.ke");
@@ -67,8 +67,8 @@ test.describe("sign-in", () => {
     await expect(page).toHaveURL(`${WEB}/app`);
     await expect(page.getByRole("button", { name: "Account" })).toContainText("Wanjiru Mwangi");
     // Onboarded now: /app no longer bounces to onboarding.
-    await page.goto("/app?view=segments");
-    await expect(page).toHaveURL(`${WEB}/app?view=segments`);
+    await page.goto("/app/segments");
+    await expect(page).toHaveURL(`${WEB}/app/segments`);
   });
 
   test("a failed AuthKit round trip shows the designed failure screen", async ({ page, mockApi }) => {
@@ -226,11 +226,11 @@ test.describe("email code sign-in", () => {
 
   test("the right code signs in and lands where the user was going", async ({ page, mockApi, onboarded }) => {
     await onboarded();
-    await page.goto("/app?view=companies");
-    await expect(page).toHaveURL(`${WEB}/sign-in?next=%2Fapp%3Fview%3Dcompanies`);
+    await page.goto("/app/companies");
+    await expect(page).toHaveURL(`${WEB}/sign-in?next=%2Fapp%2Fcompanies`);
     await requestCode(page);
     await codeField(page).fill("123 456");
-    await expect(page).toHaveURL(`${WEB}/app?view=companies`);
+    await expect(page).toHaveURL(`${WEB}/app/companies`);
     await expect(page.getByRole("button", { name: "Account" })).toContainText("Wanjiru Mwangi");
     expect(await mockApi.calls()).toEqual(expect.arrayContaining(["POST /api/v1/auth/code/verify", "GET /api/v1/auth/me"]));
     expect((await page.context().cookies()).find((c) => c.name === "corral_return_to")).toBeUndefined();

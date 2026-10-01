@@ -23,8 +23,8 @@ export function HandoffDemo() {
           <div className="sg-m7-tags">{(["rescheduled", "cancelled", "no-show"] as const).map((m) => <RowTag key={m} t={{ ...grace, status: m === "rescheduled" ? "Meeting booked" : "Interested", meeting: m }} />)}</div></div>
         <div className="sg-card"><Label>the three handoffs · rail and lead</Label>
           <div className="sg-m8-stack"><HandoffSteps h={handoffFor("meeting-booked")} /><HandoffSteps h={handoffFor("deal-error")} /></div>
-          <Label>review states · /app?view=unibox&amp;state= (and view=companies)</Label>
-          <ul className="sg-anatomy sg-m6-cols">{HANDOFF_REVIEW_STATES.map((s) => <li key={s}><a className="c-link" href={`/app?view=unibox&state=${s}`}><code>{s}</code></a></li>)}</ul></div>
+          <Label>review states · /app&amp;state= (and view=companies)</Label>
+          <ul className="sg-anatomy sg-m6-cols">{HANDOFF_REVIEW_STATES.map((s) => <li key={s}><a className="c-link" href={`/app?state=${s}`}><code>{s}</code></a></li>)}</ul></div>
         <div className="sg-card"><Label>what needs a person · refused · duplicate · follow-up waiting</Label>
           <div className="sg-m8-stack"><HandoffProblems h={handoffFor("deal-error")} /><HandoffProblems h={handoffFor("deal-duplicate")} /><HandoffProblems h={handoffFor("nurture-off")} /></div></div>
       </div>
@@ -38,8 +38,8 @@ export function IntegrationsDemo() {
       <div className="sg-m8 sg-m8--settings">
         <div className="sg-card sg-m6-wide"><Label>Settings → Integrations · live</Label>
           <div className="c-win c-win--flat c-app sg-m8-win"><SettingsView /></div>
-          <Label>review states · /app?view=settings&amp;state=</Label>
-          <ul className="sg-anatomy sg-m6-cols">{SETTINGS_REVIEW_STATES.map((s) => <li key={s}><a className="c-link" href={`/app?view=settings&state=${s}`}><code>{s}</code></a></li>)}</ul></div>
+          <Label>review states · /app/settings&amp;state=</Label>
+          <ul className="sg-anatomy sg-m6-cols">{SETTINGS_REVIEW_STATES.map((s) => <li key={s}><a className="c-link" href={`/app/settings?state=${s}`}><code>{s}</code></a></li>)}</ul></div>
         <div className="sg-card"><Label>handoff flow · each step with its connection</Label>
           <HandoffFlow conn={{ cal: "connected", phoenix: "error", autosend: "off" }} />
           <Label>permissions · can, never, where the key lives</Label>

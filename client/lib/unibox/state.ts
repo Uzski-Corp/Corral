@@ -2,7 +2,7 @@
  * Design-review states for the Unibox (M7, ENG-57). Honoured where review states are (outside
  * production and in the review build). Plain module so the server page can read it.
  *
- * /app?view=unibox&state=
+ * /app?state=
  *   panes         three panes: filters and triage over the list, the thread, lead context
  *   filtered      filtered to Interested + Objection, unread only; Clear
  *   triage-menu   the triage menu open on Brian's thread: six kinds, keys 1–6, what each does

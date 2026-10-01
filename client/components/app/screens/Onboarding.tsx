@@ -1,7 +1,7 @@
 "use client";
 /* Workspace onboarding: five steps, two required (workspace, product), three skippable.
    Left: steps with done / current / skipped. Centre: the step. Right: what Corral knows so far. */
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -23,42 +23,72 @@ export const STEPS = [
 const PAGES: [string, string][] = [["coldtrace.io", "home"], ["/product", "4 sensor models"], ["/pricing", "3 plans"], ["/customers", "2 case studies"], ["/blog", "11 posts"], ["/docs/alerts", "alerting rules"], ["/about", "team of 14, Nairobi"]];
 const PAINS = ["Spoilage from doors left open", "No alert until the morning check", "Paper temperature logs for audits", "Insurance claims without evidence"];
 
+export type SitePage = { path: string; title: string };
+export type OnboardingSeed = {
+  name: string; slug: string; tz: string; team: string; product: string; pitch: string; site: string;
+  logoUrl: string | null; pages: SitePage[]; highlights: string[]; invites: [string, string][];
+};
+export type OnboardingSnap = {
+  name: string; slug: string; tz: string; team: string; product: string; pitch: string; site: string;
+  invites: [string, string][]; skipped: number[]; complete: boolean;
+};
+/** Live setup talks to the API. Absent, the screen is the design-review sample. */
+export type OnboardingLive = {
+  seed: OnboardingSeed;
+  onLogo: (file: File) => Promise<{ url: string } | { error: string }>;
+  onReadSite: (url: string) => Promise<{ pages: SitePage[]; highlights: string[] } | { error: string }>;
+  onSave: (snap: OnboardingSnap) => Promise<string | null>;
+};
+
 export type OnboardingProps = {
-  initialStep?: number; skipped?: number[]; crawl?: "idle" | "done"; connected?: boolean;
+  initialStep?: number; initialDone?: number[]; skipped?: number[]; crawl?: "idle" | "done"; connected?: boolean;
   /** Called just before leaving for /app ("Save and exit" or "Open Corral"). */
   onExit?: () => void;
+  live?: OnboardingLive;
 };
 export function Onboarding(p: OnboardingProps) { return <ToastProvider><Flow {...p} /></ToastProvider>; }
 
-function Flow({ initialStep = 1, skipped: sk0 = [], crawl: crawl0 = "idle", connected = false, onExit }: OnboardingProps) {
+function bare(url: string) {
+  return url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+}
+
+function Flow({ initialStep = 1, initialDone, skipped: sk0 = [], crawl: crawl0 = "idle", connected = false, onExit, live }: OnboardingProps) {
   const router = useRouter();
-  const exit = () => { onExit?.(); router.push("/app"); };
   const toast = useToast();
+  const demo = !live;
+  const seed = live?.seed;
+  const logoRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState(initialStep);
-  const [done, setDone] = useState<number[]>(() => Array.from({ length: initialStep - 1 }, (_, i) => i + 1).filter((n) => !sk0.includes(n)));
+  const [done, setDone] = useState<number[]>(() => initialDone ?? Array.from({ length: initialStep - 1 }, (_, i) => i + 1).filter((n) => !sk0.includes(n)));
   const [skipped, setSkipped] = useState<number[]>(sk0);
+  const [saving, setSaving] = useState(false);
   // step 1
-  const [name, setName] = useState("ColdTrace");
-  const [slug, setSlug] = useState("coldtrace");
-  const [tz, setTz] = useState("nbo");
-  const [team, setTeam] = useState("small");
+  const [name, setName] = useState(seed?.name ?? "ColdTrace");
+  const [slug, setSlug] = useState(seed?.slug ?? "coldtrace");
+  const [tz, setTz] = useState(seed?.tz || "nbo");
+  const [team, setTeam] = useState(seed?.team || "small");
   const [nameErr, setNameErr] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(seed?.logoUrl ?? null);
   // step 2
-  const [product, setProduct] = useState(initialStep > 2 ? "ColdTrace Sensors" : "");
-  const [pitch, setPitch] = useState(initialStep > 2 ? "Wireless temperature and door sensors that page the right person the minute a cold room drifts." : "");
+  const [product, setProduct] = useState(seed ? seed.product : initialStep > 2 ? "ColdTrace Sensors" : "");
+  const [pitch, setPitch] = useState(seed ? seed.pitch : initialStep > 2 ? "Wireless temperature and door sensors that page the right person the minute a cold room drifts." : "");
   const [prodErr, setProdErr] = useState(false);
   // step 3
-  const [site, setSite] = useState("coldtrace.io");
+  const [site, setSite] = useState(seed ? bare(seed.site) : "coldtrace.io");
+  const [pages, setPages] = useState<SitePage[]>(seed?.pages ?? []);
+  const [highlights, setHighlights] = useState<string[]>(seed?.highlights ?? []);
   const [read, setRead] = useState(crawl0 === "done" || (initialStep > 3 && !sk0.includes(3)) ? PAGES.length : 0);
   const [crawling, setCrawling] = useState(false);
+  const [reading, setReading] = useState(false);
   const [siteErr, setSiteErr] = useState(false);
+  const [siteMsg, setSiteMsg] = useState<string | null>(null);
   // step 4
   const [provider, setProvider] = useState("google");
-  const [boxes, setBoxes] = useState<string[]>(connected || (initialStep > 4 && !sk0.includes(4)) ? ["tomas@coldtrace.io"] : []);
+  const [boxes, setBoxes] = useState<string[]>(demo && (connected || (initialStep > 4 && !sk0.includes(4))) ? ["tomas@coldtrace.io"] : []);
   const [connecting, setConnecting] = useState(false);
   const [cap, setCap] = useState("30");
   // step 5
-  const [invites, setInvites] = useState<[string, string][]>([["amina@coldtrace.io", "member"], ["joseph@coldtrace.io", "admin"]]);
+  const [invites, setInvites] = useState<[string, string][]>(seed ? (seed.invites.length ? seed.invites : [["", "member"]]) : [["amina@coldtrace.io", "member"], ["joseph@coldtrace.io", "admin"]]);
   const [domainJoin, setDomainJoin] = useState(true);
 
   useEffect(() => {
@@ -68,18 +98,40 @@ function Flow({ initialStep = 1, skipped: sk0 = [], crawl: crawl0 = "idle", conn
     return () => clearTimeout(t);
   }, [crawling, read]);
 
-  const finish = (n: number, how: "done" | "skip") => {
-    setDone((d) => (how === "done" ? [...new Set([...d, n])] : d.filter((x) => x !== n)));
-    setSkipped((s) => (how === "skip" ? [...new Set([...s, n])] : s.filter((x) => x !== n)));
+  const snap = (skippedNow: number[], complete: boolean): OnboardingSnap => ({
+    name, slug, tz, team, product, pitch, site, invites, skipped: skippedNow, complete,
+  });
+  const save = async (skippedNow: number[], complete: boolean) => {
+    if (!live) return true;
+    setSaving(true);
+    const message = await live.onSave(snap(skippedNow, complete));
+    setSaving(false);
+    if (message) { toast({ tone: "error", children: message }); return false; }
+    return true;
+  };
+  const finish = async (n: number, how: "done" | "skip") => {
+    const nextDone = how === "done" ? [...new Set([...done, n])] : done.filter((x) => x !== n);
+    const nextSkipped = how === "skip" ? [...new Set([...skipped, n])] : skipped.filter((x) => x !== n);
+    if (!(await save(nextSkipped, false))) return false;
+    setDone(nextDone);
+    setSkipped(nextSkipped);
     setStep(n + 1);
+    return true;
   };
-  const next = () => {
-    if (step === 1) { if (!name.trim()) { setNameErr(true); return; } finish(1, "done"); }
-    else if (step === 2) { if (!product.trim()) { setProdErr(true); return; } finish(2, "done"); }
-    else if (step === 5) { finish(5, "done"); toast({ tone: "success", children: `Invited ${invites.filter(([e]) => e).length} teammates`, meta: "links expire in 7 days" }); }
-    else finish(step, "done");
+  const exit = async () => {
+    if (!(await save(skipped, true))) return;
+    onExit?.();
+    router.push("/app");
   };
-  const crawlDone = read >= PAGES.length;
+  const next = async () => {
+    if (step === 1) { if (!name.trim()) { setNameErr(true); return; } await finish(1, "done"); }
+    else if (step === 2) { if (!product.trim()) { setProdErr(true); return; } await finish(2, "done"); }
+    else if (step === 5) { if (await finish(5, "done")) toast({ tone: "success", children: `Invited ${invites.filter(([e]) => e).length} teammates`, meta: "links expire in 7 days" }); }
+    else await finish(step, "done");
+  };
+  const crawlDone = demo ? read >= PAGES.length : pages.length > 0 && !reading;
+  const host = site.trim().replace(/^https?:\/\//, "").split("/")[0];
+  const domainLabel = demo ? "Anyone with an @coldtrace.io email can join" : host ? `Anyone with an @${host} email can join` : "Anyone with your company email can join";
 
   const body: Record<number, ReactNode> = {
     1: <>
@@ -92,6 +144,18 @@ function Flow({ initialStep = 1, skipped: sk0 = [], crawl: crawl0 = "idle", conn
       </FormField>
       <FormField label="Who will use Corral?"><RadioGroup variant="cards" value={team} onChange={setTeam} label="Team size" options={[
         { value: "solo", label: "Just me", description: "A founder doing outbound" }, { value: "small", label: "A small team", description: "2–10 people" }, { value: "sales", label: "A sales team", description: "SDRs and AEs" }]} /></FormField>
+      {live && <FormField label="Company logo" optional help="PNG, JPEG, GIF or WebP, up to 2 MB.">
+        <div className="s-inline">
+          {logoUrl ? <img src={logoUrl} alt="" className="s-logo" width={36} height={36} /> : <WorkspaceTile letter={(name[0] || "C").toUpperCase()} size={36} />} {/* eslint-disable-line @next/next/no-img-element -- logo host is the configured R2 domain */}
+          <button type="button" className="s-drop" onClick={() => logoRef.current?.click()}><Icon name="upload" /><span><span className="c-strong">{logoUrl ? "Replace logo" : "Upload logo"}</span></span></button>
+          <input ref={logoRef} type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden aria-label="Company logo file" onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (!file || !live) return;
+            void live.onLogo(file).then((r) => { if ("url" in r) setLogoUrl(r.url); else toast({ tone: "error", children: r.error }); });
+          }} />
+        </div>
+      </FormField>}
     </>,
     2: <>
       <FormField label="Product name" error={prodErr ? "Name the thing you sell. Corral scores every company against it." : undefined}>
@@ -106,15 +170,24 @@ function Flow({ initialStep = 1, skipped: sk0 = [], crawl: crawl0 = "idle", conn
       <p className="s-note">Selling more than one thing? Add the rest from Products after setup. Each product gets its own fit score.</p>
     </>,
     3: <>
-      <FormField label="Your site" error={siteErr ? "We couldn’t reach that address. Check the spelling, or skip and add pages later." : undefined}
-        help={!siteErr ? "Corral reads public pages only, up to 200, and never logs in." : undefined}>
+      <FormField label="Your site" error={siteErr ? (siteMsg ?? "We couldn’t reach that address. Check the spelling, or skip and add pages later.") : undefined}
+        help={!siteErr ? "Corral reads public pages only, and never logs in." : undefined}>
         <div className="s-inline">
-          <TextInput prefix="https://" value={site} onChange={(e) => { setSite(e.target.value); setSiteErr(false); }} disabled={crawling} />
-          <Button size="lg" variant={crawlDone ? "default" : "ink"} disabled={crawling} onClick={() => { if (!/\.[a-z]{2,}$/i.test(site.trim())) { setSiteErr(true); return; } setRead(0); setCrawling(true); }}>
-            {crawling ? <><Spinner />Reading</> : crawlDone ? <><Icon name="refresh" />Read again</> : "Read my site"}</Button>
+          <TextInput prefix="https://" value={site} onChange={(e) => { setSite(e.target.value); setSiteErr(false); setSiteMsg(null); if (!demo) { setPages([]); setHighlights([]); } }} disabled={crawling || reading} />
+          <Button size="lg" variant={crawlDone ? "default" : "ink"} disabled={crawling || reading} onClick={() => {
+            if (!/\.[a-z]{2,}$/i.test(site.trim())) { setSiteErr(true); setSiteMsg(null); return; }
+            if (!live) { setRead(0); setCrawling(true); return; }
+            setReading(true); setSiteErr(false); setSiteMsg(null);
+            void live.onReadSite(site.trim()).then((r) => {
+              setReading(false);
+              if ("error" in r) { setSiteErr(true); setSiteMsg(r.error); setPages([]); setHighlights([]); return; }
+              setPages(r.pages); setHighlights(r.highlights);
+            });
+          }}>
+            {(crawling || reading) ? <><Spinner />Reading</> : crawlDone ? <><Icon name="refresh" />Read again</> : "Read my site"}</Button>
         </div>
       </FormField>
-      {(crawling || read > 0) && (
+      {demo && (crawling || read > 0) && (
         <div className="s-crawl">
           <div className="s-crawl__top"><span className="c-strong">{crawlDone ? `Read ${site}` : `Reading ${site}`}</span><span className="c-faint c-num">{Math.round((read / PAGES.length) * 38)} of ~38 pages</span></div>
           <span className="s-meter" aria-hidden="true">{Array.from({ length: 20 }, (_, i) => <i key={i} className={i < Math.round((read / PAGES.length) * 20) ? "on" : undefined} />)}</span>
@@ -123,13 +196,24 @@ function Flow({ initialStep = 1, skipped: sk0 = [], crawl: crawl0 = "idle", conn
             <span className="c-muted">Plus 3 objections and 2 proof points. Edit them any time in Knowledge base.</span></div>}
         </div>
       )}
+      {!demo && (reading || pages.length > 0) && (
+        <div className="s-crawl">
+          <div className="s-crawl__top"><span className="c-strong">{reading ? `Reading ${site}` : `Read ${site}`}</span><span className="c-faint c-num">{reading ? "Fetching the public pages" : `${pages.length} ${pages.length === 1 ? "page" : "pages"}`}</span></div>
+          <Receipts>{pages.map((p) => <Receipt key={p.path} meta={p.title}>Read {p.path}</Receipt>)}</Receipts>
+          {!reading && highlights.length > 0 && <div className="s-found"><span className="c-rail__label">From the site</span><div className="s-chips">{highlights.map((x) => <span key={x} className="c-chip">{x}</span>)}</div>
+            <span className="c-muted">Taken from the pages themselves. Edit them any time in Knowledge base.</span></div>}
+        </div>
+      )}
     </>,
     4: <>
       <div className="s-providers"><RadioGroup variant="cards" value={provider} onChange={setProvider} label="Mailbox provider" options={[
         { value: "google", label: "Google Workspace", lead: <GoogleG size={14} />, description: "OAuth, no password" },
         { value: "ms", label: "Microsoft 365", lead: <MicrosoftMark size={13} />, description: "OAuth, no password" },
         { value: "smtp", label: "Other", lead: <Icon name="mail" />, description: "SMTP and IMAP" }]} /></div>
-      <Button size="lg" className="s-wide" disabled={connecting} onClick={() => { setConnecting(true); setTimeout(() => { setConnecting(false); setBoxes((b) => b.includes("tomas@coldtrace.io") ? [...b, `sales${b.length}@coldtrace.io`] : [...b, "tomas@coldtrace.io"]); }, 900); }}>
+      <Button size="lg" className="s-wide" disabled={connecting} onClick={() => {
+        if (!demo) { toast({ children: "Mailbox connection isn’t available yet", meta: "Skip this step and connect it from Settings" }); return; }
+        setConnecting(true); setTimeout(() => { setConnecting(false); setBoxes((b) => b.includes("tomas@coldtrace.io") ? [...b, `sales${b.length}@coldtrace.io`] : [...b, "tomas@coldtrace.io"]); }, 900);
+      }}>
         {connecting ? <><Spinner />Waiting for {provider === "ms" ? "Microsoft" : "Google"}…</> : <>{provider === "ms" ? <MicrosoftMark size={13} /> : provider === "smtp" ? <Icon name="mail" /> : <GoogleG size={14} />}{boxes.length ? "Connect another mailbox" : `Connect ${provider === "ms" ? "Microsoft 365" : provider === "smtp" ? "an SMTP mailbox" : "Google Workspace"}`}</>}
       </Button>
       {boxes.length > 0 && <>
@@ -149,7 +233,7 @@ function Flow({ initialStep = 1, skipped: sk0 = [], crawl: crawl0 = "idle", conn
         </div>))}
         <button type="button" className="s-link s-add" onClick={() => setInvites((l) => [...l, ["", "member"]])}><Icon name="plus" size={12} />Add another</button>
       </div>
-      <Switch checked={domainJoin} onChange={setDomainJoin} label="Anyone with an @coldtrace.io email can join" description="They join as Members. You can turn this off in Settings." />
+      <Switch checked={domainJoin} onChange={setDomainJoin} label={domainLabel} description="They join as Members. You can turn this off in Settings." />
       <Receipts><Receipt meta="Admins">Can connect mailboxes and change sending limits</Receipt><Receipt meta="Members">Can work the Unibox, build segments and enroll</Receipt></Receipts>
     </>,
   };
@@ -166,7 +250,7 @@ function Flow({ initialStep = 1, skipped: sk0 = [], crawl: crawl0 = "idle", conn
         <ol className="s-steps">
           {STEPS.map((s) => {
             const st = step === s.n ? "current" : done.includes(s.n) ? "done" : skipped.includes(s.n) ? "skipped" : "todo";
-            const sub = st === "done" ? ({ 1: `corral.app/${slug}`, 2: product, 3: `${site} · 38 pages`, 4: `${boxes.length} mailbox${boxes.length === 1 ? "" : "es"}`, 5: `${invites.length} invited` } as Record<number, string>)[s.n]
+            const sub = st === "done" ? ({ 1: `corral.app/${slug}`, 2: product, 3: demo ? `${site} · 38 pages` : `${site} · ${pages.length} pages`, 4: `${boxes.length} mailbox${boxes.length === 1 ? "" : "es"}`, 5: `${invites.filter(([e]) => e).length} invited` } as Record<number, string>)[s.n]
               : st === "skipped" ? "Skipped · finish any time" : "required" in s ? "Required" : "Optional";
             return (
               <li key={s.n}><button type="button" className={cx("s-step", `is-${st}`)} disabled={st === "todo"} onClick={() => setStep(s.n)} aria-current={st === "current" ? "step" : undefined}>
@@ -200,11 +284,11 @@ function Flow({ initialStep = 1, skipped: sk0 = [], crawl: crawl0 = "idle", conn
                 {step > 1 && <Button size="lg" onClick={() => setStep(step - 1)}><Icon name="back" />Back</Button>}
                 <span style={{ flex: 1 }} />
                 {!("required" in meta) && <Button size="lg" variant="quiet" onClick={() => finish(step, "skip")}>{step === 3 ? "Skip, add sources later" : step === 4 ? "Skip, connect later" : "Skip for now"}</Button>}
-                <Button size="lg" variant="primary" onClick={next} disabled={(step === 3 && !crawlDone) || (step === 4 && boxes.length === 0) || crawling}>
+                <Button size="lg" variant="primary" onClick={() => void next()} disabled={saving || (step === 3 && !crawlDone) || (step === 4 && boxes.length === 0) || crawling || reading}>
                   {step === 5 ? `Send ${invites.filter(([e]) => e).length} invites` : "Continue"}</Button>
               </footer>
             </div>
-            <Preview name={name} slug={slug} tz={tzLabel} product={product} pitch={pitch} read={read} site={site} boxes={boxes} invites={step > 5 || done.includes(5) ? invites.length : 0} skipped={skipped} />
+            <Preview name={name} slug={slug} tz={tzLabel} product={product} pitch={pitch} read={read} site={site} boxes={boxes} invites={step > 5 || done.includes(5) ? invites.filter(([e]) => e).length : 0} skipped={skipped} logoUrl={logoUrl} pages={pages} highlights={highlights} demo={demo} />
           </div>
         ) : (
           <div className="s-onb__stage">
@@ -220,7 +304,7 @@ function Flow({ initialStep = 1, skipped: sk0 = [], crawl: crawl0 = "idle", conn
               </div>
               <footer className="s-onb__foot"><span style={{ flex: 1 }} /><Button size="lg" variant="primary" onClick={exit}>Open Corral<Icon name="arrow" /></Button></footer>
             </div>
-            <Preview name={name} slug={slug} tz={tzLabel} product={product} pitch={pitch} read={read} site={site} boxes={boxes} invites={done.includes(5) ? invites.length : 0} skipped={skipped} />
+            <Preview name={name} slug={slug} tz={tzLabel} product={product} pitch={pitch} read={read} site={site} boxes={boxes} invites={done.includes(5) ? invites.filter(([e]) => e).length : 0} skipped={skipped} logoUrl={logoUrl} pages={pages} highlights={highlights} demo={demo} />
           </div>
         )}
       </main>
@@ -228,19 +312,20 @@ function Flow({ initialStep = 1, skipped: sk0 = [], crawl: crawl0 = "idle", conn
   );
 }
 
-function Preview({ name, slug, tz, product, pitch, read, site, boxes, invites, skipped }: {
+function Preview({ name, slug, tz, product, pitch, read, site, boxes, invites, skipped, logoUrl, pages, highlights, demo }: {
   name: string; slug: string; tz?: string; product: string; pitch: string; read: number; site: string; boxes: string[]; invites: number; skipped: number[];
+  logoUrl: string | null; pages: SitePage[]; highlights: string[]; demo: boolean;
 }) {
   const row = (label: string, v: ReactNode, on: boolean, sk?: boolean) => (
     <div className={cx("s-know__row", !on && "is-empty", sk && "is-skipped")}><span className="c-rail__label">{label}</span><span>{on ? v : sk ? "Skipped" : "—"}</span></div>
   );
   return (
     <aside className="s-know c-card" aria-label="What Corral knows so far">
-      <div className="s-know__band"><Image src="/corral/or/range-wide.jpg" alt="" fill sizes="360px" loading="eager" fetchPriority="high" className="s-know__img" /><span className="s-know__tile"><WorkspaceTile letter={(name[0] || "C").toUpperCase()} size={36} /></span></div>
+      <div className="s-know__band"><Image src="/corral/or/range-wide.jpg" alt="" fill sizes="360px" loading="eager" fetchPriority="high" className="s-know__img" /><span className="s-know__tile">{logoUrl ? <img src={logoUrl} alt="" className="s-logo" width={36} height={36} /> : <WorkspaceTile letter={(name[0] || "C").toUpperCase()} size={36} />}</span></div> {/* eslint-disable-line @next/next/no-img-element -- logo host is the configured R2 domain */}
       <div className="s-know__body">
         <div><span className="c-strong" style={{ fontSize: 16 }}>{name || "Your workspace"}</span><br /><span className="c-mono">corral.app/{slug}{tz ? ` · ${tz}` : ""}</span></div>
         {row("Product", <><span className="c-strong">{product}</span>{pitch && <span className="s-know__pitch">{pitch}</span>}</>, !!product)}
-        {row("Site", <>{site} · {Math.round((read / PAGES.length) * 38)} pages, 4 pains</>, read > 0, skipped.includes(3))}
+        {row("Site", demo ? <>{site} · {Math.round((read / PAGES.length) * 38)} pages, 4 pains</> : <>{site} · {pages.length} {pages.length === 1 ? "page" : "pages"}{highlights.length ? `, ${highlights.length} headings` : ""}</>, demo ? read > 0 : pages.length > 0, skipped.includes(3))}
         {row("Mailboxes", <>{boxes.length} connected · warming</>, boxes.length > 0, skipped.includes(4))}
         {row("Team", <>You + {invites} invited</>, invites > 0, skipped.includes(5))}
         <span className="c-faint" style={{ fontSize: 12 }}>This is what the copilot uses. Nothing is sent until you enroll someone.</span>

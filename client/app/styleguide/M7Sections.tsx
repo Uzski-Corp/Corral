@@ -26,8 +26,8 @@ export function UniboxTriageDemo() {
         <div className="sg-m7-list"><FilterChips list={needs} filters={filters} onChange={setFilters} /></div>
         <Label>row tags · handled threads say so</Label>
         <div className="sg-m7-tags">{["wanjiru", "brian", "sofia", "daniel", "neema", "bounce"].map((id) => <RowTag key={id} t={th(id)} />)}</div>
-        <Label>review states · /app?view=unibox&amp;state=</Label>
-        <ul className="sg-anatomy sg-m6-cols">{UNIBOX_REVIEW_STATES.map((s) => <li key={s}><a className="c-link" href={`/app?view=unibox&state=${s}`}><code>{s}</code></a></li>)}</ul>
+        <Label>review states · /app&amp;state=</Label>
+        <ul className="sg-anatomy sg-m6-cols">{UNIBOX_REVIEW_STATES.map((s) => <li key={s}><a className="c-link" href={`/app?state=${s}`}><code>{s}</code></a></li>)}</ul>
       </div>
       <div className="sg-card sg-m7-menu"><Label>triage menu · T opens · 1–6 pick · what Corral does next</Label>
         <div className="sg-m7-menuwrap"><TriageMenu t={t} open={open} onOpenChange={setOpen} onPick={(id) => setT((x) => ({ ...x, status: ({ interested: "Interested", objection: "Objection", referral: "Referral", ooo: "OOO", unsubscribe: "Unsubscribed", bounce: "Bounced" } as const)[id], triage: id }))} /></div>

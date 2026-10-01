@@ -33,6 +33,9 @@
 .k-tile--url { background: var(--color-canvas); box-shadow: inset 0 0 0 1px var(--color-border); color: var(--color-text-tertiary); }
 .k-tile--20 { width: 20px; height: 20px; border-radius: 5px; font-size: 7px; letter-spacing: 0; }
 .k-tile--36 { width: 36px; height: 36px; border-radius: 8px; font-size: 10px; }
+.k-tile img { width: 16px; height: 16px; border-radius: 3px; object-fit: contain; }
+.k-tile--20 img { width: 12px; height: 12px; border-radius: 2px; }
+.k-tile--36 img { width: 20px; height: 20px; border-radius: 4px; }
 
 /* Progress rule: 3px, action blue; indeterminate slides. */
 .k-bar { display: block; height: 3px; border-radius: 2px; background: var(--color-border-subtle); overflow: hidden; position: relative; }

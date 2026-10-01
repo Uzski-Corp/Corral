@@ -15,29 +15,36 @@ import type { SettingsReviewState } from "@/lib/integrations/state";
 import { sectionOf, type DevSection, type McpReviewState } from "@/lib/mcp/state";
 import { Developer, McpConsent } from "../mcp";
 import { AUTOSEND_SENDER, CORRAL_FIELDS, ERP_FIELDS, ERP_URL, GRACE_VALUES, INTEGRATIONS, LOGS, MAPPING, MAPPING_BROKEN, PROBLEM, SCOPES, STAGE_MAP, integration, settingsSeed, type SettingsSeed } from "./data";
-import { Pill, Tile } from "./Handoff";
+import { BrandLockup, Pill, Tile } from "./Handoff";
+import { ProfileSettings } from "./ProfileSettings";
+import { WorkspaceSettings } from "./WorkspaceSettings";
 
 type Tab = SettingsSeed["tab"];
 type DialogKind = NonNullable<SettingsSeed["dialog"]>;
 const TILE: Record<IntegrationId, string> = { cal: "Ca", phoenix: "Px", autosend: "As" };
 
 const SECTIONS: { id: string; label: string; note?: string; href?: string; group?: "dev" }[] = [
+  { id: "profile", label: "Profile", note: "Your name and photo" },
   { id: "workspace", label: "Workspace", note: "Name, time zone, sending hours" }, { id: "team", label: "Team", note: "People and roles" },
-  { id: "mailboxes", label: "Mailboxes", href: "/app?view=sequences&state=mailboxes" }, { id: "integrations", label: "Integrations" },
+  { id: "mailboxes", label: "Mailboxes", href: "/app/sequences?state=mailboxes" }, { id: "integrations", label: "Integrations" },
   { id: "billing", label: "Billing", note: "Plan and credits" },
   /* M9 (ENG-59): Developers. */
   { id: "mcp", label: "MCP", group: "dev" }, { id: "keys", label: "API keys", group: "dev" }, { id: "docs", label: "Docs", group: "dev" },
 ];
 const isDev = (id: string): id is DevSection => id === "mcp" || id === "keys" || id === "docs";
-/** `/app?view=settings&tab=<id>` (works in production, unlike `state`): a Settings page with its own place, or undefined. */
+/** `/app/settings/<id>` (works in production, unlike `state`): a Settings page with its own place, or undefined. */
 export const settingsTabOf = (tab?: string): string | undefined => SECTIONS.find((x) => x.id === tab && !x.href)?.id;
 export const settingsTabLabel = (tab: string): string => SECTIONS.find((x) => x.id === tab)!.label;
 
 /** The settings page. Integrations (M8) and Developers (M9) are designed; the others keep their place. */
-export function SettingsView({ state, developer, tab, onSection }: { state?: SettingsReviewState; developer?: McpReviewState; tab?: string; onSection?: (label: string) => void }) {
+export function SettingsView({ state, developer, tab, onSection }: { state?: SettingsReviewState; developer?: McpReviewState; tab?: string; onSection?: (label: string, id: string) => void }) {
   const [section, setSection] = useState<string>(developer ? sectionOf(developer) : settingsTabOf(tab) ?? "integrations");
   const s = SECTIONS.find((x) => x.id === section)!;
-  const go = (id: string) => { setSection(id); onSection?.(SECTIONS.find((x) => x.id === id)!.label); };
+  const go = (id: string) => {
+    setSection(id);
+    const row = SECTIONS.find((x) => x.id === id)!;
+    onSection?.(row.label, id);
+  };
   // On a phone the nav is one scrolling row; keep the page you're on in view (Developers sits past Billing).
   const nav = useRef<HTMLElement>(null);
   useEffect(() => { nav.current?.querySelector<HTMLElement>(".is-on")?.scrollIntoView?.({ block: "nearest", inline: "nearest" }); }, [section]);
@@ -55,6 +62,8 @@ export function SettingsView({ state, developer, tab, onSection }: { state?: Set
       </nav>
       <div className="i-main">
         {section === "integrations" ? <Integrations key={state ?? "live"} state={state} />
+          : section === "profile" ? <ProfileSettings />
+          : section === "workspace" ? <WorkspaceSettings />
           : isDev(section) ? <Developer key={`${section}-${developer ?? "live"}`} section={section} state={developer && sectionOf(developer) === section ? developer : undefined} />
           : <div className="i-later"><h2>{s.label}</h2><p className="c-muted">{s.note}. Designed in a later milestone; this keeps its place in Settings.</p></div>}
       </div>
@@ -150,7 +159,7 @@ function Flow({ conn }: { conn: Record<IntegrationId, Connection> }) {
       {steps.map(([what, who, line, c], i) => {
         const tone = c === "on" ? "positive" : healthOf(c).tone;
         return <li key={what} className={cx("i-flow__step", `is-${tone}`)}><span className="i-flow__n">{i + 1}</span>
-          <span className="i-flow__txt"><span className="c-strong">{what}</span><span className="i-flow__who"><span className={cx("i-dot", `is-${tone}`)} aria-hidden="true" />{who}{c !== "on" && c !== "connected" && <span className="u-sr"> ({healthOf(c).word})</span>}</span><span className="c-faint">{line}</span></span></li>;
+          <span className="i-flow__txt"><span className="c-strong">{what}</span><span className="i-flow__who"><span className={cx("i-dot", `is-${tone}`)} aria-hidden="true" />{who === "Cal.com" && <img className="h-logo h-logo--cal is-sm" src="/assets/cal-logo.svg" alt="" />}{who === "AutoSend" && <img className="h-logo h-logo--as" src="/assets/AutosendLogoSquareIndigo.svg" alt="" />}{who}{c !== "on" && c !== "connected" && <span className="u-sr"> ({healthOf(c).word})</span>}</span><span className="c-faint">{line}</span></span></li>;
       })}
     </ol>
   );
@@ -212,7 +221,7 @@ function TwoEngines() {
         <div className="i-engine"><span className="c-strong">Your mailbox pool</span><span className="c-faint">Cold email and every reply</span>
           <ul><li>One person to one person, plain text</li><li>No unsubscribe header, no tracking images</li><li>30–35 a day per mailbox</li></ul></div>
         <Icon name="arrow" size={14} />
-        <div className="i-engine is-as"><span className="c-strong">AutoSend · mail.coldtrace.io</span><span className="c-faint">After they reply or book</span>
+        <div className="i-engine is-as"><span className="c-strong i-engine__name"><img className="h-logo h-logo--as" src="/assets/AutosendLogoSquareIndigo.svg" alt="" />AutoSend · mail.coldtrace.io</span><span className="c-faint">After they reply or book</span>
           <ul><li>Before your call · one email, 24 h before</li><li>After your call · three emails over ten days</li><li>Unsubscribe link, and it stops Corral too</li></ul></div>
       </div>
       <p className="c-faint i-engines__why">Why: mail that looks like marketing, sent from a cold mailbox, teaches Gmail and Outlook to file that mailbox as promotions. Keeping them apart protects both.</p>
@@ -317,7 +326,7 @@ function Scopes({ id, compact }: { id: IntegrationId; compact?: boolean }) {
 /* ------------------------------------------------------------ dialogs */
 function ConnectCal({ open, onClose, onContinue }: { open: boolean; onClose: () => void; onContinue: () => void }) {
   return (
-    <Dialog open={open} onClose={onClose} width={520} title="Connect Cal.com" description="You’ll sign in on cal.com and come back here. Corral asks for the least it needs."
+    <Dialog open={open} onClose={onClose} width={520} title={<BrandLockup brand="cal">Connect Cal.com</BrandLockup>} description="You’ll sign in on cal.com and come back here. Corral asks for the least it needs."
       footer={<><Button variant="quiet" onClick={onClose}>Cancel</Button><Button variant="primary" onClick={onContinue}>Continue to Cal.com<Icon name="arrow" size={12} /></Button></>}>
       <Scopes id="cal" compact />
       <p className="i-dnote"><Icon name="check" size={12} />Corral adds one webhook to your Cal.com account, signed with a secret only the two of you know. Bookings on other event types aren’t sent.</p>
@@ -326,7 +335,7 @@ function ConnectCal({ open, onClose, onContinue }: { open: boolean; onClose: () 
 }
 function Connecting({ open, onClose, onBack }: { open: boolean; onClose: () => void; onBack: () => void }) {
   return (
-    <Dialog open={open} onClose={onClose} width={440} title="Waiting for Cal.com"
+    <Dialog open={open} onClose={onClose} width={440} title={<BrandLockup brand="cal">Waiting for Cal.com</BrandLockup>}
       footer={<><Button variant="quiet" onClick={onClose}>Cancel</Button><Button onClick={onBack}>I’m back</Button></>}>
       <p className="i-wait" role="status"><Spinner size={16} />Finish signing in on the cal.com tab. This closes on its own when you’re back.</p>
       <p className="c-faint i-dnote">Didn’t open? <a className="c-link" href="https://cal.com" target="_blank" rel="noreferrer">Open cal.com again</a></p>
@@ -360,7 +369,7 @@ function ConnectAutoSend({ open, onClose, onConnect }: { open: boolean; onClose:
   const [before, setBefore] = useState(true);
   const [after, setAfter] = useState(true);
   return (
-    <Dialog open={open} onClose={onClose} width={520} title="Connect AutoSend" description="Signed in to AutoSend as tomas@coldtrace.io. Pick where Corral hands people over."
+    <Dialog open={open} onClose={onClose} width={520} title={<BrandLockup brand="autosend">Connect AutoSend</BrandLockup>} description="Signed in to AutoSend as tomas@coldtrace.io. Pick where Corral hands people over."
       footer={<><Button variant="quiet" onClick={onClose}>Cancel</Button><Button variant="primary" onClick={onConnect}>Connect AutoSend</Button></>}>
       <FormField label="Project"><Select label="Project" value={project} onChange={setProject} options={[{ value: "coldtrace", label: "ColdTrace", meta: "2 senders" }, { value: "gateway", label: "ColdTrace Gateway", meta: "1 sender" }]} /></FormField>
       <FormField label="Send as" help="A verified sender on AutoSend’s domain, never one of your cold mailboxes."><Select label="Send as" value={sender} onChange={setSender} options={[{ value: AUTOSEND_SENDER, label: AUTOSEND_SENDER, meta: "verified" }, { value: "hello@mail.coldtrace.io", label: "hello@mail.coldtrace.io", meta: "verified" }]} /></FormField>
@@ -380,7 +389,7 @@ const LOSE: Record<IntegrationId, string[]> = {
 function Disconnect({ open, id, onClose, onConfirm }: { open: boolean; id: IntegrationId; onClose: () => void; onConfirm: () => void }) {
   const n = integration(id).name;
   return (
-    <Dialog open={open} onClose={onClose} tone="danger" width={480} title={`Disconnect ${n}?`} description="You can connect it again at any time. Nothing in it is deleted."
+    <Dialog open={open} onClose={onClose} tone="danger" width={480} title={id === "phoenix" ? `Disconnect ${n}?` : <BrandLockup brand={id}>{`Disconnect ${n}?`}</BrandLockup>} description="You can connect it again at any time. Nothing in it is deleted."
       footer={<><Button variant="quiet" onClick={onClose}>Cancel</Button><Button variant="primary" className="i-btn-danger" onClick={onConfirm}>Disconnect {n}</Button></>}>
       <ul className="i-lose">{LOSE[id].map((l) => <li key={l}>{l}</li>)}</ul>
     </Dialog>

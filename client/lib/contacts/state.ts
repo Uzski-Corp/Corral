@@ -2,7 +2,7 @@
  * Design-review states for Contacts (M10 states audit, ENG-60). Honoured where review states are
  * (outside production and in the review build). Plain module so the server page can read it.
  *
- * /app?view=contacts&state=
+ * /app/contacts?state=
  *   loading   the table skeleton at 40px rows
  *   empty     no contacts yet: they arrive as Corral reads companies, Find companies
  *   error     contacts couldn’t load; nothing lost, Try again

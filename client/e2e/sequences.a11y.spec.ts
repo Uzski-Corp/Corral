@@ -3,7 +3,7 @@ import { SEQUENCE_REVIEW_STATES } from "../lib/sequences/state";
 import { audit, WIDTHS } from "./axe";
 
 /**
- * axe on the M6 sequence builder, step editor, copilot and mailbox pool: /app?view=sequences live and in its
+ * axe on the M6 sequence builder, step editor, copilot and mailbox pool: /app/sequences live and in its
  * 13 review states (HANDOFF-ENG.md §14), at 1440 and 390. Review project: `?state=` is off in production
  * builds and there is no sequences API yet (ENG-84).
  */
@@ -14,7 +14,7 @@ for (const { name, viewport } of WIDTHS) {
     test.use({ viewport, reducedMotion: "reduce" });
     for (const state of STATES) {
       test(`sequences ${state ?? "(live)"} has no axe violations`, async ({ page }) => {
-        await page.goto(`/app?view=sequences${state ? `&state=${state}` : ""}`);
+        await page.goto(`/app/sequences${state ? `?state=${state}` : ""}`);
         await expect(page.locator(".c-app").first()).toBeVisible();
         expect(await audit(page)).toEqual([]);
       });

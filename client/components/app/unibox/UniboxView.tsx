@@ -39,7 +39,7 @@ export function neighbour(list: { id: string }[], id: string): string | undefine
 export type UniboxViewProps = {
   threads: Thread[]; setThreads: Dispatch<SetStateAction<Thread[]>>; active: string; setActive: (id: string) => void;
   tab: UniboxTab; setTab: (t: UniboxTab) => void; pane: "list" | "read"; setPane: (p: "list" | "read") => void;
-  /** Review state (outside production): /app?view=unibox&state=… */
+  /** Review state (outside production): /app?state=… */
   state?: UniboxReviewState;
   onArchive: (id: string) => void;
   /** Unibox keys (J K ↵ Esc E H 1–6 T R ⌘↵ ⌘Z ?). Off while another dialog or the palette is open. */

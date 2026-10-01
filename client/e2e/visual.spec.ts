@@ -41,7 +41,7 @@ test("onboarding and app shell", async ({ page, mockApi }) => {
 test("companies table", async ({ page, mockApi, onboarded }) => {
   void mockApi;
   await onboarded();
-  await page.goto("/sign-in?next=%2Fapp%3Fview%3Dcompanies");
+  await page.goto("/sign-in?next=%2Fapp%2Fcompanies");
   await signInWithGoogle(page);
   await expect(page.getByRole("table", { name: /^(Segment|Companies):/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Account" })).toContainText("Wanjiru Mwangi");

@@ -46,8 +46,8 @@ export function SequenceDemo() {
         <div className="sg-card c-app"><Label>launching</Label><Launching seq={{ ...seq, status: "launching", launch: { stage: 1 } }} /></div>
       </div>
       <div className="sg-card c-app sg-m6-wide"><Label>running · per sequence</Label><RunNumbers seq={pilot} /></div>
-      <div className="sg-card c-app sg-m6-wide"><Label>every state · /app?view=sequences&amp;state=</Label>
-        <ul className="sg-anatomy sg-m6-cols">{STATES.map(([s, d]) => <li key={s}><a className="c-link" href={`/app?view=sequences&state=${s}`}><code>{s}</code></a> · {d}</li>)}</ul></div>
+      <div className="sg-card c-app sg-m6-wide"><Label>every state · /app/sequences&amp;state=</Label>
+        <ul className="sg-anatomy sg-m6-cols">{STATES.map(([s, d]) => <li key={s}><a className="c-link" href={`/app/sequences?state=${s}`}><code>{s}</code></a> · {d}</li>)}</ul></div>
     </div>
   );
 }

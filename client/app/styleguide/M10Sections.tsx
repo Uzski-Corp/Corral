@@ -11,7 +11,7 @@ export function EveryStateDemo() {
   return (
     <div className="sg-m10">
       <div className="sg-card sg-m10-index">
-        <Label>every review state, by surface · /app?view=…&amp;state=…</Label>
+        <Label>every review state, by surface · /app/…?state=…</Label>
         <table className="sg-m10-table" aria-label="Review states by surface and kind">
           <thead><tr><th scope="col">Surface</th>{KINDS.map((k) => <th key={k} scope="col" className="c-num">{k}</th>)}<th scope="col">States</th></tr></thead>
           <tbody>

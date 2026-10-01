@@ -53,7 +53,7 @@ export function SourceDetail({ src, knowledge, onBack, onAction, onJump, passage
     <aside className="k-detail" aria-label={`${src.name} details`}>
       {onBack && <button type="button" className="c-ux__back" onClick={onBack}><Icon name="back" />All sources</button>}
       <header className="k-detail__head">
-        <FileTile kind={src.kind} size={36} />
+        <FileTile kind={src.kind} size={36} host={src.host} />
         <div className="k-detail__titles">
           <h2>{src.name}</h2>
           <p>{kindMeta(src)}</p>

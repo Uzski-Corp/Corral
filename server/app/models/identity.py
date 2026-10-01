@@ -6,7 +6,7 @@ a WorkOS organization get a personal workspace owned by them.
 
 import uuid
 from datetime import datetime
-from typing import Final
+from typing import Any, Final
 
 from sqlalchemy import (
     Boolean,
@@ -18,6 +18,7 @@ from sqlalchemy import (
     Uuid,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin
@@ -56,6 +57,10 @@ class Organization(TimestampMixin, Base):
             "(workos_organization_id IS NULL) <> (personal_owner_user_id IS NULL)",
             name="exactly_one_identity_source",
         ),
+        CheckConstraint(
+            "team_size IS NULL OR team_size IN ('solo', 'small', 'sales')",
+            name="team_size",
+        ),
     )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
@@ -65,6 +70,19 @@ class Organization(TimestampMixin, Base):
     personal_owner_user_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), unique=True
     )
+    timezone: Mapped[str | None] = mapped_column(String(64))
+    team_size: Mapped[str | None] = mapped_column(String(16))
+    logo_url: Mapped[str | None] = mapped_column(String(2048))
+    website: Mapped[str | None] = mapped_column(String(2048))
+    onboarded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    skipped_steps: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
+    site_pages: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
+    site_highlights: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
+    pending_invites: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
+
+    @property
+    def onboarded(self) -> bool:
+        return self.onboarded_at is not None
 
 
 class Membership(TimestampMixin, Base):

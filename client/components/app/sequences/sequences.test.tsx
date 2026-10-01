@@ -116,7 +116,7 @@ describe("SequencesView · step editor", () => {
     const cop = screen.getByRole("region", { name: "Corral's draft" });
     expect(within(cop).getAllByRole("link", { name: /Knowledge line/ })).toHaveLength(4);
     expect(within(cop).getByText(/Checked against Never say/)).toBeInTheDocument();
-    expect(within(cop).getByRole("link", { name: "Resolve it in Pricing and terms" })).toHaveAttribute("href", "/app?view=knowledge&state=conflict");
+    expect(within(cop).getByRole("link", { name: "Resolve it in Pricing and terms" })).toHaveAttribute("href", "/app/knowledge?state=conflict");
     await userEvent.click(within(cop).getByRole("button", { name: "Use this draft" }));
     expect(body().value).toContain("Most spoilage is found in the morning");
     expect(body().value).not.toContain("[1]");

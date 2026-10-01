@@ -6,8 +6,8 @@ const sink = () => { const writes: string[] = []; return { writes, doc: { set co
 describe("cookies", () => {
   it("writes a ten-minute, lax, encoded return path", () => {
     const s = sink();
-    rememberReturnTo("/app?view=companies", s.doc, { protocol: "http:" });
-    expect(s.writes).toEqual([`${RETURN_TO_COOKIE}=%2Fapp%3Fview%3Dcompanies; Path=/; Max-Age=600; SameSite=Lax`]);
+    rememberReturnTo("/app/companies", s.doc, { protocol: "http:" });
+    expect(s.writes).toEqual([`${RETURN_TO_COOKIE}=%2Fapp%2Fcompanies; Path=/; Max-Age=600; SameSite=Lax`]);
   });
 
   it("marks onboarding for a year and adds Secure on https", () => {

@@ -163,7 +163,7 @@ export function DraftArea(p: DraftProps) {
 
   if (kind === "refused") return (
     <ReplyCard tone="caution" title="Corral won’t draft this one" from={from} label="No draft: Never-say rules"
-      foot={<div className="c-reply__foot"><Button variant="primary" onClick={a.onDraftSafe}><Icon name="bolt" />Draft without those claims</Button><Button kbd="R" onClick={a.onWriteOwn}>Write it myself</Button><span style={{ flex: 1 }} /><a className="c-link u-foot__link" href="/app?view=knowledge">Never say</a></div>}>
+      foot={<div className="c-reply__foot"><Button variant="primary" onClick={a.onDraftSafe}><Icon name="bolt" />Draft without those claims</Button><Button kbd="R" onClick={a.onWriteOwn}>Write it myself</Button><span style={{ flex: 1 }} /><a className="c-link u-foot__link" href="/app/knowledge">Never say</a></div>}>
       <div className="c-reply__body">
         <p>{first}’s email asks for {copilot?.refused?.asks.length === 1 ? "something" : "two things"} on your Never-say list. Corral won’t write {copilot?.refused?.asks.length === 1 ? "it" : "them"}, even in a draft:</p>
         <ul className="u-refused">{copilot?.refused?.asks.map((x) => <li key={x.quote}><q>{x.quote}</q><span><Icon name="x" size={11} />{x.rule}</span></li>)}</ul>
@@ -193,7 +193,7 @@ export function DraftArea(p: DraftProps) {
         meta={low ? <span className="u-badge is-warn">Low confidence</span> : <span className="u-badge">Corral</span>} foot={<ReadyFoot a={a} sendLabel={model.to ? "Send intro" : "Send reply"} />}>
         <Body m={model} pre={pre} gap={low ? model.gap?.sentence : undefined} />
         {low && model.gap && <div className="u-sendnote is-warn"><Icon name="alert" size={13} /><div><b>The knowledge base doesn’t answer one question, so the draft says you’ll find out.</b> {model.gap.why}
-          <span className="u-sendnote__act"><a className="c-link" href="/app?view=knowledge">Add it to the knowledge base</a></span></div></div>}
+          <span className="u-sendnote__act"><a className="c-link" href="/app/knowledge">Add it to the knowledge base</a></span></div></div>}
         <Sources m={model} pre={pre} />
       </ReplyCard>
     );

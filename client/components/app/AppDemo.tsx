@@ -31,7 +31,10 @@ import type { SequenceReviewState } from "@/lib/sequences/state";
 import { poolSummary } from "@/lib/sequences/sequence";
 import { UniboxView, UNIBOX_TABS, needsYou, UNIBOX_THREADS, uniboxSeedFor, type UniboxTab } from "./unibox";
 import type { UniboxReviewState } from "@/lib/unibox/state";
+import { appPath, locationFromPath } from "@/lib/appPath";
+import { isAppPath } from "@/lib/auth/paths";
 import { SettingsView, settingsTabLabel, settingsTabOf } from "./handoff";
+import { ProductsView } from "./products/Products";
 import type { SettingsReviewState } from "@/lib/integrations/state";
 import { SECTION_TITLE, sectionOf, type McpReviewState } from "@/lib/mcp/state";
 
@@ -136,28 +139,30 @@ export type AppDemoProps = {
   onSignOut?: () => Promise<{ ok: boolean }>;
   /** The session check failed (API down): the shell stays up and the body becomes <SessionUnavailable>. */
   sessionError?: SessionUnavailableProps;
-  /** Knowledge-base review state (M2): /app?view=knowledge&state=… */
+  /** Knowledge-base review state (M2): /app/knowledge?state=… */
   kb?: KbReviewState;
-  /** Lead table / segment review state (M3): /app?view=companies&state=… or view=segments&state=… */
+  /** Lead table / segment review state (M3): /app/companies?state=… or /app/segments?state=… */
   leads?: LeadsReviewState;
-  /** Discovery review state (M4): /app?view=discovery&state=… */
+  /** Discovery review state (M4): /app/discovery?state=… */
   discovery?: DiscoveryReviewState;
-  /** Sequences / mailbox pool review state (M6): /app?view=sequences&state=… */
+  /** Sequences / mailbox pool review state (M6): /app/sequences?state=… */
   sequences?: SequenceReviewState;
-  /** Unibox review state (M7): /app?view=unibox&state=… */
+  /** Unibox review state (M7): /app?state=… */
   unibox?: UniboxReviewState;
-  /** Settings → Integrations review state (M8): /app?view=settings&state=… */
+  /** Settings → Integrations review state (M8): /app/settings?state=… */
   settings?: SettingsReviewState;
-  /** Settings → Developers review state (M9): MCP, API keys, Docs. /app?view=settings&state=… */
+  /** Settings → Developers review state (M9): MCP, API keys, Docs. /app/settings?state=… */
   developer?: McpReviewState;
-  /** Contacts review state (M10): /app?view=contacts&state=loading | empty | error */
+  /** Contacts review state (M10): /app/contacts?state=loading | empty | error */
   contacts?: ContactsReviewState;
-  /** Which Settings page opens: /app?view=settings&tab=mcp | keys | docs | integrations | … (not a review state; works live). */
+  /** Which Settings page opens: /app/settings/mcp | keys | docs | workspace | profile | … */
   settingsTab?: string;
+  /** /app/segments/<name> — the saved segment to open. */
+  initialSegment?: string;
 };
 export function AppDemo(p: AppDemoProps) { return <ToastProvider><Demo {...p} /></ToastProvider>; }
 
-function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, drawer = false, dialog = false, frame = "viewport", hotkeys = true, className, account, onSignOut, sessionError, kb, leads, discovery, sequences, unibox, settings, developer, contacts, settingsTab }: AppDemoProps) {
+function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, drawer = false, dialog = false, frame = "viewport", hotkeys = true, className, account, onSignOut, sessionError, kb, leads, discovery, sequences, unibox, settings, developer, contacts, settingsTab, initialSegment }: AppDemoProps) {
   const router = useRouter();
   const settingsPage = settingsTabOf(settingsTab);
   const [setSection, setSetSection] = useState(developer ? SECTION_TITLE[sectionOf(developer)] : settingsPage ? settingsTabLabel(settingsPage) : "Integrations");
@@ -169,7 +174,8 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
     attempt();
   }, [onSignOut, router, toast]);
   const [view, setView] = useState<ViewId>(initialView);
-  const [segment, setSegment] = useState<string | undefined>(initialView === "segments" ? SAVED_SEGMENTS[0][0] : undefined);
+  const [segment, setSegment] = useState<string | undefined>(initialView === "segments" ? (initialSegment || SAVED_SEGMENTS[0][0]) : undefined);
+  const [tabNow, setTabNow] = useState<string | undefined>(settingsTabOf(settingsTab));
   const [collapsed, setCollapsed] = useState(c0);
   const [palette, setPalette] = useState(cmdk);
   const [ub] = useState(() => uniboxSeedFor(unibox));
@@ -187,6 +193,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
   const [seqTab, setSeqTab] = useState<SeqTab>(() => seedFor(sequences).tab);
   const [pool, setPool] = useState(() => seedFor(sequences).pool);
   const [newSeq, setNewSeq] = useState(0);
+  const [adding, setAdding] = useState(false);
   const poolNow = poolSummary(pool);
   // Signed in against the API (and not showing a review state): the knowledge base uses real data.
   const data = useAppData();
@@ -203,7 +210,42 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
   if (liveSegments?.phase === "ready" && view === "segments" && segment !== firstSegment && !liveSegments.byName(segment)) setSegment(firstSegment);
   const productName = kbLive ? kbProducts?.selected?.name ?? data?.me.organization.name ?? PRODUCT.name : PRODUCT.name;
 
-  const go = useCallback((v: ViewId) => { setView(v); setSegment(v === "segments" ? firstSegment : undefined); setBuilderOpen(false); }, [firstSegment]);
+  // The shell at /app writes the screen into the path. Styleguide and marketing embeds keep their own state.
+  const liveRoute = frame === "viewport" && typeof window !== "undefined" && isAppPath(window.location.pathname);
+  const place = useCallback((v: ViewId, opts?: { segment?: string; tab?: string }) => {
+    const seg = v === "segments" ? (opts?.segment ?? firstSegment) : undefined;
+    setView(v);
+    setSegment(seg);
+    setBuilderOpen(false);
+    if (v === "settings") setTabNow(settingsTabOf(opts?.tab));
+    if (!liveRoute) return;
+    const href = appPath(v, { segment: seg, tab: v === "settings" ? opts?.tab : undefined });
+    if (`${window.location.pathname}${window.location.search}` === href) return;
+    router.push(href, { scroll: false });
+  }, [firstSegment, liveRoute, router]);
+  const go = useCallback((v: ViewId) => place(v), [place]);
+
+  useEffect(() => {
+    if (!liveRoute) return;
+    const apply = () => {
+      const loc = locationFromPath(window.location.pathname);
+      setView(loc.view);
+      if (loc.view === "segments") setSegment(loc.segment ?? firstSegment);
+      if (loc.view === "settings") {
+        const tab = settingsTabOf(loc.tab);
+        setTabNow(tab);
+        if (tab) setSetSection(settingsTabLabel(tab));
+      }
+    };
+    window.addEventListener("popstate", apply);
+    return () => window.removeEventListener("popstate", apply);
+  }, [liveRoute, firstSegment]);
+
+  useEffect(() => {
+    if (!liveRoute) return;
+    const name = APP_NAV.find((n) => n.id === view)!.label;
+    document.title = `${name} · Corral`;
+  }, [liveRoute, view]);
 
   const archive = useCallback((id: string) => {
     const i = threads.findIndex((t) => t.id === id); if (i < 0) return;
@@ -214,20 +256,20 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
 
   const cmds = useMemo(() => buildCommands({
     go,
-    openThread: (id) => { setView("unibox"); setTab("needs"); setActive(id); setPane("read"); },
+    openThread: (id) => { place("unibox"); setTab("needs"); setActive(id); setPane("read"); },
     openCompany: (id) => { const t = THREADS.find((x) => x.company === LEADS.find((l) => l.id === id)?.company);
-      if (t) { setView("unibox"); setTab("needs"); setActive(t.id); setPane("read"); } else setView("companies"); },
+      if (t) { place("unibox"); setTab("needs"); setActive(t.id); setPane("read"); } else place("companies"); },
     act: (id, label) => {
       if (id === "sidebar") setCollapsed((c) => !c);
       else if (id === "signout") signOut();
       else if (id === "invite") router.push("/onboarding?step=5");
       else if (id === "mailbox") router.push("/onboarding?step=4");
-      else if (id === "product") router.push("/onboarding?step=2");
-      else if (id === "segment") { setView("companies"); toast({ icon: "layers", children: "Filters ready. Press S to save them as a segment." }); }
-      else if (id === "find") { setView("discovery"); setSegment(undefined); setSetupOpen(true); }
+      else if (id === "product") { if (data) { place("products"); setAdding(true); } else router.push("/onboarding?step=2"); }
+      else if (id === "segment") { place("companies"); toast({ icon: "layers", children: "Filters ready. Press S to save them as a segment." }); }
+      else if (id === "find") { place("discovery"); setSetupOpen(true); }
       else toast({ icon: "mail", children: label, meta: "sample action" });
     },
-  }), [go, router, toast, signOut]);
+  }), [data, go, place, router, toast, signOut]);
 
   // Global keys: ⌘K and G-sequences. The Unibox handles its own keys (J K E 1–6 T R ⌘↵ …) in <UniboxView>.
   const gAt = useRef(0);
@@ -278,12 +320,13 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
       ? <Button onClick={() => router.push("/onboarding?step=4")}><Icon name="plus" />Connect a mailbox</Button>
       : sequences !== "empty" && sequences !== "loading" && sequences !== "error" ? <Button variant="primary" onClick={() => setNewSeq((x) => x + 1)}><Icon name="plus" />New sequence</Button> : null)
     : view === "segments" ? <><Button onClick={() => toast({ icon: "upload", children: `Exporting ${segment}`, meta: "CSV lands in your downloads" })}>Export</Button><Button variant="primary" onClick={() => setEnrollAll((x) => x + 1)}><Icon name="seq" />Enroll segment</Button></>
+    : view === "products" && data ? <Button variant="primary" onClick={() => setAdding(true)}><Icon name="plus" />Add a product</Button>
     : null;
 
   return (
     <>
       <AppShell frame={frame} className={className} active={view} onNavigate={go} crumbs={sessionError ? [ws, "Not connected"] : crumbs} actions={sessionError ? null : actions} collapsed={collapsed} onCollapsedChange={setCollapsed}
-        onSearch={() => setPalette(true)} segment={segment} onSegment={(s) => { setView("segments"); setSegment(s); setBuilderOpen(false); }} defaultDrawer={drawer} hotkeys={hotkeys} account={account} onSignOut={signOut}
+        onSearch={() => setPalette(true)} segment={segment} onSegment={(s) => place("segments", { segment: s })} defaultDrawer={drawer} hotkeys={hotkeys} account={account} onSignOut={signOut}
         pool={{ sent: poolNow.sent, cap: poolNow.cap, mailboxes: poolNow.total, attention: poolNow.attention }} onPool={() => { go("sequences"); setSeqTab("pool"); }}
         counts={{ unibox: String(needsYou(threads)) }} segments={sidebarSegments}>
         {sessionError ? <SessionUnavailable {...sessionError} /> : <>
@@ -293,10 +336,11 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
           builderOpen={builderOpen} onBuilderOpenChange={setBuilderOpen} enrollAllSignal={enrollAll} onFind={findCompanies} onEnroll={(n, replied) => { setEnrollFor({ n, replied }); setEnroll(true); }} live={leadsLive} />}
         {view === "discovery" && <DiscoveryView key={discovery ?? "live"} state={discovery} setupOpen={setupOpen} onSetupOpenChange={setSetupOpen} onOpenCompanies={() => go("companies")} />}
         {view === "sequences" && <SequencesView key={sequences ?? "live"} state={sequences} tab={seqTab} onTabChange={setSeqTab} pool={pool} onPoolChange={setPool} newSignal={newSeq} />}
-        {view === "contacts" && <ContactsView state={contacts} onFind={() => setView("discovery")} />}
-        {view === "settings" && <SettingsView key={settings ?? developer ?? "live"} state={settings} developer={developer} tab={settingsPage} onSection={setSetSection} />}
+        {view === "contacts" && <ContactsView state={contacts} onFind={() => place("discovery")} />}
+        {view === "settings" && <SettingsView key={`${settings ?? developer ?? "live"}-${tabNow ?? "integrations"}`} state={settings} developer={developer} tab={tabNow} onSection={(label, id) => { setSetSection(label); place("settings", { tab: id }); }} />}
         {view === "knowledge" && <KnowledgeBase key={kbLive ? "live" : "sample"} state={kb} addOpen={kbAdd} onAddOpenChange={setKbAdd} contained={frame === "contained"} live={kbLive} />}
-        {!table && view !== "unibox" && view !== "contacts" && view !== "knowledge" && view !== "discovery" && view !== "sequences" && view !== "settings" && <PendingView id={view} onSearch={() => setPalette(true)} />}
+        {view === "products" && data && <ProductsView adding={adding} onAddingChange={setAdding} onChanged={() => kbProducts?.retry()} onOpen={(id) => { kbProducts?.select(id); place("knowledge"); }} />}
+        {!table && view !== "unibox" && view !== "contacts" && view !== "knowledge" && view !== "discovery" && view !== "sequences" && view !== "settings" && !(view === "products" && data) && <PendingView id={view} onSearch={() => setPalette(true)} />}
         </>}
       </AppShell>
       {palette && <CommandPalette open onClose={() => setPalette(false)} {...cmds} />}
