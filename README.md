@@ -138,6 +138,8 @@ That builds and starts Postgres 16 (pgvector), Redis, the API, the background wo
 
 - App: http://localhost:3000
 - API docs: http://localhost:8000/docs
+- Liveness: http://localhost:8000/healthz
+- Readiness (Compose waits on this): http://localhost:8000/readyz
 
 Database defaults match `server/.env.example` (`corral` / `corral`, database `corral`). On your machine that Postgres is `localhost:5433`, so it does not fight a database already using port 5432. Copy `server/.env.example` to `server/.env` and add WorkOS keys when you want real sign-in; Compose loads it if it is present. Until those keys are set, auth answers 503.
 

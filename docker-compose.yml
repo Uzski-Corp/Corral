@@ -22,6 +22,7 @@ x-api-env: &api-env
   FRONTEND_URL: http://localhost:3000
   CORS_ORIGINS: '["http://localhost:3000"]'
   WORKOS_REDIRECT_URI: http://localhost:8000/api/v1/auth/callback
+  CORRAL_IN_COMPOSE: "1"
 
 services:
   postgres:
@@ -67,12 +68,13 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    # Liveness is GET /healthz. This check is readiness: DB + Redis, GET /readyz.
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz')"]
       interval: 5s
       timeout: 5s
       retries: 20
-      start_period: 40s
+      start_period: 60s
 
   worker:
     build:
