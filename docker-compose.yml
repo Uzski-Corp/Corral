@@ -1,0 +1,101 @@
+# Local Corral stack. From the repo root:
+#   docker compose up --build
+#
+# App  http://localhost:3000
+# API  http://localhost:8000/docs
+#
+# Postgres and Redis match server/.env.example (user/password/db: corral).
+# If server/.env exists, Compose loads it (WorkOS keys). The URLs below still
+# win, so the containers talk to each other on the Compose network while the
+# browser keeps using localhost.
+
+name: corral
+
+x-api-env: &api-env
+  APP_ENV: local
+  DATABASE_URL: postgresql+asyncpg://corral:corral@postgres:5432/corral
+  REDIS_URL: redis://redis:6379/0
+  FRONTEND_URL: http://localhost:3000
+  CORS_ORIGINS: '["http://localhost:3000"]'
+  WORKOS_REDIRECT_URI: http://localhost:8000/api/v1/auth/callback
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: corral
+      POSTGRES_USER: corral
+      POSTGRES_PASSWORD: corral
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U corral -d corral"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ./server
+    image: corral-api:local
+    env_file:
+      - path: ./server/.env
+        required: false
+    environment:
+      <<: *api-env
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+
+  worker:
+    build:
+      context: ./server
+    image: corral-api:local
+    command: ["arq", "app.worker.main.WorkerSettings"]
+    env_file:
+      - path: ./server/.env
+        required: false
+    environment:
+      <<: *api-env
+    depends_on:
+      api:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./client
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  pgdata:
