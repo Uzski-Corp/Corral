@@ -19,6 +19,7 @@ import { SessionUnavailable, type SessionUnavailableProps } from "./SessionUnava
 import { KnowledgeBase, PRODUCT } from "./kb";
 import { productRows } from "@/lib/kb/products";
 import { useKbProducts } from "./kb/live";
+import { useLeadProduct, useLiveSegments } from "./leads/live";
 import { useAppData } from "@/components/session/AppData";
 import type { KbReviewState } from "@/lib/kb/state";
 import { LeadsView } from "./leads";
@@ -30,7 +31,7 @@ import type { SequenceReviewState } from "@/lib/sequences/state";
 import { poolSummary } from "@/lib/sequences/sequence";
 import { UniboxView, UNIBOX_TABS, needsYou, UNIBOX_THREADS, uniboxSeedFor, type UniboxTab } from "./unibox";
 import type { UniboxReviewState } from "@/lib/unibox/state";
-import { SettingsView } from "./handoff";
+import { SettingsView, settingsTabLabel, settingsTabOf } from "./handoff";
 import type { SettingsReviewState } from "@/lib/integrations/state";
 import { SECTION_TITLE, sectionOf, type McpReviewState } from "@/lib/mcp/state";
 
@@ -151,12 +152,15 @@ export type AppDemoProps = {
   developer?: McpReviewState;
   /** Contacts review state (M10): /app?view=contacts&state=loading | empty | error */
   contacts?: ContactsReviewState;
+  /** Which Settings page opens: /app?view=settings&tab=mcp | keys | docs | integrations | … (not a review state; works live). */
+  settingsTab?: string;
 };
 export function AppDemo(p: AppDemoProps) { return <ToastProvider><Demo {...p} /></ToastProvider>; }
 
-function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, drawer = false, dialog = false, frame = "viewport", hotkeys = true, className, account, onSignOut, sessionError, kb, leads, discovery, sequences, unibox, settings, developer, contacts }: AppDemoProps) {
+function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, drawer = false, dialog = false, frame = "viewport", hotkeys = true, className, account, onSignOut, sessionError, kb, leads, discovery, sequences, unibox, settings, developer, contacts, settingsTab }: AppDemoProps) {
   const router = useRouter();
-  const [setSection, setSetSection] = useState(developer ? SECTION_TITLE[sectionOf(developer)] : "Integrations");
+  const settingsPage = settingsTabOf(settingsTab);
+  const [setSection, setSetSection] = useState(developer ? SECTION_TITLE[sectionOf(developer)] : settingsPage ? settingsTabLabel(settingsPage) : "Integrations");
   const toast = useToast();
   const signOut = useCallback(() => {
     if (!onSignOut) { router.push("/sign-in"); return; }
@@ -188,9 +192,18 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
   const data = useAppData();
   const kbProducts = useKbProducts(data && !kb ? data.kb : null, { active: view === "knowledge", workspace: data?.me.organization.name ?? "" });
   const kbLive = data && kbProducts ? { data, products: kbProducts } : undefined;
+  // Companies and segments on the API (ENG-81), unless a leads review state is showing.
+  const leadsOn = !!data && !leads;
+  const leadProduct = useLeadProduct(leadsOn ? data!.kb : null);
+  const liveSegments = useLiveSegments(leadsOn ? data!.leads : null);
+  const leadsLive = leadsOn && liveSegments ? { api: data!.leads, product: leadProduct, segments: liveSegments } : undefined;
+  const sidebarSegments = useMemo<[string, number][] | undefined>(() => (liveSegments ? liveSegments.list.map((s) => [s.name, s.count]) : undefined), [liveSegments]);
+  const firstSegment = liveSegments ? liveSegments.list[0]?.name : SAVED_SEGMENTS[0][0];
+  // A segment name from the sample (or one that was deleted) isn't in the workspace: open the first real one.
+  if (liveSegments?.phase === "ready" && view === "segments" && segment !== firstSegment && !liveSegments.byName(segment)) setSegment(firstSegment);
   const productName = kbLive ? kbProducts?.selected?.name ?? data?.me.organization.name ?? PRODUCT.name : PRODUCT.name;
 
-  const go = useCallback((v: ViewId) => { setView(v); setSegment(v === "segments" ? SAVED_SEGMENTS[0][0] : undefined); setBuilderOpen(false); }, []);
+  const go = useCallback((v: ViewId) => { setView(v); setSegment(v === "segments" ? firstSegment : undefined); setBuilderOpen(false); }, [firstSegment]);
 
   const archive = useCallback((id: string) => {
     const i = threads.findIndex((t) => t.id === id); if (i < 0) return;
@@ -272,16 +285,16 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
       <AppShell frame={frame} className={className} active={view} onNavigate={go} crumbs={sessionError ? [ws, "Not connected"] : crumbs} actions={sessionError ? null : actions} collapsed={collapsed} onCollapsedChange={setCollapsed}
         onSearch={() => setPalette(true)} segment={segment} onSegment={(s) => { setView("segments"); setSegment(s); setBuilderOpen(false); }} defaultDrawer={drawer} hotkeys={hotkeys} account={account} onSignOut={signOut}
         pool={{ sent: poolNow.sent, cap: poolNow.cap, mailboxes: poolNow.total, attention: poolNow.attention }} onPool={() => { go("sequences"); setSeqTab("pool"); }}
-        counts={{ unibox: String(needsYou(threads)) }}>
+        counts={{ unibox: String(needsYou(threads)) }} segments={sidebarSegments}>
         {sessionError ? <SessionUnavailable {...sessionError} /> : <>
         {view === "unibox" && <UniboxView key={unibox ?? "live"} state={unibox} threads={threads} setThreads={setThreads} active={active} setActive={setActive} tab={tab} setTab={setTab} pane={pane} setPane={setPane}
           onArchive={archive} hotkeys={hotkeys && !palette && !enroll && !kbAdd && !importOpen && !setupOpen} />}
         {table && <LeadsView key={`${view}-${segment ?? ""}`} view={view} state={leads} segment={segment} importOpen={importOpen} onImportOpenChange={setImportOpen}
-          builderOpen={builderOpen} onBuilderOpenChange={setBuilderOpen} enrollAllSignal={enrollAll} onFind={findCompanies} onEnroll={(n, replied) => { setEnrollFor({ n, replied }); setEnroll(true); }} />}
+          builderOpen={builderOpen} onBuilderOpenChange={setBuilderOpen} enrollAllSignal={enrollAll} onFind={findCompanies} onEnroll={(n, replied) => { setEnrollFor({ n, replied }); setEnroll(true); }} live={leadsLive} />}
         {view === "discovery" && <DiscoveryView key={discovery ?? "live"} state={discovery} setupOpen={setupOpen} onSetupOpenChange={setSetupOpen} onOpenCompanies={() => go("companies")} />}
         {view === "sequences" && <SequencesView key={sequences ?? "live"} state={sequences} tab={seqTab} onTabChange={setSeqTab} pool={pool} onPoolChange={setPool} newSignal={newSeq} />}
         {view === "contacts" && <ContactsView state={contacts} onFind={() => setView("discovery")} />}
-        {view === "settings" && <SettingsView key={settings ?? developer ?? "live"} state={settings} developer={developer} onSection={setSetSection} />}
+        {view === "settings" && <SettingsView key={settings ?? developer ?? "live"} state={settings} developer={developer} tab={settingsPage} onSection={setSetSection} />}
         {view === "knowledge" && <KnowledgeBase key={kbLive ? "live" : "sample"} state={kb} addOpen={kbAdd} onAddOpenChange={setKbAdd} contained={frame === "contained"} live={kbLive} />}
         {!table && view !== "unibox" && view !== "contacts" && view !== "knowledge" && view !== "discovery" && view !== "sequences" && view !== "settings" && <PendingView id={view} onSearch={() => setPalette(true)} />}
         </>}

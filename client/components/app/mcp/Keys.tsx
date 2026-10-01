@@ -87,12 +87,12 @@ function KeyList({ keys, viewer, onCreate, onOpen, onRotate, onRevoke }: { keys:
     <div className="i-page m-page">
       <div className="m-head">
         <div className="i-head"><h2>API keys</h2>
-          <p>For scripts and tools that can’t sign in: n8n, Zapier, your own code. Keys can draft but can’t send; sending needs a signed-in MCP connection. AI clients like Cursor or Claude should <a className="c-link" href="/app?view=settings&state=mcp">connect through MCP</a> instead; they sign in as a person, and you see what they did.</p>
+          <p>For scripts and tools that can’t sign in: n8n, Zapier, your own code. Keys can draft but can’t send; sending needs a signed-in MCP connection. AI clients like Cursor or Claude should <a className="c-link" href="/app?view=settings&tab=mcp&state=mcp">connect through MCP</a> instead; they sign in as a person, and you see what they did.</p>
           <p className="m-role"><Icon name="users" size={12} />{viewer.role === "member" ? "You’re a member: you can make keys, and rotate or revoke the ones you made. The others are read-only; their owner or a workspace owner manages them." : "You’re an owner: you manage every key, whoever made it. Members manage only their own."}</p></div>
         {keys.length > 0 && <Button variant="primary" onClick={onCreate}><Icon name="plus" />Create key</Button>}
       </div>
       {!keys.length ? (
-        <div className="m-emptywrap"><EmptyState icon="key" title="No API keys yet" actions={<><Button variant="primary" onClick={onCreate}><Icon name="plus" />Create key</Button><a className="c-btn c-btn--quiet" href="/app?view=settings&state=docs">Read the docs</a></>}>
+        <div className="m-emptywrap"><EmptyState icon="key" title="No API keys yet" actions={<><Button variant="primary" onClick={onCreate}><Icon name="plus" />Create key</Button><a className="c-btn c-btn--quiet" href="/app?view=settings&tab=docs&state=docs">Read the docs</a></>}>
           <ul className="m-emptylist">
             <li><b>Make a key</b> for something that runs without you: a sync, a report, a script in CI.</li>
             <li><b>Use MCP sign-in</b> for an AI client a person uses. No key to leak, and it acts as that person.</li>

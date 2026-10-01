@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { Receipt, Receipts } from "@/components/app/primitives";
 import { COMPARE, FAQ, PLANS, priceWords, type Cell } from "@/lib/marketing/plans";
-import { CTA, ROUTES, claim } from "@/lib/marketing/site";
+import { CTA, CTA_SIGNED_IN, ROUTES, claim } from "@/lib/marketing/site";
+import { VisitorLink } from "@/components/marketing/site/VisitorLink";
 import { Section, SitePage, ToConfirm } from "./Chrome";
 
 const cell = (c: Cell) => (c === true ? <span className="sn-yes">Included</span> : c === false ? <span className="sn-no" aria-label="Not included">—</span> : c);
@@ -22,7 +23,7 @@ export function PricingPage() {
               <p className="sn-plan__price"><span className="sn-num">{priceWords(p)}</span>{p.price !== null && <span>a month</span>}</p>
               <div className="sn-plan__meter" aria-hidden="true" style={{ ["--m" as string]: p.meter }}><i /></div>
               <p className="sn-plan__reads">{p.reads ? `${p.reads.toLocaleString("en")} companies read a month` : "25,000 and up, priced with you"}</p>
-              <Link className={`c-btn c-btn--lg ${p.primary ? "c-btn--primary" : "sn-btn-line"}`} href={p.price === null ? CTA.walkthrough : CTA.start}>{p.cta}</Link>
+              <VisitorLink className={`c-btn c-btn--lg ${p.primary ? "c-btn--primary" : "sn-btn-line"}`} href={p.price === null ? CTA.walkthrough : CTA.start} signedInHref={p.price === null ? CTA.walkthrough : CTA_SIGNED_IN.start}>{p.cta}</VisitorLink>
             </li>
           ))}
         </ol>

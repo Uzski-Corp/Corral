@@ -29,10 +29,13 @@ const SECTIONS: { id: string; label: string; note?: string; href?: string; group
   { id: "mcp", label: "MCP", group: "dev" }, { id: "keys", label: "API keys", group: "dev" }, { id: "docs", label: "Docs", group: "dev" },
 ];
 const isDev = (id: string): id is DevSection => id === "mcp" || id === "keys" || id === "docs";
+/** `/app?view=settings&tab=<id>` (works in production, unlike `state`): a Settings page with its own place, or undefined. */
+export const settingsTabOf = (tab?: string): string | undefined => SECTIONS.find((x) => x.id === tab && !x.href)?.id;
+export const settingsTabLabel = (tab: string): string => SECTIONS.find((x) => x.id === tab)!.label;
 
 /** The settings page. Integrations (M8) and Developers (M9) are designed; the others keep their place. */
-export function SettingsView({ state, developer, onSection }: { state?: SettingsReviewState; developer?: McpReviewState; onSection?: (label: string) => void }) {
-  const [section, setSection] = useState<string>(developer ? sectionOf(developer) : "integrations");
+export function SettingsView({ state, developer, tab, onSection }: { state?: SettingsReviewState; developer?: McpReviewState; tab?: string; onSection?: (label: string) => void }) {
+  const [section, setSection] = useState<string>(developer ? sectionOf(developer) : settingsTabOf(tab) ?? "integrations");
   const s = SECTIONS.find((x) => x.id === section)!;
   const go = (id: string) => { setSection(id); onSection?.(SECTIONS.find((x) => x.id === id)!.label); };
   // On a phone the nav is one scrolling row; keep the page you're on in view (Developers sits past Billing).

@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { ROUTES } from "@/lib/marketing/site";
 import { useRouter } from "next/navigation";
 import { Avatar, Button, FitBar, Logo, Receipt, Receipts, Tag, cx } from "../primitives";
 import { GoogleG, Icon, Mark } from "../icons";
@@ -247,7 +248,7 @@ export function SignIn({ initial = "default", actions }: { initial?: SignInState
               </FormField>
               <Button type="submit" variant="primary" size="lg" className="s-auth__wide" disabled={state === "sending"}>
                 {state === "sending" ? <><Spinner />Sending code…</> : "Email me a code"}</Button>
-              <p className="s-auth__small">New to Corral? Signing in with a new work email creates your workspace. By continuing you agree to the <a href="#terms">Terms</a> and <a href="#privacy">Privacy Policy</a>.</p>
+              <p className="s-auth__small">New to Corral? Signing in with a new work email creates your workspace. By continuing you agree to the <Link href={ROUTES.terms}>Terms</Link> and <Link href={ROUTES.privacy}>Privacy Policy</Link>.</p>
             </form>
           )}
         </div>
