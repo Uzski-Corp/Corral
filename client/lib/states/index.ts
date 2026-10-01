@@ -23,6 +23,8 @@ import { HANDOFF_REVIEW_STATES } from "@/lib/handoff/state";
 import { SETTINGS_REVIEW_STATES } from "@/lib/integrations/state";
 import { MCP_REVIEW_STATES } from "@/lib/mcp/state";
 import { MARKETING_REVIEW_STATES } from "@/lib/marketing/visitor";
+import { appPath } from "@/lib/appPath";
+import type { ViewId } from "@/components/app/Shell";
 
 export type StateKind = "empty" | "loading" | "error" | "partial" | "progress" | "view";
 export const KINDS: StateKind[] = ["empty", "loading", "error", "partial", "progress", "view"];
@@ -31,7 +33,7 @@ export const REQUIRED: StateKind[] = ["empty", "loading", "error"];
 
 export type Surface = {
   id: string; label: string; milestone: string;
-  /** The ?view= this surface's states load on; undefined for the shell (any view). */
+  /** The /app screen this surface's states load on; undefined for the shell (any view). */
   view?: string;
   /** A surface outside /app: its states load on this route instead (?state=…). */
   route?: string;
@@ -100,7 +102,8 @@ export function kindOf(state: string, surface?: Surface): StateKind {
 
 export function hrefOf(surface: Surface, state: string) {
   if (surface.route) return `${surface.route}?state=${state}`;
-  return surface.view ? `/app?view=${surface.view}&state=${state}` : `/app?state=${state}`;
+  if (!surface.view) return `/app?state=${state}`;
+  return appPath(surface.view as ViewId, { state });
 }
 
 export type IndexedState = { surface: string; state: string; kind: StateKind; href: string };

@@ -127,7 +127,7 @@ export function QueueRow({ it, onRetry, onDismiss, onReplace }: { it: QueueItem;
     : <>{it.kind === "url" ? "Fetching the page" : "Checking the file"}</>;
   return (
     <li className={cx("k-q", `is-${it.state}`)}>
-      <FileTile kind={it.kind} label={it.error && !it.error.actions.length && it.kind !== "url" ? (extOf(it.name) || "?").toUpperCase() : undefined} />
+      <FileTile kind={it.kind} host={it.host} label={it.error && !it.error.actions.length && it.kind !== "url" ? (extOf(it.name) || "?").toUpperCase() : undefined} />
       <div className="k-q__body">
         <span className="k-q__name">{it.name}</span>
         {it.error ? <span className="k-q__err"><b>{it.error.title}.</b> {it.error.fix}</span> : <span className="k-q__meta">{line}</span>}
@@ -172,7 +172,7 @@ export function FirstProductField({ fp }: { fp: FirstProduct }) {
 export function ReplacingCard({ src }: { src: Source }) {
   return (
     <div className="k-replacing">
-      <FileTile kind={src.kind} size={36} />
+      <FileTile kind={src.kind} size={36} host={src.host} />
       <span className="k-replacing__txt"><span className="k-eyebrow">Replacing</span><b>{src.name}</b><span>{kindMeta(src)}{src.passages ? ` · ${src.passages} passages` : ""}</span></span>
     </div>
   );
@@ -236,7 +236,7 @@ export function UploadTray({ q, onOpen, inline }: { q: UploadQueue; onOpen: () =
         <ul className="k-tray__list">
           {active.slice(0, 4).map((i) => (
             <li key={i.id} className={cx(`is-${i.state}`)}>
-              <FileTile kind={i.kind} size={20} /><span className="k-tray__name">{i.name}</span>
+              <FileTile kind={i.kind} size={20} host={i.host} /><span className="k-tray__name">{i.name}</span>
               <span className="k-tray__st">{i.state === "error" ? "Failed" : i.state === "done" ? <Icon name="check" size={12} /> : i.state === "queued" ? "Waiting" : i.stage === "scan" ? "Checking" : `${Math.round(i.pct)}%`}</span>
             </li>
           ))}

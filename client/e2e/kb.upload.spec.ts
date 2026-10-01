@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test";
  * There is no upload API yet (ENG-65/66), so this checks what each state renders and the client-side
  * actions that need no server. Runs in the "review" project (see playwright.config.ts).
  */
-const kb = (state: string) => `/app?view=knowledge&state=${state}`;
+const kb = (state: string) => `/app/knowledge?state=${state}`;
 
 test("empty: the page is the drop zone, with the web page adder", async ({ page }) => {
   await page.goto(kb("empty"));

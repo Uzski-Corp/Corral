@@ -25,8 +25,34 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: { default: "Corral", template: "%s · Corral" },
   description: "Corral reads your market against what you sell and puts a real person at the end of every row.",
-  openGraph: { siteName: "Corral", type: "website", locale: "en" },
-  twitter: { card: "summary_large_image" },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180" }],
+  },
+  openGraph: {
+    siteName: "Corral",
+    type: "website",
+    locale: "en",
+    images: [{
+      url: "/assets/corral-og.png",
+      width: 1200,
+      height: 630,
+      alt: "Corral. Leads, Tailored. Client acquisition, for the agentic era.",
+      type: "image/png",
+    }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: [{
+      url: "/assets/corral-og.png",
+      width: 1200,
+      height: 630,
+      alt: "Corral. Leads, Tailored. Client acquisition, for the agentic era.",
+    }],
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

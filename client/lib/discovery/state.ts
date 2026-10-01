@@ -2,7 +2,7 @@
  * Design-review states for discovery (M4, ENG-54). Honoured where review states are (outside
  * production and in the review build). Plain module so the server page can read it.
  *
- * /app?view=discovery&state=
+ * /app/discovery?state=
  *   empty          no runs yet: "Find companies that fit ColdTrace Sensors"
  *   loading        runs list and run panel skeletons
  *   error          the runs couldn't load

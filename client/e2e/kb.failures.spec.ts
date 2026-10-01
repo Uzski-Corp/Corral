@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
  * The M10b knowledge-base source failures (ENG-66, backend PR #67) in the review build: what each shows and the
  * one recovery it offers. `failure` / `failure_stage` are the server's codes, shown as-is in What happened.
  */
-const kb = (state: string) => `/app?view=knowledge&state=${state}`;
+const kb = (state: string) => `/app/knowledge?state=${state}`;
 
 test.describe("KB source failures (M10b)", () => {
   test("interrupted at embed: Try again first, the file is kept, What happened open", async ({ page }) => {

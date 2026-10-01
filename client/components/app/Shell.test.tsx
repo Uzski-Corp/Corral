@@ -24,7 +24,7 @@ describe("WorkspaceSwitcher", () => {
     expect(within(menu).queryByText("ColdTrace")).toBeNull();
     expect(within(screen.getByRole("button", { name: "Switch workspace" })).getAllByText("P").length).toBeGreaterThan(0);
     await userEvent.click(within(menu).getByRole("menuitem", { name: /Workspace settings/ }));
-    expect(router.push).toHaveBeenCalledWith("/app?view=settings&tab=workspace");
+    expect(router.push).toHaveBeenCalledWith("/app/settings/workspace");
     expect(screen.getByRole("button", { name: "Switch workspace" }).querySelector("img")).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Switch workspace" }));
     await userEvent.click(screen.getByRole("menuitem", { name: /Invite teammates/ }));
@@ -56,7 +56,7 @@ describe("SideNav account", () => {
     await userEvent.click(me);
     expect(screen.getByText("Amina Otieno · Admin")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("menuitem", { name: "Profile" }));
-    expect(router.push).toHaveBeenCalledWith("/app?view=settings&tab=profile");
+    expect(router.push).toHaveBeenCalledWith("/app/settings/profile");
     await userEvent.click(me);
     await userEvent.click(screen.getByRole("menuitem", { name: /Sign out/ }));
     expect(router.push).toHaveBeenCalledWith("/sign-in");

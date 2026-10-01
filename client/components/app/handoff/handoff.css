@@ -3,6 +3,17 @@
 /* ---------------------------------------------------------------- shared bits */
 .h-tile { width: 32px; height: 32px; flex-shrink: 0; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; letter-spacing: -0.2px; color: var(--color-text); background: var(--color-canvas); box-shadow: inset 0 0 0 1px var(--color-border); }
 .h-tile--sm { width: 22px; height: 22px; border-radius: 6px; font-size: 10px; }
+.h-tile--logo { padding: 0; overflow: hidden; background: transparent; box-shadow: none; }
+.h-tile--logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.h-logo { display: block; flex-shrink: 0; }
+.c-receipt .h-logo { display: inline-block; vertical-align: -3px; }
+.h-logo--cal { height: 15px; width: auto; }
+.h-logo--cal.is-sm { height: 12px; }
+.h-logo--as { width: 16px; height: 16px; border-radius: 4px; }
+.h-logo--on-dark { filter: invert(1); }
+.h-lockup { display: inline-flex; align-items: center; gap: 8px; }
+.h-steps .h-logo--cal { margin-top: 3px; }
+.i-dhead .h-logo--cal { height: 18px; }
 .h-pill { flex-shrink: 0; display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 5px; font-size: 11.5px; font-weight: 500; white-space: nowrap; }
 .h-pill.is-positive { color: var(--color-positive-600); background: var(--color-positive-50); box-shadow: inset 0 0 0 1px var(--color-positive-200); }
 .h-pill.is-live { color: var(--color-info-600); background: var(--color-info-50); box-shadow: inset 0 0 0 1px var(--color-info-200); }
@@ -155,6 +166,8 @@
 .i-engines { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 10px; align-items: center; }
 .i-engines > svg { color: var(--color-text-quaternary); }
 .i-engine { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--color-border); font-size: 12.5px; line-height: 18px; min-height: 100%; }
+.i-engine__name { display: inline-flex; align-items: center; gap: 6px; }
+.i-flow__who .h-logo--as { width: 14px; height: 14px; }
 .i-engine.is-as { background: var(--color-surface-muted); }
 .i-engine ul { margin: 6px 0 0; padding-left: 16px; color: var(--color-text-secondary); }
 .i-engines__why { margin: 0; font-size: 12px; line-height: 17px; }

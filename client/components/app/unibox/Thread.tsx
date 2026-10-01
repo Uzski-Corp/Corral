@@ -94,7 +94,7 @@ export function FitSummary({ t }: { t: Thread }) {
   const s = scoreFor(lead, t.fit);
   const c = confidence(s);
   const top = [...s.checks].sort((a, b) => b.points - a.points).slice(0, 3);
-  const href = lead.id === "kilima" ? "/app?view=companies&state=fit" : "/app?view=companies";
+  const href = lead.id === "kilima" ? "/app/companies?state=fit" : "/app/companies";
   return (
     <>
       <FitBar value={t.fit} size="lg" />
@@ -112,7 +112,7 @@ export function SequenceTrail({ t }: { t: Thread }) {
   const s = t.seq;
   if (!s) return <span className="c-faint">Not from a sequence</span>;
   const stopped = s.state.startsWith("Stopped");
-  const href = s.id === "drip" ? "/app?view=sequences&state=paused" : "/app?view=sequences&state=running";
+  const href = s.id === "drip" ? "/app/sequences?state=paused" : "/app/sequences?state=running";
   const sent = (i: number) => t.history?.filter((m) => m.from === "you")[i - 1];
   return (
     <div className="u-trail">

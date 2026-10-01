@@ -33,12 +33,12 @@ export function DiscoveryShellDemo() {
         <div className="sg-shell sg-shell--full sg-shell--kb"><AppDemo frame="contained" hotkeys={false} initialView="discovery" discovery="running" /></div></div>
       <div className="sg-shells__row">
         <div><Label>390 · the run first, runs behind a back row</Label><div className="sg-shell sg-shell--phone"><AppDemo frame="contained" hotkeys={false} initialView="discovery" discovery="partial" /></div></div>
-        <div className="sg-card c-app sg-m4-states"><Label>every state · /app?view=discovery&amp;state=</Label>
-          <ul className="sg-anatomy">{STATES.map(([s, d]) => <li key={s || "live"}><a className="c-link" href={`/app?view=discovery${s ? `&state=${s}` : ""}`}><code>{s || "(none)"}</code></a> · {d}</li>)}</ul>
+        <div className="sg-card c-app sg-m4-states"><Label>every state · /app/discovery&amp;state=</Label>
+          <ul className="sg-anatomy">{STATES.map(([s, d]) => <li key={s || "live"}><a className="c-link" href={`/app/discovery${s ? `?state=${s}` : ""}`}><code>{s || "(none)"}</code></a> · {d}</li>)}</ul>
           <Label>companies, M4 states</Label>
           <ul className="sg-anatomy">
-            <li><a className="c-link" href="/app?view=companies&state=stale"><code>companies · stale</code></a> · contact details past their window, Re-check</li>
-            <li><a className="c-link" href="/app?view=companies&state=provenance"><code>companies · provenance</code></a> · a company open on its email&rsquo;s evidence</li>
+            <li><a className="c-link" href="/app/companies?state=stale"><code>companies · stale</code></a> · contact details past their window, Re-check</li>
+            <li><a className="c-link" href="/app/companies?state=provenance"><code>companies · provenance</code></a> · a company open on its email&rsquo;s evidence</li>
           </ul></div>
       </div>
     </div>

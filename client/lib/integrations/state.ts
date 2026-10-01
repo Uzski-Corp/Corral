@@ -2,7 +2,7 @@
  * Design-review states for Settings → Integrations (M8, ENG-58). Honoured where review states are
  * (outside production and in the review build). Plain module so the server page can read it.
  *
- * /app?view=settings&state=
+ * /app/settings?state=
  *   integrations      the three, all connected, and how a lead is handed from one to the next
  *   none              nothing connected yet: what each one is for
  *   connect-cal       Connect Cal.com: what Corral may do, before you go to cal.com

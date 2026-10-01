@@ -66,10 +66,10 @@ describe("SessionProvider in live mode", () => {
   });
 
   it("sends a stale session to sign-in with the current path, once", async () => {
-    window.history.replaceState(null, "", "/app?view=companies");
+    window.history.replaceState(null, "", "/app/companies");
     server.use(http.get(ME, unauthorized), http.post(REFRESH, unauthorized));
     const { nav: n } = mount();
-    await waitFor(() => expect(n.replace).toHaveBeenCalledWith("/sign-in?next=%2Fapp%3Fview%3Dcompanies"));
+    await waitFor(() => expect(n.replace).toHaveBeenCalledWith("/sign-in?next=%2Fapp%2Fcompanies"));
     await act(async () => { await probe.current!.refresh(); });
     expect(n.replace).toHaveBeenCalledTimes(1);
   });

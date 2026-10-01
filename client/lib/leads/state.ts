@@ -2,7 +2,7 @@
  * Design-review states for the lead table (M3, ENG-53). Honoured where review states are
  * (outside production and in the review build). Plain module so the server page can read it.
  *
- * /app?view=companies&state=
+ * /app/companies?state=
  *   loading          first load (skeleton rows at real heights)
  *   error            the table couldn't load
  *   empty            no companies yet: import a CSV or find companies
@@ -34,7 +34,7 @@
  *   fit-error        (M5) scoring failed; the last score stands
  *   meeting-booked | meeting-rescheduled | meeting-cancelled | meeting-no-show | deal-error | deal-duplicate | nurture-off
  *                    (M8) Nyota Beverages open on its meeting and handoffs; same names as in the Unibox (lib/handoff/state.ts)
- * /app?view=segments&state=
+ * /app/segments?state=
  *   builder          edit the segment's rules with the live count
  *   builder-empty    rules that match nothing
  *   builder-error    an unfinished rule and a bad value

@@ -23,7 +23,7 @@ describe("every state, indexed", () => {
   it("indexes the M10b KB source failures as partial moments", () => {
     const kb = allStates().filter((x) => x.surface === "knowledge");
     for (const st of ["unreadable", "partial", "interrupted"]) expect(kb.find((x) => x.state === st)?.kind, st).toBe("partial");
-    expect(kb.find((x) => x.state === "interrupted")?.href).toBe("/app?view=knowledge&state=interrupted");
+    expect(kb.find((x) => x.state === "interrupted")?.href).toBe("/app/knowledge?state=interrupted");
   });
   it("indexes the M10c marketing visitor states on /, and the new KB partial reasons", () => {
     const all = allStates();
@@ -39,7 +39,7 @@ describe("every state, indexed", () => {
   });
   it("links load the state on its view", () => {
     expect(hrefOf(SURFACES.find((s) => s.id === "shell")!, "api-down")).toBe("/app?state=api-down");
-    expect(hrefOf(SURFACES.find((s) => s.id === "contacts")!, "empty")).toBe("/app?view=contacts&state=empty");
+    expect(hrefOf(SURFACES.find((s) => s.id === "contacts")!, "empty")).toBe("/app/contacts?state=empty");
   });
   it("lists the route-level states", () => {
     expect(ROUTE_STATES.map((r) => r.file)).toEqual(["app/app/loading.tsx", "app/app/error.tsx", "app/error.tsx", "app/global-error.tsx", "app/not-found.tsx"]);

@@ -174,7 +174,7 @@ export function CopilotPanel({ c, onUse, onKeep }: { c: Copilot; onUse: () => vo
       </div>
       <div className="q-cop__sec">
         <p className="q-lab">Left out, and why</p>
-        <ul className="q-cop__left">{c.left.map((x) => <li key={x.what}><span className="c-strong">{x.what}.</span> {x.why}{x.action && <> <a className="c-link" href="/app?view=knowledge&state=conflict">{x.action}</a></>}</li>)}</ul>
+        <ul className="q-cop__left">{c.left.map((x) => <li key={x.what}><span className="c-strong">{x.what}.</span> {x.why}{x.action && <> <a className="c-link" href="/app/knowledge?state=conflict">{x.action}</a></>}</li>)}</ul>
         <p className="c-faint q-cop__rules"><Icon name="check" size={12} />Checked against Never say: {c.rules.map((r) => r[0].toLowerCase() + r.slice(1)).join("; ")}.</p>
       </div>
       <div className="c-actions"><Button variant="primary" onClick={onUse}>Use this draft</Button><Button variant="quiet" onClick={onKeep}>Keep mine</Button></div>

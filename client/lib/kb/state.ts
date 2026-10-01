@@ -1,5 +1,5 @@
 /**
- * Design-review states for /app?view=knowledge&state= (M2, ENG-52). Honoured where review states
+ * Design-review states for /app/knowledge?state= (M2, ENG-52). Honoured where review states
  * are (outside production and in the review build). Plain module so the server page can read it.
  *
  * empty          no sources yet: the first-run drop zone

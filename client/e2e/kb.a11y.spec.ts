@@ -7,7 +7,7 @@ import { audit, WIDTHS } from "./axe";
  * `?state=` is off in production builds and there is no knowledge base API yet (ENG-65/66).
  * M10b adds partial, unreadable and interrupted (ENG-66). ENG-79 owns the rest (live upload, the remaining states, visual baselines).
  */
-const kb = (state?: string) => `/app?view=knowledge${state ? `&state=${state}` : ""}`;
+const kb = (state?: string) => `/app/knowledge${state ? `?state=${state}` : ""}`;
 
 const CASES: [state: string | undefined, ready: (page: Page) => Promise<void>][] = [
   [undefined, (p) => expect(p.getByRole("heading", { level: 1, name: "ColdTrace Sensors" })).toBeVisible()],

@@ -7,9 +7,9 @@ import { audit } from "./axe";
  * companies from e2e/mock-api.mjs, not Bau's sample, and every change goes to the API.
  */
 async function open(page: Page, view = "companies") {
-  await page.goto(`/sign-in?next=${encodeURIComponent(`/app?view=${view}`)}`);
+  await page.goto(`/sign-in?next=${encodeURIComponent(`/app/${view}`)}`);
   await signInWithGoogle(page);
-  await expect(page).toHaveURL(`${WEB}/app?view=${view}`);
+  await expect(page).toHaveURL(`${WEB}/app/${view}`);
 }
 const table = (page: Page) => page.getByRole("table", { name: /^Companies:|^Segment:/ });
 const rowOf = (page: Page, name: string) => table(page).getByRole("row").filter({ has: page.getByRole("button", { name, exact: true }) });
@@ -58,7 +58,7 @@ test.describe("companies on the lead CRM API", () => {
     await page.getByRole("button", { name: "Add to segment" }).click();
     await page.getByRole("menuitem", { name: /Kenya dairy/ }).click();
     await expect(page.getByText("Added 1 to Kenya dairy")).toBeVisible();
-    await page.goto("/app?view=segments&segment=Kenya%20dairy");
+    await page.goto("/app/segments/Kenya%20dairy");
     await expect(page.getByRole("table", { name: "Segment: Kenya dairy" })).toBeVisible();
     await expect(rowOf(page, "Pwani Fresh")).toBeVisible();
     await expect(rowOf(page, "Kilima Dairies")).toBeVisible();

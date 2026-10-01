@@ -42,7 +42,7 @@ for (const { name, viewport } of WIDTHS) {
     test("the Companies table has no axe violations", async ({ page, mockApi, onboarded }) => {
       void mockApi;
       await onboarded();
-      await page.goto("/sign-in?next=%2Fapp%3Fview%3Dcompanies");
+      await page.goto("/sign-in?next=%2Fapp%2Fcompanies");
       await signInWithGoogle(page);
       const table = page.getByRole("table", { name: /^(Segment|Companies):/ });
       await expect(table).toBeVisible();

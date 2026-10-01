@@ -21,9 +21,9 @@ describe("proxy matcher", () => {
 
 describe("proxy", () => {
   it("redirects a signed-out /app visit to sign-in with the return path", () => {
-    const res = proxy(req("/app?view=companies"));
+    const res = proxy(req("/app/companies"));
     expect(res.status).toBe(307);
-    expect(res.headers.get("location")).toBe("http://localhost:3000/sign-in?next=%2Fapp%3Fview%3Dcompanies");
+    expect(res.headers.get("location")).toBe("http://localhost:3000/sign-in?next=%2Fapp%2Fcompanies");
   });
 
   it("lets a signed-in, onboarded user through", () => {
@@ -32,8 +32,8 @@ describe("proxy", () => {
   });
 
   it("finishes the post-login redirect and clears the return cookie", () => {
-    const res = proxy(req("/", { wos_session: "sealed", corral_onboarded: "1", corral_return_to: "/app?view=segments" }));
-    expect(res.headers.get("location")).toBe("http://localhost:3000/app?view=segments");
+    const res = proxy(req("/", { wos_session: "sealed", corral_onboarded: "1", corral_return_to: "/app/segments" }));
+    expect(res.headers.get("location")).toBe("http://localhost:3000/app/segments");
     expect(res.cookies.get("corral_return_to")?.value).toBe("");
   });
 

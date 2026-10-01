@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { KNOWLEDGE, REVIEW_SOURCES, SOURCES, citedBy, sourceName, type Source } from "./data";
-import { advance, FileTile, SourceState } from "./parts";
+import { advance, FileTile, SourceState, faviconHost, faviconSrc } from "./parts";
 import { SKIP, SKIP_REASONS } from "@/lib/kb/upload";
 import { SourceList, filterSources } from "./SourceList";
 import { PageStrip, SourceDetail, pageTicks, pipelineSteps } from "./SourceDetail";
@@ -40,6 +40,16 @@ describe("pipeline", () => {
   it("labels unreadable files with their own extension", () => {
     const { container } = render(<FileTile kind="pdf" label="key" />);
     expect(container.textContent).toBe("key");
+  });
+  it("shows a crawled site's favicon in the tile, and the globe when there is no host", () => {
+    expect(faviconHost("www.gs1kenya.org")).toBe("gs1kenya.org");
+    expect(faviconHost("localhost")).toBeUndefined();
+    const { container, rerender } = render(<FileTile kind="url" host="gs1kenya.org" />);
+    const img = container.querySelector("img");
+    expect(img).toHaveAttribute("src", faviconSrc("gs1kenya.org"));
+    rerender(<FileTile kind="url" />);
+    expect(container.querySelector("img")).toBeNull();
+    expect(container.querySelector("svg")).toBeTruthy();
   });
 });
 

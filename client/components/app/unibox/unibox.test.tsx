@@ -51,7 +51,7 @@ describe("UniboxView · panes and triage", () => {
     expect(screen.getByRole("group", { name: "Filter threads" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Triage: Objection. Change" })).toBeInTheDocument();
     expect(screen.getByText("Why it scored 91")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Cold-room pilot" })).toHaveAttribute("href", "/app?view=sequences&state=running");
+    expect(screen.getByRole("link", { name: "Cold-room pilot" })).toHaveAttribute("href", "/app/sequences?state=running");
     expect(screen.getByText("Stopped: replied")).toBeInTheDocument();
   });
 
@@ -163,7 +163,7 @@ describe("UniboxView · panes and triage", () => {
     expect(screen.getByText(/Tomás Ibarra wrote/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /2 remote images blocked/ }));
     expect(screen.getByRole("button", { name: /Images from kilima.co.ke shown/ })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Why it scored 94" })).toHaveAttribute("href", "/app?view=companies&state=fit");
+    expect(screen.getByRole("link", { name: "Why it scored 94" })).toHaveAttribute("href", "/app/companies?state=fit");
   });
 
   it("shows the referral intro to Aline", () => {
@@ -223,7 +223,7 @@ describe("UniboxView · Corral's draft", () => {
     render(<Host state="low" />);
     expect(screen.getByText("Low confidence")).toBeInTheDocument();
     expect(screen.getByText(/The knowledge base doesn’t answer one question/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Add it to the knowledge base" })).toHaveAttribute("href", "/app?view=knowledge");
+    expect(screen.getByRole("link", { name: "Add it to the knowledge base" })).toHaveAttribute("href", "/app/knowledge");
   });
 
   it("refuses Never-say claims, then drafts without them or lets you write", async () => {

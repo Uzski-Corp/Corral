@@ -20,7 +20,9 @@ if [ "${1:-api}" = "api" ]; then
     echo "waiting for database 172.31.210.10:5432 ($i)"
     sleep 1
   done
-  alembic upgrade head
+  # Upgrades when this checkout knows the stamped revision. A local volume migrated
+  # by another branch is left as it is, and the API still starts. See app/db/migrate.py.
+  python -m app.db.migrate
   exec uvicorn app.main:create_app --factory --host 0.0.0.0 --port "${PORT:-8000}"
 fi
 

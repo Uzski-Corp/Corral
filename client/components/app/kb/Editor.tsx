@@ -21,7 +21,7 @@ export function CiteChip({ cite, sources, onOpen, onRemove }: { cite: Cite; sour
   const src = sources.find((s) => s.id === cite.src);
   const name = sourceName(cite.src, sources);
   const gone = !src;
-  const body = <><FileTile kind={src?.kind ?? "pdf"} size={20} /><span className="k-cite__name">{name}</span>{cite.loc && <span className="k-cite__loc">{cite.loc}</span>}</>;
+  const body = <><FileTile kind={src?.kind ?? "pdf"} size={20} host={src?.host} /><span className="k-cite__name">{name}</span>{cite.loc && <span className="k-cite__loc">{cite.loc}</span>}</>;
   return (
     <span className={cx("k-cite", gone && "is-gone")}>
       {gone || !onOpen ? <span className="k-cite__btn">{body}{gone && <span className="k-sr"> (removed)</span>}</span>
@@ -57,7 +57,7 @@ function ItemEditor({ item, sources, save, onSave, onCancel, section }: {
       <div className="k-edit__cites">
         <span className="k-edit__label">Sources</span>
         {cites.map((c, i) => <CiteChip key={c.src + i} cite={c} sources={sources} onRemove={() => setCites((l) => l.filter((_, j) => j !== i))} />)}
-        <DropdownMenu width={280} label="Cite a source" items={addable.length ? addable.map((s) => ({ label: s.name, lead: <FileTile kind={s.kind} size={20} />, onSelect: () => setCites((l) => [...l, { src: s.id }]) })) : [{ label: "Every source is cited", disabled: true }]}
+        <DropdownMenu width={280} label="Cite a source" items={addable.length ? addable.map((s) => ({ label: s.name, lead: <FileTile kind={s.kind} size={20} host={s.host} />, onSelect: () => setCites((l) => [...l, { src: s.id }]) })) : [{ label: "Every source is cited", disabled: true }]}
           trigger={(tp) => <button type="button" className="c-chip c-chip--add" {...tp}><Icon name="plus" size={12} />Cite a source</button>} />
         {!cites.length && <span className="k-edit__nocite">{section.id === "never" ? "Rules don't need a source." : "Without a source, Corral treats this as your claim."}</span>}
       </div>

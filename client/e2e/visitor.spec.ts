@@ -38,9 +38,9 @@ test.describe("signed-in marketing pages", () => {
     await expect(page.getByRole("link", { name: "Book a walkthrough" }).first()).toHaveAttribute("href", /^mailto:/);
 
     await page.goto("/mcp");
-    await expect(page.getByRole("link", { name: "Sign in and connect" })).toHaveAttribute("href", "/app?view=settings&tab=mcp");
+    await expect(page.getByRole("link", { name: "Sign in and connect" })).toHaveAttribute("href", "/app/settings/mcp");
 
-    await page.goto("/app?view=settings&tab=mcp");   // the connect target opens Developers → MCP in a live (non-review) build
+    await page.goto("/app/settings/mcp");   // the connect target opens Developers → MCP in a live (non-review) build
     await expect(page.getByRole("navigation", { name: "Settings" }).getByRole("button", { name: "MCP" })).toHaveAttribute("aria-current", "page");
     await page.getByRole("button", { name: "Account" }).click();
     await page.getByRole("menuitem", { name: "Sign out" }).click();

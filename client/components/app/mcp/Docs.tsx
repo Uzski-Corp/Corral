@@ -50,7 +50,7 @@ export function McpDocs({ seed }: { seed: DevSeed }) {
             <ol className="m-steps">{stepsFor(cl, c.oauth ? "oauth" : "key").map((s, i) => <li key={i}><span className="m-steps__n">{i + 1}</span><span>{s}</span></li>)}</ol>
             <CopyBlock label={c.lang === "shell" ? "Command" : c.lang === "steps" ? "Connector" : "Config"} where={c.where} text={configFor(cl, c.oauth ? "oauth" : "key")} what={c.lang === "shell" ? "the command" : "the config"} />
           </div>
-          <p className="m-docs__aside"><Icon name="plug" size={12} />Or connect from <a className="c-link" href="/app?view=settings&tab=mcp&state=mcp-connect">Settings → MCP</a>: it writes the config and tells you when the first call lands.</p>
+          <p className="m-docs__aside"><Icon name="plug" size={12} />Or connect from <a className="c-link" href="/app/settings/mcp?state=mcp-connect">Settings → MCP</a>: it writes the config and tells you when the first call lands.</p>
         </section>
 
         <section id="auth" className="m-docsec" aria-labelledby="d-auth">
@@ -119,7 +119,7 @@ export function McpDocs({ seed }: { seed: DevSeed }) {
       <nav className="m-toc" aria-label="On this page">
         <span className="m-label">On this page</span>
         <ul>{TOC.map(([id, l]) => <li key={id}><a href={`#${id}`}>{l}</a></li>)}</ul>
-        <a className="m-toc__cta c-btn" href="/app?view=settings&tab=mcp&state=mcp-connect"><Icon name="plug" />Connect a client</a>
+        <a className="m-toc__cta c-btn" href="/app/settings/mcp?state=mcp-connect"><Icon name="plug" />Connect a client</a>
       </nav>
     </div>
   );

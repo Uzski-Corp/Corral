@@ -19,7 +19,7 @@ for (const { name, viewport } of WIDTHS) {
     test.use({ viewport, reducedMotion: "reduce" });
     for (const [view, state] of ROUTES) {
       test(`${view} ${state ?? "(live)"} has no axe violations`, async ({ page }) => {
-        await page.goto(`/app?view=${view}${state ? `&state=${state}` : ""}`);
+        await page.goto(`/app/${view}${state ? `?state=${state}` : ""}`);
         await expect(page.locator(".c-app").first()).toBeVisible();
         expect(await audit(page)).toEqual([]);
       });

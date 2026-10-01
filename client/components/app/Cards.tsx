@@ -1,6 +1,5 @@
 import Image from "next/image";
 import { Avatar, Receipt, Receipts, Tag } from "./primitives";
-import { Icon } from "./icons";
 
 /** Floating person card: a reply, with the face fading into the card. */
 export function PersonCard({ src = "/corral/or/hero-wanjiru.jpg" }: { src?: string }) {
@@ -21,8 +20,8 @@ export function MeetingCard() {
       <div className="c-meet__top"><Tag status="Meeting booked" /><span className="c-faint" style={{ fontSize: 12.5 }}>just now</span></div>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}><Avatar id="kamau" size={36} />
         <div className="c-person__txt"><span className="c-strong" style={{ fontSize: 15 }}>Brian Kamau booked a call</span><span>COO · Pwani Fresh</span></div></div>
-      <div className="c-meet__slot"><Icon name="cal" /><div className="c-person__txt"><span className="c-strong">Thu 2 Oct · 10:30–10:50 EAT</span><span>Cold-room pilot walkthrough · Cal.com</span></div></div>
-      <Receipts><Receipt meta="auto">Sequence stopped at step 2</Receipt><Receipt meta="PX-2291">Deal opened in Phoenix ERP</Receipt><Receipt meta="24h before">Kilima case study queued in AutoSend</Receipt></Receipts>
+      <div className="c-meet__slot"><img className="h-logo h-logo--cal" src="/assets/cal-logo.svg" alt="" /><div className="c-person__txt"><span className="c-strong">Thu 2 Oct · 10:30–10:50 EAT</span><span>Cold-room pilot walkthrough · Cal.com</span></div></div>
+      <Receipts><Receipt meta="auto">Sequence stopped at step 2</Receipt><Receipt meta="PX-2291">Deal opened in Phoenix ERP</Receipt><Receipt meta="24h before">Kilima case study queued in <img className="h-logo h-logo--as" src="/assets/AutosendLogoSquareIndigo.svg" alt="" /> AutoSend</Receipt></Receipts>
     </div>
   );
 }

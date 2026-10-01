@@ -81,16 +81,19 @@ test.describe("marketing site", () => {
     expect(await meta(page, "name", "robots")).toMatch(/noindex/);
   });
 
-  test("every page ships a JPEG share image with alt text", async ({ page, request }) => {
+  test("every page shares corral-og.png with alt text", async ({ page, request }) => {
     for (const path of OG) {
       await page.goto(path);
       const og = await meta(page, "property", "og:image");
-      expect(og, path).toMatch(/opengraph-image\.jpg/);
+      expect(og, path).toMatch(/\/assets\/corral-og\.png$/);
       expect(await meta(page, "property", "og:image:alt"), path).toBeTruthy();
+      expect(await meta(page, "property", "og:image:width"), path).toBe("1200");
+      expect(await meta(page, "property", "og:image:height"), path).toBe("630");
       expect(await meta(page, "name", "twitter:card"), path).toBe("summary_large_image");
+      expect(await meta(page, "name", "twitter:image"), path).toMatch(/\/assets\/corral-og\.png$/);
       const res = await request.get(new URL(og!).pathname);
       expect(res.status(), path).toBe(200);
-      expect(res.headers()["content-type"], path).toBe("image/jpeg");
+      expect(res.headers()["content-type"], path).toBe("image/png");
     }
   });
 

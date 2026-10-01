@@ -127,8 +127,8 @@ export function KbShellDemo() {
       <div className="sg-shell sg-shell--full sg-shell--kb"><AppDemo frame="contained" hotkeys={false} initialView="knowledge" kb="sources" /></div>
       <div className="sg-shells__row">
         <div><Label>390px</Label><div className="sg-shell sg-shell--phone"><AppDemo frame="contained" hotkeys={false} initialView="knowledge" /></div></div>
-        <div className="sg-card c-app"><Label>every state · /app?view=knowledge&amp;state=</Label>
-          <ul className="sg-anatomy">{KB_URLS.map(([s, d]) => <li key={s || "live"}><a className="c-link" href={`/app?view=knowledge${s ? `&state=${s}` : ""}`}><code>{s || "(none)"}</code></a> · {d}</li>)}</ul>
+        <div className="sg-card c-app"><Label>every state · /app/knowledge&amp;state=</Label>
+          <ul className="sg-anatomy">{KB_URLS.map(([s, d]) => <li key={s || "live"}><a className="c-link" href={`/app/knowledge${s ? `?state=${s}` : ""}`}><code>{s || "(none)"}</code></a> · {d}</li>)}</ul>
           <p className="sg-faint" style={{ margin: "10px 0 0", fontSize: 12.5 }}>Review states are frozen snapshots; the live route runs the upload and reading simulators. Name a file “…password….pdf” to see the scan fail live.</p></div>
       </div>
     </div>

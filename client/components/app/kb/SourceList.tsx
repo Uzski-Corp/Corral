@@ -49,7 +49,7 @@ export function SourceList({ sources, filter, onFilter, selected, onOpen, onActi
           </div>
           {list.map((s) => (
             <div key={s.id} role="row" className={cx("k-srcrow", selected === s.id && "is-on", needsAttention(s) && "is-attn")}>
-              <span role="cell" className="k-col-tile"><FileTile kind={s.kind} /></span>
+              <span role="cell" className="k-col-tile"><FileTile kind={s.kind} host={s.host} /></span>
               <span role="cell" className="k-src__name">
                 <button type="button" className="k-src__open" onClick={() => onOpen(s.id)} aria-current={selected === s.id || undefined}>{s.name}</button>
                 <span className="k-src__meta">{s.meta}</span>

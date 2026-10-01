@@ -31,7 +31,8 @@ import type { SequenceReviewState } from "@/lib/sequences/state";
 import { poolSummary } from "@/lib/sequences/sequence";
 import { UniboxView, UNIBOX_TABS, needsYou, UNIBOX_THREADS, uniboxSeedFor, type UniboxTab } from "./unibox";
 import type { UniboxReviewState } from "@/lib/unibox/state";
-import { appPath, viewFromSearch } from "@/lib/appPath";
+import { appPath, locationFromPath } from "@/lib/appPath";
+import { isAppPath } from "@/lib/auth/paths";
 import { SettingsView, settingsTabLabel, settingsTabOf } from "./handoff";
 import { ProductsView } from "./products/Products";
 import type { SettingsReviewState } from "@/lib/integrations/state";
@@ -138,25 +139,25 @@ export type AppDemoProps = {
   onSignOut?: () => Promise<{ ok: boolean }>;
   /** The session check failed (API down): the shell stays up and the body becomes <SessionUnavailable>. */
   sessionError?: SessionUnavailableProps;
-  /** Knowledge-base review state (M2): /app?view=knowledge&state=… */
+  /** Knowledge-base review state (M2): /app/knowledge?state=… */
   kb?: KbReviewState;
-  /** Lead table / segment review state (M3): /app?view=companies&state=… or view=segments&state=… */
+  /** Lead table / segment review state (M3): /app/companies?state=… or /app/segments?state=… */
   leads?: LeadsReviewState;
-  /** Discovery review state (M4): /app?view=discovery&state=… */
+  /** Discovery review state (M4): /app/discovery?state=… */
   discovery?: DiscoveryReviewState;
-  /** Sequences / mailbox pool review state (M6): /app?view=sequences&state=… */
+  /** Sequences / mailbox pool review state (M6): /app/sequences?state=… */
   sequences?: SequenceReviewState;
-  /** Unibox review state (M7): /app?view=unibox&state=… */
+  /** Unibox review state (M7): /app?state=… */
   unibox?: UniboxReviewState;
-  /** Settings → Integrations review state (M8): /app?view=settings&state=… */
+  /** Settings → Integrations review state (M8): /app/settings?state=… */
   settings?: SettingsReviewState;
-  /** Settings → Developers review state (M9): MCP, API keys, Docs. /app?view=settings&state=… */
+  /** Settings → Developers review state (M9): MCP, API keys, Docs. /app/settings?state=… */
   developer?: McpReviewState;
-  /** Contacts review state (M10): /app?view=contacts&state=loading | empty | error */
+  /** Contacts review state (M10): /app/contacts?state=loading | empty | error */
   contacts?: ContactsReviewState;
-  /** Which Settings page opens: /app?view=settings&tab=mcp | keys | docs | integrations | … (not a review state; works live). */
+  /** Which Settings page opens: /app/settings/mcp | keys | docs | workspace | profile | … */
   settingsTab?: string;
-  /** /app?view=segments&segment= — the saved segment to open. */
+  /** /app/segments/<name> — the saved segment to open. */
   initialSegment?: string;
 };
 export function AppDemo(p: AppDemoProps) { return <ToastProvider><Demo {...p} /></ToastProvider>; }
@@ -209,9 +210,8 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
   if (liveSegments?.phase === "ready" && view === "segments" && segment !== firstSegment && !liveSegments.byName(segment)) setSegment(firstSegment);
   const productName = kbLive ? kbProducts?.selected?.name ?? data?.me.organization.name ?? PRODUCT.name : PRODUCT.name;
 
-  // The real app lives at /app. Styleguide and marketing embeds keep their own state and must not
-  // rewrite the page they are sitting on.
-  const liveRoute = frame === "viewport" && typeof window !== "undefined" && window.location.pathname === "/app";
+  // The shell at /app writes the screen into the path. Styleguide and marketing embeds keep their own state.
+  const liveRoute = frame === "viewport" && typeof window !== "undefined" && isAppPath(window.location.pathname);
   const place = useCallback((v: ViewId, opts?: { segment?: string; tab?: string }) => {
     const seg = v === "segments" ? (opts?.segment ?? firstSegment) : undefined;
     setView(v);
@@ -228,7 +228,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
   useEffect(() => {
     if (!liveRoute) return;
     const apply = () => {
-      const loc = viewFromSearch(window.location.search);
+      const loc = locationFromPath(window.location.pathname);
       setView(loc.view);
       if (loc.view === "segments") setSegment(loc.segment ?? firstSegment);
       if (loc.view === "settings") {

@@ -16,7 +16,7 @@ import { TextInput } from "../Form";
 import { Icon } from "../icons";
 import { Button } from "../primitives";
 import { EmptyState, ErrorState, Skeleton } from "../States";
-import { FileTile, PassageLabel } from "./parts";
+import { FileTile, PassageLabel, faviconHost } from "./parts";
 
 export type KbSearchFn = (query: string, limit: number, signal?: AbortSignal) => Promise<Result<SearchHit[], ApiError>>;
 export type SearchState = { phase: "idle" } | { phase: "loading"; query: string } | { phase: "error"; query: string; detail: string }
@@ -105,7 +105,7 @@ export function KbSearch({ search, searchable, onOpen, onAdd, initial, children 
                 {st.hits.map((h) => { const txt = plainPassage(h.text, h.loc ?? undefined); return (
                   <li key={h.passageId}>
                     <button type="button" className="k-hit" onClick={() => onOpen(h.sourceId)}>
-                      <FileTile kind={h.sourceKind} size={20} />
+                      <FileTile kind={h.sourceKind} size={20} host={h.sourceKind === "url" ? faviconHost(h.sourceName.split(/[/?#]/)[0]) : undefined} />
                       <span className="k-hit__body">
                         <span className="k-hit__src"><b>{h.sourceName}</b>{h.loc && <PassageLabel loc={h.loc} ordinal={0} inert />}</span>
                         {/* A passage that is only its heading: the heading label says it all, no empty text row. */}

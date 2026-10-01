@@ -203,7 +203,7 @@ export default function Styleguide() {
         <EditorDemo />
       </Part>
 
-      <Part wide n="24" title="Knowledge base · in the shell, every state" tokens={["/app?view=knowledge", "?state= review states (outside production)", "top bar: product switcher + Add sources"]}
+      <Part wide n="24" title="Knowledge base · in the shell, every state" tokens={["/app/knowledge", "?state= review states (outside production)", "top bar: product switcher + Add sources"]}
         notes={<p>Two tabs, Knowledge and Sources. The top bar carries the product switcher and the one primary action, <b>Add sources</b>. At 390 the index hides, sidenotes drop under each line, rows stack, and the detail takes the full screen with a back row.</p>}>
         <KbShellDemo />
       </Part>
@@ -234,7 +234,7 @@ export default function Styleguide() {
         <ImportDemo />
       </Part>
 
-      <Part wide n="30" title="Discovery · a run in the shell" tokens={["runs list 272 + run", "detail replaces the list below 1680", "/app?view=discovery", "top bar: credits left + New run"]}
+      <Part wide n="30" title="Discovery · a run in the shell" tokens={["runs list 272 + run", "detail replaces the list below 1680", "/app/discovery", "top bar: credits left + New run"]}
         notes={<p>A run searches the web for companies that fit the product, reads each site, scores it against the ICP, and only then spends credits finding and verifying a person, and only for companies above the fit bar. One run at a time per workspace; the next one queues. Results land in Companies as they are found, source <b>Corral search</b>, so nothing waits for the run to finish.</p>}>
         <DiscoveryShellDemo />
       </Part>
@@ -294,7 +294,7 @@ export default function Styleguide() {
         <CopilotStatesDemo />
       </Part>
 
-      <Part wide n="42" title="Handoffs" tokens={["h-meet: canvas card, border + 1px shadow; gone = surface-muted", "h-pill: live · positive · caution · negative · neutral", "h-steps: Ca · Px · As tiles 22px", "h-problem: negative-50 / caution-50, 200 inset"]}
+      <Part wide n="42" title="Handoffs" tokens={["h-meet: canvas card, border + 1px shadow; gone = surface-muted", "h-pill: live · positive · caution · negative · neutral", "h-steps: Cal.com wordmark · Px · AutoSend logo, 22px", "h-problem: negative-50 / caution-50, 200 inset"]}
         notes={<p>A booking is an event in the thread, where it happened, with who is coming and what Corral did about it. Three handoffs follow it: the meeting (Cal.com), the deal (Phoenix ERP) and the follow-up (AutoSend), each one line with its state. A move changes all three quietly. A cancellation or a no-show goes back to Needs you with a draft for a person, and the deal stays open. Corral stops and asks when Phoenix refuses a deal or already has the company; it never merges on its own.</p>}>
         <HandoffDemo />
       </Part>
@@ -313,7 +313,7 @@ export default function Styleguide() {
         notes={<p>Only moments float: a booked meeting, a reply worth seeing, a toast. Faces are film-graded photos in circles, one treatment for everyone.</p>}>
         <div className="sg-float">
           <MeetingCard />
-          <div className="sg-float__col"><PersonCard /><Toast meta="Cal.com">Brian Kamau booked Thu 10:30</Toast>
+          <div className="sg-float__col"><PersonCard /><Toast meta={<img className="h-logo h-logo--cal is-sm h-logo--on-dark" src="/assets/cal-logo.svg" alt="Cal.com" />}>Brian Kamau booked Thu 10:30</Toast>
             <div className="sg-faces">{["wanjiru", "kamau", "amara", "grace", "reza", "sofia"].map((a, i) => <Avatar key={a} id={a} size={([48, 36, 28, 24, 20, 20] as const)[i]} />)}</div></div>
         </div>
       </Part>

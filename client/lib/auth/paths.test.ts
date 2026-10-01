@@ -11,7 +11,7 @@ describe("isProtected", () => {
 describe("safeReturnTo", () => {
   it.each([
     ["/app", "/app"],
-    ["/app?view=companies&collapsed=1", "/app?view=companies&collapsed=1"],
+    ["/app/companies?collapsed=1", "/app/companies?collapsed=1"],
     ["/onboarding?step=5", "/onboarding?step=5"],
     ["/app/../app", "/app"],
     ["/app#frag", "/app"],
@@ -25,7 +25,7 @@ describe("safeReturnTo", () => {
 
 describe("signInUrl", () => {
   it("carries a safe return path only", () => {
-    expect(signInUrl("/app?view=segments")).toBe("/sign-in?next=%2Fapp%3Fview%3Dsegments");
+    expect(signInUrl("/app/segments")).toBe("/sign-in?next=%2Fapp%2Fsegments");
     expect(signInUrl("//evil")).toBe("/sign-in");
     expect(signInUrl()).toBe("/sign-in");
   });

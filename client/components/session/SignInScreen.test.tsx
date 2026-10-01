@@ -16,9 +16,9 @@ describe("signInActions", () => {
   it("remembers a safe return path, then goes to the API login redirect", () => {
     const go = vi.fn();
     const remember = vi.fn();
-    const a = signInActions(authApiFor(testConfig()), "/app?view=segments", go, remember);
+    const a = signInActions(authApiFor(testConfig()), "/app/segments", go, remember);
     a.startGoogle();
-    expect(remember).toHaveBeenCalledWith("/app?view=segments");
+    expect(remember).toHaveBeenCalledWith("/app/segments");
     expect(go).toHaveBeenCalledWith(LOGIN);
     a.startEmail("wanjiru@kilima.co.ke");
     expect(go).toHaveBeenCalledTimes(2);
@@ -34,12 +34,12 @@ describe("signInActions", () => {
   it("on a verified code remembers the return path and lands on / like the callback", async () => {
     const go = vi.fn();
     const remember = vi.fn();
-    const a = signInActions(authApiFor(testConfig()), "/app?view=segments", go, remember);
+    const a = signInActions(authApiFor(testConfig()), "/app/segments", go, remember);
     expect(await a.verifyCode?.("wanjiru@kilima.co.ke", "000000")).toEqual({ ok: false, reason: "wrong" });
     expect(go).not.toHaveBeenCalled();
     expect(remember).not.toHaveBeenCalled();
     expect(await a.verifyCode?.("wanjiru@kilima.co.ke", GOOD_CODE)).toEqual({ ok: true });
-    expect(remember).toHaveBeenCalledWith("/app?view=segments");
+    expect(remember).toHaveBeenCalledWith("/app/segments");
     expect(go).toHaveBeenCalledWith("/");
   });
 
@@ -68,11 +68,11 @@ describe("SignInScreen (live)", () => {
   };
 
   it("hands Google off to AuthKit and shows the designed pending state", async () => {
-    const go = mount("default", "/app?view=companies");
+    const go = mount("default", "/app/companies");
     await userEvent.click(screen.getByRole("button", { name: "Continue with Google" }));
     expect(go).toHaveBeenCalledWith(LOGIN);
     expect(screen.getByRole("button", { name: /Opening Google/ })).toBeDisabled();
-    expect(document.cookie).toContain("corral_return_to=%2Fapp%3Fview%3Dcompanies");
+    expect(document.cookie).toContain("corral_return_to=%2Fapp%2Fcompanies");
   });
 
   it("validates the email, then sends a code without leaving the page (no sample prefill)", async () => {
@@ -96,13 +96,13 @@ describe("SignInScreen (live)", () => {
     const user = userEvent.setup();
     let verified: unknown;
     server.use(http.post(VERIFY, async ({ request }) => { verified = await request.json(); return HttpResponse.json({ redirect_to: "http://localhost:3000" }); }));
-    const go = mount("default", "/app?view=companies");
+    const go = mount("default", "/app/companies");
     await user.type(screen.getByRole("textbox", { name: "Work email" }), "wanjiru@kilima.co.ke");
     await user.click(screen.getByRole("button", { name: "Email me a code" }));
     await user.type(await screen.findByLabelText("Sign-in code"), GOOD_CODE);
     await vi.waitFor(() => expect(go).toHaveBeenCalledWith("/"));
     expect(verified).toEqual({ email: "wanjiru@kilima.co.ke", code: GOOD_CODE });
-    expect(document.cookie).toContain("corral_return_to=%2Fapp%3Fview%3Dcompanies");
+    expect(document.cookie).toContain("corral_return_to=%2Fapp%2Fcompanies");
     expect(screen.getByRole("button", { name: /Checking code/ })).toBeDisabled();
   });
 

@@ -69,7 +69,7 @@ describe("<HandoffSteps> and <HandoffProblems>", () => {
   it("says why Phoenix refused the deal and links to the fix", async () => {
     wrap(<HandoffProblems h={handoffFor("deal-error")} />);
     expect(screen.getByRole("alert")).toHaveTextContent("401 invalid_signature");
-    expect(screen.getByRole("link", { name: "Update the secret" })).toHaveAttribute("href", "/app?view=settings&state=error");
+    expect(screen.getByRole("link", { name: "Update the secret" })).toHaveAttribute("href", "/app/settings?state=error");
     await userEvent.click(screen.getByRole("button", { name: "Try again now" }));
     expect(await screen.findByText(/Phoenix still says 401/)).toBeInTheDocument();
   });
@@ -84,7 +84,7 @@ describe("<HandoffSteps> and <HandoffProblems>", () => {
   it("sends a waiting follow-up to connect AutoSend", () => {
     wrap(<HandoffProblems h={handoffFor("nurture-off")} lead />);
     expect(screen.getByRole("status")).toHaveTextContent("AutoSend isn’t connected");
-    expect(screen.getByRole("link", { name: "Connect AutoSend" })).toHaveAttribute("href", "/app?view=settings&state=connect-autosend");
+    expect(screen.getByRole("link", { name: "Connect AutoSend" })).toHaveAttribute("href", "/app/settings?state=connect-autosend");
   });
   it("renders nothing when nothing needs a person", () => {
     const { container } = wrap(<HandoffProblems h={handoffFor("meeting-booked")} />);
