@@ -346,6 +346,51 @@ function leadsRoute(req, res, path) {
   return true;
 }
 
+/* ------------------------------------------------------------ workspace (onboarding) */
+let workspace = null;
+function freshWorkspace() {
+  return {
+    id: ME.organization.id, name: ME.organization.name, slug: ME.organization.slug,
+    timezone: null, team_size: null, logo_url: null, website: null, onboarded: false,
+    skipped: [], site_pages: [], site_highlights: [], invites: [],
+    product: null,
+  };
+}
+function resetWorkspace() { workspace = freshWorkspace(); }
+function workspaceRoute(req, res, path) {
+  if (!path.startsWith("/api/v1/workspace")) return false;
+  if (!signedIn(req)) return json(res, 401, { detail: "Not signed in" }), true;
+  if (path === "/api/v1/workspace" && req.method === "GET") return json(res, 200, workspace), true;
+  if (path === "/api/v1/workspace" && req.method === "PATCH") {
+    readJson(req).then((b) => {
+      if (b.name) workspace.name = b.name;
+      if (b.slug) workspace.slug = b.slug;
+      if (b.timezone) workspace.timezone = b.timezone;
+      if (b.team_size) workspace.team_size = b.team_size;
+      if (Array.isArray(b.skipped)) workspace.skipped = b.skipped;
+      if (Array.isArray(b.invites)) workspace.invites = b.invites.filter((i) => i.email);
+      if (b.complete) workspace.onboarded = true;
+      json(res, 200, workspace);
+    });
+    return true;
+  }
+  if (path === "/api/v1/workspace/logo" && req.method === "POST") {
+    workspace.logo_url = "https://assets.test/logos/logo.png";
+    return json(res, 200, workspace), true;
+  }
+  if (path === "/api/v1/workspace/site" && req.method === "POST") {
+    readJson(req).then((b) => {
+      const host = String(b.url ?? "").replace(/^https?:\/\//, "").split("/")[0] || "site";
+      workspace.website = `https://${host}/`;
+      workspace.site_pages = [{ path: "/", title: host }];
+      workspace.site_highlights = [`${host} home`];
+      json(res, 200, workspace);
+    });
+    return true;
+  }
+  return false;
+}
+
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, SELF);
   const path = url.pathname;
@@ -367,7 +412,7 @@ const server = http.createServer((req, res) => {
       json(res, 200, scenario);
     }); return;
   }
-  if (path === "/__mock/reset" && req.method === "POST") { scenario = { ...FRESH }; calls = []; sends = new Map(); resetKb(); resetCrm(); return json(res, 200, {}); }
+  if (path === "/__mock/reset" && req.method === "POST") { scenario = { ...FRESH }; calls = []; sends = new Map(); resetKb(); resetCrm(); resetWorkspace(); return json(res, 200, {}); }
   if (path === "/__mock/calls") return json(res, 200, calls);
 
   if (path === "/api/v1/auth/login" && req.method === "GET") {
@@ -421,6 +466,7 @@ const server = http.createServer((req, res) => {
     });
     return;
   }
+  if (workspaceRoute(req, res, path)) return;
   if (kbRoute(req, res, path, url)) return;
   if (leadsRoute(req, res, path)) return;
   if (path === "/api/v1/auth/logout" && req.method === "POST") {
@@ -431,5 +477,6 @@ const server = http.createServer((req, res) => {
 
 resetKb();
 resetCrm();
+resetWorkspace();
 server.listen(PORT, () => console.log(`mock Corral API on ${SELF}, frontend ${FRONTEND}`));
 for (const sig of ["SIGINT", "SIGTERM"]) process.on(sig, () => { server.closeAllConnections(); process.exit(0); });

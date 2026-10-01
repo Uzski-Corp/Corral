@@ -41,7 +41,7 @@ export type User = {
   lastName: string | null;
   profilePictureUrl: string | null;
 };
-export type Organization = { id: string; name: string; slug: string };
+export type Organization = { id: string; name: string; slug: string; onboarded: boolean };
 /** Backend roles today are owner | admin | member; kept open so a new role doesn't break sign-in. */
 export type Role = "owner" | "admin" | "member" | (string & {});
 export type Me = { user: User; organization: Organization; role: Role };
@@ -62,12 +62,14 @@ export const decodeMe: Decoder<Me> = (input) => {
   const name = field(o, "name", isString, "string", "me.organization"); if (!name.ok) return name;
   const slug = field(o, "slug", isString, "string", "me.organization"); if (!slug.ok) return slug;
   const role = field(input, "role", isNonEmptyString, "string", "me"); if (!role.ok) return role;
+  const onboarded = o.onboarded === undefined ? false : o.onboarded;
+  if (typeof onboarded !== "boolean") return err("me.organization.onboarded: expected boolean");
   return ok({
     user: {
       id: id.value, email: email.value, firstName: opt(first.value), lastName: opt(last.value),
       profilePictureUrl: isHttpUrl(pic.value) ? pic.value : null,
     },
-    organization: { id: orgId.value, name: name.value, slug: slug.value },
+    organization: { id: orgId.value, name: name.value, slug: slug.value, onboarded },
     role: role.value,
   });
 };

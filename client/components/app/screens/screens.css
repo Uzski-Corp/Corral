@@ -85,10 +85,14 @@
 .s-drop:hover { background: var(--color-surface-sunken); }
 .s-note { margin: 0; font-size: var(--text-meta); line-height: 18px; color: var(--color-text-tertiary); }
 .s-inline { display: flex; gap: 8px; } .s-inline > .c-input { flex: 1; min-width: 0; }
-.s-crawl { display: flex; flex-direction: column; gap: 12px; padding: 14px 16px 16px; border-radius: var(--radius-card); box-shadow: inset 0 0 0 1px var(--color-border); }
+.s-crawl { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 14px 16px 16px; border-radius: var(--radius-card); box-shadow: inset 0 0 0 1px var(--color-border); }
 .s-crawl__top { display: flex; justify-content: space-between; gap: 12px; }
+.s-crawl .c-receipt { white-space: normal; align-items: flex-start; min-width: 0; }
+.s-crawl .c-receipt svg { margin-top: 3px; }
+.s-crawl .c-receipt em { min-width: 0; overflow-wrap: anywhere; }
 .s-found { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--color-border-subtle); line-height: 18px; }
-.s-chips { display: flex; flex-wrap: wrap; gap: 6px; } .s-chips .c-chip { cursor: default; }
+.s-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.s-chips .c-chip { height: auto; max-width: 100%; cursor: default; white-space: normal; overflow-wrap: anywhere; line-height: 16px; padding-top: 4px; padding-bottom: 4px; text-align: left; }
 .s-wide { width: 100%; justify-content: center; }
 .s-boxes { display: flex; flex-direction: column; border-radius: var(--radius-card); box-shadow: inset 0 0 0 1px var(--color-border); padding: 0 14px; }
 .s-box { display: flex; align-items: center; gap: 10px; height: 56px; } .s-box + .s-box { border-top: 1px solid var(--color-border-subtle); }
@@ -107,6 +111,7 @@
 .s-know__band { position: relative; height: 96px; }
 .s-know__img { object-fit: cover; object-position: 50% 40%; }
 .s-know__tile { position: absolute; left: 20px; bottom: -18px; border-radius: 9px; box-shadow: 0 0 0 3px var(--color-canvas); display: inline-flex; }
+.s-logo { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: var(--color-surface-muted); }
 .s-know__tile .c-wstile { border-radius: 9px; }
 .s-know__body { padding: 30px 20px 20px; display: flex; flex-direction: column; gap: 14px; }
 .s-know__row { display: flex; flex-direction: column; gap: 3px; padding-top: 12px; border-top: 1px solid var(--color-border-subtle); line-height: 18px; color: var(--color-text-body); }

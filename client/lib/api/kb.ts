@@ -95,6 +95,7 @@ export const decodeHits = listDecoder("hits", (r): SearchHit => ({
 export type KbApi = {
   listProducts(signal?: AbortSignal): Promise<Result<Product[], ApiError>>;
   createProduct(body: { name: string; description?: string }, signal?: AbortSignal): Promise<Result<Product, ApiError>>;
+  updateProduct(productId: string, body: { name?: string; description?: string | null }, signal?: AbortSignal): Promise<Result<Product, ApiError>>;
   /** Every source of a product, following pages until a short one. */
   listSources(productId: string, o?: { includeRemoved?: boolean; signal?: AbortSignal }): Promise<Result<ApiSource[], ApiError>>;
   getSource(productId: string, sourceId: string, signal?: AbortSignal): Promise<Result<ApiSource, ApiError>>;
@@ -116,6 +117,7 @@ export function createKbApi(client: ApiClient): KbApi {
   return {
     listProducts: (signal) => client.request(KB_PATHS.products, { decode: decodeProducts, query: { limit: String(MAX_PAGE) }, signal }),
     createProduct: (body, signal) => client.request(KB_PATHS.products, { method: "POST", body, decode: decodeProduct, signal }),
+    updateProduct: (productId, body, signal) => client.request(KB_PATHS.product(productId), { method: "PATCH", body, decode: decodeProduct, signal }),
     async listSources(productId, o = {}) {
       const all: ApiSource[] = [];
       for (let page = 0; page < MAX_PAGES; page++) {

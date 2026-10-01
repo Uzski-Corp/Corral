@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState, type ComponentPropsWithoutRef, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { appPath } from "@/lib/appPath";
 import { Icon, type IconName } from "./icons";
 import { Avatar, Kbd, Monogram, cx } from "./primitives";
 import { DropdownMenu, Tooltip, type MenuEntry } from "./Overlays";
@@ -48,7 +49,7 @@ export function WorkspaceSwitcher({ collapsed, defaultOpen, account, onSignOut }
       ...(account === "loading" || account === "unavailable" ? [] : [{ heading: live ? account.email : "tomas@coldtrace.io" }]),
       ...workspaces,
       "separator",
-      { label: "Workspace settings", icon: "gear", kbd: "G ," },
+      { label: "Workspace settings", icon: "gear", onSelect: () => router.push(appPath("settings", { tab: "workspace" })) },
       { label: "Invite teammates", icon: "users", onSelect: () => router.push("/onboarding?step=5") },
       { label: "Create a workspace", icon: "plus", onSelect: () => router.push("/onboarding") },
       "separator",

@@ -118,7 +118,8 @@ async def test_workos_org_membership_and_role_sync(db_session: AsyncSession) -> 
     org = await db_session.get(Organization, ident.org_id)
     assert membership is not None and org is not None
     assert membership.role == "member"
-    assert org.name == "Acme 2"
+    # The workspace name is chosen in onboarding. A later sign-in updates the role, not the name.
+    assert org.name == "Acme"
     assert org.slug.startswith("acme-")  # slug is stable after creation
 
 

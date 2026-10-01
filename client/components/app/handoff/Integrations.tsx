@@ -16,6 +16,7 @@ import { sectionOf, type DevSection, type McpReviewState } from "@/lib/mcp/state
 import { Developer, McpConsent } from "../mcp";
 import { AUTOSEND_SENDER, CORRAL_FIELDS, ERP_FIELDS, ERP_URL, GRACE_VALUES, INTEGRATIONS, LOGS, MAPPING, MAPPING_BROKEN, PROBLEM, SCOPES, STAGE_MAP, integration, settingsSeed, type SettingsSeed } from "./data";
 import { Pill, Tile } from "./Handoff";
+import { WorkspaceSettings } from "./WorkspaceSettings";
 
 type Tab = SettingsSeed["tab"];
 type DialogKind = NonNullable<SettingsSeed["dialog"]>;
@@ -34,10 +35,14 @@ export const settingsTabOf = (tab?: string): string | undefined => SECTIONS.find
 export const settingsTabLabel = (tab: string): string => SECTIONS.find((x) => x.id === tab)!.label;
 
 /** The settings page. Integrations (M8) and Developers (M9) are designed; the others keep their place. */
-export function SettingsView({ state, developer, tab, onSection }: { state?: SettingsReviewState; developer?: McpReviewState; tab?: string; onSection?: (label: string) => void }) {
+export function SettingsView({ state, developer, tab, onSection }: { state?: SettingsReviewState; developer?: McpReviewState; tab?: string; onSection?: (label: string, id: string) => void }) {
   const [section, setSection] = useState<string>(developer ? sectionOf(developer) : settingsTabOf(tab) ?? "integrations");
   const s = SECTIONS.find((x) => x.id === section)!;
-  const go = (id: string) => { setSection(id); onSection?.(SECTIONS.find((x) => x.id === id)!.label); };
+  const go = (id: string) => {
+    setSection(id);
+    const row = SECTIONS.find((x) => x.id === id)!;
+    onSection?.(row.label, id);
+  };
   // On a phone the nav is one scrolling row; keep the page you're on in view (Developers sits past Billing).
   const nav = useRef<HTMLElement>(null);
   useEffect(() => { nav.current?.querySelector<HTMLElement>(".is-on")?.scrollIntoView?.({ block: "nearest", inline: "nearest" }); }, [section]);
@@ -55,6 +60,7 @@ export function SettingsView({ state, developer, tab, onSection }: { state?: Set
       </nav>
       <div className="i-main">
         {section === "integrations" ? <Integrations key={state ?? "live"} state={state} />
+          : section === "workspace" ? <WorkspaceSettings />
           : isDev(section) ? <Developer key={`${section}-${developer ?? "live"}`} section={section} state={developer && sectionOf(developer) === section ? developer : undefined} />
           : <div className="i-later"><h2>{s.label}</h2><p className="c-muted">{s.note}. Designed in a later milestone; this keeps its place in Settings.</p></div>}
       </div>

@@ -68,6 +68,10 @@
 .i-nav__item.is-on { background: var(--color-surface-sunken); color: var(--color-text); font-weight: 500; }
 .i-nav__item svg { color: var(--color-text-quaternary); }
 .i-main { min-width: 0; border-left: 1px solid var(--color-border-subtle); min-height: 100%; }
+.i-ws { display: flex; flex-direction: column; gap: 16px; max-width: 480px; }
+.i-ws__logo { display: flex; align-items: center; gap: 16px; }
+.i-ws__mark { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+.i-ws__acts { display: flex; align-items: center; gap: 8px; }
 .i-later { padding: 24px; max-width: 640px; }
 .i-later h2 { margin: 0 0 4px; font-size: 18px; font-weight: 500; }
 .i-page { display: flex; flex-direction: column; gap: 16px; padding: 18px 28px 96px; max-width: 1040px; }

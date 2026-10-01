@@ -20,6 +20,7 @@ import { authApiFor, displayName, roleLabel, type AuthApi, type Me } from "@/lib
 import type { ApiError } from "@/lib/api/errors";
 import { getConfig, type ClientConfig } from "@/lib/config";
 import { err, ok, type Result } from "@/lib/result";
+import { markOnboarded } from "@/lib/auth/cookies";
 import { signInUrl } from "@/lib/auth/paths";
 import { forgetVisitor, rememberVisitor } from "@/lib/marketing/visitor";
 
@@ -42,6 +43,8 @@ export type SessionValue = {
   error: ApiError | null;
   signOut(): Promise<Result<void, ApiError>>;
   refresh(): Promise<Result<void, ApiError>>;
+  /** Re-read /me so the shell picks up a workspace rename or a new logo. */
+  reload(): Promise<Result<Me, ApiError>>;
   /** This deploy's config, so the app's data layer talks to the same API as the session. */
   config: ClientConfig;
 };
@@ -103,6 +106,7 @@ export function SessionProvider({ children, config: configProp, api: apiProp, na
     if (r.ok) {
       setMe(r.value); setError(null); setStatus("authenticated"); lastRefresh.current = Date.now();
       rememberVisitor({ name: displayName(r.value.user), avatarUrl: r.value.user.profilePictureUrl });
+      if (r.value.organization.onboarded) markOnboarded();
       return;
     }
     if (r.error.kind === "aborted") return;
@@ -112,6 +116,13 @@ export function SessionProvider({ children, config: configProp, api: apiProp, na
   }, [toSignIn]);
 
   const load = useCallback(async () => { if (api) applyMe(await api.me()); }, [api, applyMe]);
+
+  const reload = useCallback(async (): Promise<Result<Me, ApiError>> => {
+    if (!api) return err({ kind: "network", op: "GET /api/v1/auth/me", message: "Not signed in." });
+    const r = await api.me();
+    applyMe(r);
+    return r;
+  }, [api, applyMe]);
 
   useEffect(() => {
     if (!api || review) return;
@@ -159,9 +170,9 @@ export function SessionProvider({ children, config: configProp, api: apiProp, na
   }, [api, navigator, router]);
 
   const value = useMemo<SessionValue>(() => ({
-    status, me, error, signOut, refresh, config,
+    status, me, error, signOut, refresh, reload, config,
     account: me ? toAccount(me) : null,
-  }), [status, me, error, signOut, refresh, config]);
+  }), [status, me, error, signOut, refresh, reload, config]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

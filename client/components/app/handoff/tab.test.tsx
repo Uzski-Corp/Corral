@@ -21,4 +21,11 @@ describe("Settings tab param", () => {
     render(<ToastProvider><SettingsView tab="nope" /></ToastProvider>);
     expect(screen.getByRole("button", { name: "Integrations" })).toHaveAttribute("aria-current", "page");
   });
+
+  it("opens the workspace form from tab=workspace", () => {
+    render(<ToastProvider><SettingsView tab="workspace" /></ToastProvider>);
+    expect(screen.getByRole("button", { name: "Workspace" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByLabelText("Workspace name")).toHaveValue("ColdTrace");
+    expect(screen.queryByText(/Designed in a later milestone/)).toBeNull();
+  });
 });

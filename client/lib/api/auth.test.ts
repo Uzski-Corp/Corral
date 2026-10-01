@@ -11,7 +11,7 @@ describe("decodeMe", () => {
   it("maps the API's snake_case into the client model", () => {
     expect(decodeMe(ME_BODY)).toEqual({ ok: true, value: {
       user: { id: ME_BODY.user.id, email: "wanjiru@kilima.co.ke", firstName: "Wanjiru", lastName: "Mwangi", profilePictureUrl: "https://img.test/w.jpg" },
-      organization: { id: ME_BODY.organization.id, name: "Kilima Dairies", slug: "kilima" },
+      organization: { id: ME_BODY.organization.id, name: "Kilima Dairies", slug: "kilima", onboarded: false },
       role: "owner",
     } });
   });
