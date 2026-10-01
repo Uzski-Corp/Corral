@@ -128,9 +128,10 @@ corral/
 
 ### 1. Start the stack
 
-From the repo root:
+From the repo root. If you already started this stack once, recreate the network first (`down` keeps the database volume):
 
 ```bash
+docker compose down
 docker compose up --build
 ```
 
