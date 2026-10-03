@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.activity import (
@@ -375,13 +376,128 @@ async def create_run(
     return run_out(row)
 
 
+# The log results the screen knows. Anything else reads as delivered ("ok").
+LOG_RESULTS = ("ok", "failed", "retrying", "rejected", "duplicate")
+
+
+def _iso(value: datetime | None) -> str | None:
+    return value.isoformat() if value is not None else None
+
+
+def log_out(row: IntegrationLog) -> dict[str, Any]:
+    """One log row as the screen reads it: time, direction, event, result, one line."""
+    doc = _doc(row)
+    result = doc.get("result")
+    event = doc.get("event")
+    detail = doc.get("detail", doc.get("summary"))
+    return {
+        "id": str(row.id),
+        "at": row.created_at.isoformat(),
+        "dir": "in" if doc.get("dir") == "in" else "out",
+        "event": event if isinstance(event, str) and event else "note",
+        "result": result if result in LOG_RESULTS else "ok",
+        "detail": detail if isinstance(detail, str) else None,
+    }
+
+
+async def _integration(
+    session: AsyncSession, org_id: uuid.UUID, provider: str
+) -> Integration | None:
+    return (
+        await session.execute(
+            select(Integration).where(
+                Integration.org_id == org_id, Integration.provider == provider
+            )
+        )
+    ).scalar_one_or_none()
+
+
+async def _last_logs(session: AsyncSession, org_id: uuid.UUID) -> dict[uuid.UUID, IntegrationLog]:
+    """The newest log row of each integration, in one query."""
+    rows = (
+        (
+            await session.execute(
+                select(IntegrationLog)
+                .where(IntegrationLog.org_id == org_id)
+                .ext(distinct_on(IntegrationLog.integration_id))
+                .order_by(IntegrationLog.integration_id, IntegrationLog.created_at.desc())
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return {row.integration_id: row for row in rows}
+
+
+def _summary(row: Integration, last: IntegrationLog | None) -> dict[str, Any]:
+    event = None
+    if last is not None:
+        entry = log_out(last)
+        event = {"event": entry["event"], "at": entry["at"], "result": entry["result"]}
+    return {
+        "provider": row.provider,
+        "status": row.status,
+        "config": row.config,
+        "connectedAt": _iso(row.connected_at),
+        "lastEvent": event,
+    }
+
+
+def _account(config: dict[str, Any]) -> dict[str, str] | None:
+    """The account on the other side, if the connect flow stored what the integration reported."""
+    raw = config.get("account")
+    if not isinstance(raw, dict) or not isinstance(raw.get("name"), str) or not raw["name"]:
+        return None
+    out = {"name": raw["name"]}
+    if isinstance(raw.get("email"), str) and raw["email"]:
+        out["email"] = raw["email"]
+    return out
+
+
+def _problem(row: Integration) -> dict[str, Any] | None:
+    kind = {"reauth": "token-expired", "error": "refused"}.get(row.status)
+    if kind is None:
+        return None
+    return {"kind": kind, "since": _iso(row.status_at or row.updated_at)}
+
+
+def detail_out(row: Integration, last: IntegrationLog | None) -> dict[str, Any]:
+    """What a connected integration's page reads. Logs come from /logs, so they can load after."""
+    return {
+        **_summary(row, last),
+        "id": row.provider,
+        "account": _account(row.config),
+        "connectedById": str(row.connected_by) if row.connected_by is not None else None,
+        "statusAt": _iso(row.status_at),
+        "problem": _problem(row),
+        "mapping": row.mapping if row.provider == "phoenix" else None,
+        # Corral holds no credential for any of them yet, so nothing can be sent a test.
+        "supportsTest": False,
+    }
+
+
 async def list_integrations(session: AsyncSession, org_id: uuid.UUID) -> list[dict[str, Any]]:
     rows = (
         (await session.execute(select(Integration).where(Integration.org_id == org_id)))
         .scalars()
         .all()
     )
-    return [{"provider": row.provider, "status": row.status, "config": row.config} for row in rows]
+    last = await _last_logs(session, org_id)
+    return [_summary(row, last.get(row.id)) for row in rows]
+
+
+async def integration_detail(
+    session: AsyncSession, org_id: uuid.UUID, provider: str
+) -> dict[str, Any] | None:
+    """None for an unknown provider. One never connected reads as off, with nothing in it."""
+    if provider not in PROVIDERS:
+        return None
+    row = await _integration(session, org_id, provider)
+    if row is None:
+        row = Integration(org_id=org_id, provider=provider, status="off", config={})
+        return detail_out(row, None)
+    last = await _last_logs(session, org_id)
+    return detail_out(row, last.get(row.id))
 
 
 async def upsert_integration(
@@ -391,37 +507,47 @@ async def upsert_integration(
     *,
     status: str,
     config: dict[str, Any] | None,
+    user_id: uuid.UUID | None = None,
 ) -> dict[str, Any] | None:
     if provider not in PROVIDERS:
         return None
-    row = (
-        await session.execute(
-            select(Integration).where(
-                Integration.org_id == org_id, Integration.provider == provider
-            )
-        )
-    ).scalar_one_or_none()
+    now = datetime.now(UTC)
+    row = await _integration(session, org_id, provider)
     if row is None:
-        row = Integration(org_id=org_id, provider=provider, status=status, config=config or {})
+        row = Integration(org_id=org_id, provider=provider, status="off", config=config or {})
         session.add(row)
-    else:
-        row.status = status
-        if config is not None:
-            row.config = config
+    elif config is not None:
+        row.config = config
+    if row.status_at is None or status != row.status:
+        row.status_at = now
+    if status == "connected" and (row.status == "off" or row.connected_at is None):
+        row.connected_at, row.connected_by = now, user_id
+    elif status == "off":
+        row.connected_at, row.connected_by = None, None
+    row.status = status
     await session.flush()
     return {"provider": row.provider, "status": row.status, "config": row.config}
+
+
+async def save_mapping(
+    session: AsyncSession, org_id: uuid.UUID, provider: str, rows: list[dict[str, Any]]
+) -> dict[str, Any] | str:
+    """Phoenix's field mapping. An empty list goes back to Corral's defaults (null)."""
+    if provider != "phoenix":
+        return "no_mapping"
+    row = await _integration(session, org_id, provider)
+    if row is None or row.status == "off":
+        return "not_connected"
+    row.mapping = rows or None
+    await session.flush()
+    last = await _last_logs(session, org_id)
+    return detail_out(row, last.get(row.id))
 
 
 async def integration_logs(
     session: AsyncSession, org_id: uuid.UUID, provider: str
 ) -> list[dict[str, Any]]:
-    row = (
-        await session.execute(
-            select(Integration).where(
-                Integration.org_id == org_id, Integration.provider == provider
-            )
-        )
-    ).scalar_one_or_none()
+    row = await _integration(session, org_id, provider)
     if row is None:
         return []
     logs = (
@@ -436,7 +562,7 @@ async def integration_logs(
         .scalars()
         .all()
     )
-    return [_doc(item) for item in logs]
+    return [log_out(item) for item in logs]
 
 
 def _key_out(row: ApiKey) -> dict[str, Any]:

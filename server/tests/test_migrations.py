@@ -72,7 +72,7 @@ def test_upgrade_downgrade_upgrade_round_trip(scratch_database_url: str) -> None
 def test_each_revision_steps_down_and_up(scratch_database_url: str) -> None:
     cfg = alembic_config(scratch_database_url)
     command.upgrade(cfg, "head")
-    for _ in range(8):
+    for _ in range(9):
         command.downgrade(cfg, "-1")
     assert tables(scratch_database_url) == {"alembic_version"}
     for expected in (
@@ -84,6 +84,7 @@ def test_each_revision_steps_down_and_up(scratch_database_url: str) -> None:
         set(),
         set(),
         {"mailboxes"},
+        set(),
     ):
         command.upgrade(cfg, "+1")
         assert expected <= tables(scratch_database_url)

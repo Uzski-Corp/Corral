@@ -108,11 +108,24 @@ class Integration(TenantModel):
     __table_args__ = (
         UniqueConstraint("org_id", "provider", name="uq_integrations_org_id_provider"),
         CheckConstraint("provider IN ('cal', 'phoenix', 'autosend')", name="provider"),
+        ForeignKeyConstraint(
+            ["connected_by"],
+            ["users.id"],
+            name="fk_integrations_connected_by_users",
+            ondelete="SET NULL",
+        ),
     )
 
     provider: Mapped[str] = mapped_column(String(16), nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, server_default="off")
     config: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default="{}")
+    # When it was last connected from off, and by which user. Kept through a reauth.
+    connected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    connected_by: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    # When the status last changed: "Sign-in expired 2h ago" reads this.
+    status_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Phoenix's saved field mapping. Null until someone saves one (Corral uses its defaults).
+    mapping: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB)
 
 
 class IntegrationLog(TenantModel):

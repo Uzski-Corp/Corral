@@ -281,8 +281,13 @@ async def test_discovery_credits_and_a_queued_run(api: AsyncClient) -> None:
 async def test_integrations_update_logs_and_validation(
     api: AsyncClient, api_b: AsyncClient
 ) -> None:
-    logs = (await api.get("/api/v1/integrations/cal/logs")).json()
-    assert logs == [{"summary": "Cal.com booking link is on."}]
+    [log] = (await api.get("/api/v1/integrations/cal/logs")).json()
+    assert {k: log[k] for k in ("dir", "event", "result", "detail")} == {
+        "dir": "out",
+        "event": "connected",
+        "result": "ok",
+        "detail": "Cal.com booking link is on.",
+    }
     assert (await api.get("/api/v1/integrations/zoom/logs")).status_code == 404
     assert (await api_b.get("/api/v1/integrations/cal/logs")).json() == []
 

@@ -56,7 +56,9 @@ def test_stored_documents_are_read_defensively() -> None:
     assert [p.path for p in ws._pages([1, {"path": "/a"}, {"path": "/b", "title": "B"}])] == ["/b"]
     assert ws._invites({}) == []
     invites = ws._invites([1, {"email": 2}, {"email": "a@x.io", "role": "owner"}])
-    assert [(i.email, i.role) for i in invites] == [("a@x.io", "member")]
+    assert [(i.email, i.role, i.invited_at) for i in invites] == [("a@x.io", "member", None)]
+    assert ws._when(5) is None and ws._when("soon") is None
+    assert ws._when("2026-10-03T10:00:00+00:00") is not None
     assert ws._from_mail(None) is False and ws._from_mail("") is False
     assert ws._from_mail("https://assets.test/avatars/u/1.png") is False
     assert ws._from_mail("https://lh3.googleusercontent.com/a.png") is True
@@ -75,7 +77,9 @@ async def test_drifted_documents_come_back_clean(
             )
         )
     body = (await api.get(API)).json()
-    assert body["site_pages"] == [] and body["invites"] == [{"email": "a@x.io", "role": "member"}]
+    assert body["site_pages"] == [] and body["invites"] == [
+        {"email": "a@x.io", "role": "member", "invited_at": None}
+    ]
 
 
 async def test_logo_limits_and_storage_failure(

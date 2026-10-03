@@ -4,6 +4,7 @@ A brand-new account is untouched: ``provision_identity`` does not call ``seed_or
 """
 
 import uuid
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -224,11 +225,24 @@ async def seed_org(
             ),
         )
         if row is None:
-            row = Integration(org_id=org_id, provider=provider, status=status, config={})
+            now = datetime.now(UTC)
+            row = Integration(
+                org_id=org_id,
+                provider=provider,
+                status=status,
+                config={},
+                connected_at=now,
+                connected_by=user_id,
+                status_at=now,
+            )
             session.add(row)
             await session.flush()
             session.add(
-                IntegrationLog(org_id=org_id, integration_id=row.id, document={"summary": note})
+                IntegrationLog(
+                    org_id=org_id,
+                    integration_id=row.id,
+                    document={"dir": "out", "event": "connected", "result": "ok", "detail": note},
+                )
             )
         else:
             row.status = status

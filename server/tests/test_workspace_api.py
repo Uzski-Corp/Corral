@@ -73,7 +73,17 @@ async def test_profile_round_trips_and_completion_sticks(
         "small",
     )
     assert body["skipped"] == [4]
-    assert body["invites"] == [{"email": "amina@northwind.io", "role": "admin"}]
+    [invite] = body["invites"]
+    assert (invite["email"], invite["role"]) == ("amina@northwind.io", "admin")
+    first = invite["invited_at"]
+    assert first is not None
+    more = await api.patch(
+        API,
+        json={"invites": [{"email": "Amina@northwind.io"}, {"email": "sales@northwind.io"}]},
+    )
+    kept, added = more.json()["invites"]
+    assert kept["invited_at"] == first  # still pending: keeps the time it was first sent
+    assert added["email"] == "sales@northwind.io" and added["invited_at"] >= first
     assert body["onboarded"] is False
 
     done = await api.patch(API, json={"complete": True})

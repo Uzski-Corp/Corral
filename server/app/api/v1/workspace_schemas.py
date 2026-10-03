@@ -1,6 +1,7 @@
 """Workspace profile: what onboarding saves, and what a later visit reads back."""
 
 import uuid
+from datetime import datetime
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
@@ -33,6 +34,11 @@ class InviteIn(BaseModel):
 
     email: Annotated[str, StringConstraints(strip_whitespace=True, max_length=320)]
     role: InviteRole = "member"
+
+
+class InviteOut(InviteIn):
+    # When the invite was first added. Older invites, saved before this was kept, have none.
+    invited_at: datetime | None = None
 
 
 class WorkspaceUpdate(BaseModel):
@@ -69,5 +75,5 @@ class WorkspaceOut(BaseModel):
     skipped: list[int]
     site_pages: list[SitePageOut]
     site_highlights: list[str]
-    invites: list[InviteIn]
+    invites: list[InviteOut]
     product: ProductBrief | None
