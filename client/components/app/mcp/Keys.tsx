@@ -19,17 +19,30 @@ const hhmm = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { hour: 
 const when = (iso: string) => `${dayWords(new Date(iso))}, ${hhmm(iso)}`;
 type Draft = { name: string; access: AccessMap; expiry: ExpiryId; env: KeyEnv; preset: string };
 
-export function ApiKeys({ seed }: { seed: DevSeed }) {
+/** Signed in: the server makes, rotates and revokes keys, and its secret is the one shown. */
+export type KeysApi = {
+  create(d: { name: string; env: KeyEnv; scopes: string[]; expires: string | null }): Promise<{ key: ApiKey; secret: string } | null>;
+  rotate(id: string, overlap: boolean): Promise<{ key: ApiKey; secret: string } | null>;
+  revoke(id: string): Promise<boolean>;
+};
+
+const RECENT_REVOKE_DAYS = 30;
+
+export function ApiKeys({ seed, live, api, viewer: liveViewer }: { seed: DevSeed; live?: ApiKey[] | null; api?: KeysApi; viewer?: Viewer }) {
   const toast = useToast();
   const [load, setLoad] = useState(seed.load);
-  const [keys, setKeys] = useState<ApiKey[]>(seed.empty ? [] : seed.key === "key_new" ? [NEW_KEY, ...KEYS] : KEYS);
+  // A revoked key leaves the table; the footer lists the ones revoked lately.
+  const [keys, setKeys] = useState<ApiKey[]>(live ? live.filter((k) => !k.revoked) : seed.empty ? [] : seed.key === "key_new" ? [NEW_KEY, ...KEYS] : KEYS);
+  const [revokedLive, setRevokedLive] = useState(() => (live ?? []).filter((k) => k.revoked && Date.now() - new Date(k.revoked).getTime() <= RECENT_REVOKE_DAYS * 864e5)
+    .map((k) => ({ name: k.name, last4: k.last4, revoked: new Date(k.revoked!).toLocaleDateString("en-US", { month: "short", day: "numeric" }), by: k.by })));
   const [dialog, setDialog] = useState(seed.dialog);
   const [keyId, setKeyId] = useState(seed.key);
   const [open, setOpen] = useState(seed.open);
   const [secret, setSecret] = useState(seed.dialog === "reveal" ? NEW_SECRET : seed.dialog === "rotated" ? ROTATED_SECRET : "");
   const cur = keys.find((k) => k.id === keyId);
   const close = () => setDialog(undefined);
-  const viewer: Viewer = seed.viewer ?? OWNER;
+  const viewer: Viewer = liveViewer ?? seed.viewer ?? OWNER;
+  const failed = (what: string) => toast({ tone: "error", children: `Couldn’t ${what}`, meta: "nothing was changed; try again" });
 
   if (load === "error") return (
     <div className="i-page i-page--center"><ErrorState title="Couldn’t load your API keys" detail="GET /api/v1/keys · 503"
@@ -38,22 +51,54 @@ export function ApiKeys({ seed }: { seed: DevSeed }) {
   );
 
   const created = (d: Draft) => {
+    if (api) {
+      void api.create({ name: d.name.trim(), env: d.env, scopes: keyScopesOf(d.access), expires: expiresOn(new Date(), d.expiry)?.toISOString() ?? null }).then((r) => {
+        if (!r) { failed("create the key"); return; }
+        setKeys((l) => [r.key, ...l]); setKeyId(r.key.id); setSecret(r.secret); setDialog("reveal");
+      });
+      return;
+    }
     const k: ApiKey = { id: "key_new", name: d.name.trim(), env: d.env, last4: NEW_SECRET.slice(-4), scopes: keyScopesOf(d.access), by: viewer.name, created: NOW.toISOString(),
       expires: expiresOn(NOW, d.expiry)?.toISOString() ?? null, calls7d: 0 };
     setKeys((l) => [k, ...l]); setKeyId(k.id); setSecret(NEW_SECRET); setDialog("reveal");
   };
   const doRotate = (overlap: boolean) => {
     if (!cur) return;
+    if (api) {
+      void api.rotate(cur.id, overlap).then((r) => {
+        if (!r) { failed(`rotate ${cur.name}`); return; }
+        setKeys((l) => l.map((k) => (k.id === cur.id ? r.key : k))); setSecret(r.secret); setDialog("rotated");
+      });
+      return;
+    }
     const r = rotate(NOW);
     setKeys((l) => l.map((k) => (k.id === cur.id ? { ...k, last4: ROTATED_SECRET.slice(-4), oldUntil: overlap ? r.oldUntil : undefined } : k)));
     setSecret(ROTATED_SECRET); setDialog("rotated");
   };
   const doRevoke = () => {
     if (!cur) return;
+    if (api) {
+      void api.revoke(cur.id).then((ok) => {
+        if (!ok) { failed(`revoke ${cur.name}`); return; }
+        setKeys((l) => l.filter((k) => k.id !== cur.id)); setOpen(undefined); close();
+        setRevokedLive((r) => [{ name: cur.name, last4: cur.last4, revoked: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }), by: viewer.name }, ...r]);
+        toast({ children: `Revoked ${cur.name}`, meta: "its next call gets 401" });
+      });
+      return;
+    }
     setKeys((l) => l.filter((k) => k.id !== cur.id)); setOpen(undefined); close();
     toast({ children: `Revoked ${cur.name}`, meta: "its next call gets 401" });
   };
   const replace = (k: ApiKey) => {
+    if (api) {
+      // The replacement is a new key with the same name and scopes; the expired one is revoked.
+      void api.create({ name: k.name.replace(/ \(old\)$/, ""), env: k.env, scopes: k.scopes, expires: addDays(new Date(), 90).toISOString() }).then(async (r) => {
+        if (!r) { failed(`replace ${k.name}`); return; }
+        await api.revoke(k.id);
+        setKeys((l) => [r.key, ...l.filter((x) => x.id !== k.id)]); setOpen(undefined); setKeyId(r.key.id); setSecret(r.secret); setDialog("reveal");
+      });
+      return;
+    }
     const nk: ApiKey = { ...k, id: "key_new", name: k.name.replace(/ \(old\)$/, ""), last4: NEW_SECRET.slice(-4), created: NOW.toISOString(), expires: addDays(NOW, 90).toISOString(), lastUsed: undefined, refused: undefined, calls7d: 0 };
     setKeys((l) => [nk, ...l.filter((x) => x.id !== k.id)]); setOpen(undefined); setKeyId(nk.id); setSecret(NEW_SECRET); setDialog("reveal");
   };
@@ -63,7 +108,7 @@ export function ApiKeys({ seed }: { seed: DevSeed }) {
     <>
       {load === "loading" ? <KeysLoading />
         : openKey ? <KeyPage k={openKey} viewer={viewer} onBack={() => setOpen(undefined)} onReplace={() => replace(openKey)} onRevoke={() => { setKeyId(openKey.id); setDialog("revoke-key"); }} />
-        : <KeyList keys={keys} viewer={viewer} onCreate={() => setDialog("create")} onOpen={setOpen}
+        : <KeyList keys={keys} viewer={viewer} revoked={live ? revokedLive : REVOKED_KEYS} onCreate={() => setDialog("create")} onOpen={setOpen}
             onRotate={(id) => { setKeyId(id); setDialog("rotate"); }} onRevoke={(id) => { setKeyId(id); setDialog("revoke-key"); }} />}
       {dialog === "create" && <CreateKey seed={seed} taken={keys.map((k) => k.name)} onClose={close} onCreate={created} />}
       {(dialog === "reveal" || dialog === "rotated") && <Reveal k={cur ?? NEW_KEY} secret={secret} rotated={dialog === "rotated"} onClose={() => { close(); setSecret(""); }} />}
@@ -80,7 +125,7 @@ function KeysLoading() {
   );
 }
 
-function KeyList({ keys, viewer, onCreate, onOpen, onRotate, onRevoke }: { keys: ApiKey[]; viewer: Viewer; onCreate: () => void; onOpen: (id: string) => void; onRotate: (id: string) => void; onRevoke: (id: string) => void }) {
+function KeyList({ keys, viewer, revoked, onCreate, onOpen, onRotate, onRevoke }: { keys: ApiKey[]; viewer: Viewer; revoked: { name: string; last4: string; revoked: string }[]; onCreate: () => void; onOpen: (id: string) => void; onRotate: (id: string) => void; onRevoke: (id: string) => void }) {
   const expiring = keys.filter((k) => statusOf(k, NOW) === "expiring");
   const expired = keys.filter((k) => statusOf(k, NOW) === "expired" && k.refused);
   return (
@@ -130,7 +175,7 @@ function KeyList({ keys, viewer, onCreate, onOpen, onRotate, onRevoke }: { keys:
             );
           })}</tbody>
         </table>
-        <p className="m-foot c-muted"><Icon name="lock" size={12} />Corral keeps a hash of each key and its last four characters, never the key. {REVOKED_KEYS.length} revoked in the last 30 days: {REVOKED_KEYS.map((r) => `${r.name} (…${r.last4}, ${r.revoked})`).join(", ")}.</p>
+        <p className="m-foot c-muted"><Icon name="lock" size={12} />Corral keeps a hash of each key and its last four characters, never the key.{revoked.length > 0 && <> {revoked.length} revoked in the last 30 days: {revoked.map((r) => `${r.name} (…${r.last4}, ${r.revoked})`).join(", ")}.</>}</p>
       </>}
     </div>
   );

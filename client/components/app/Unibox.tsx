@@ -55,7 +55,7 @@ export function ReadingPane({ t, tag, history, message, draft }: {
         )}
         {message ?? <><div className="c-faint" style={{ fontSize: 12.5 }}>{t.name} replied · {t.subject} · {t.time}</div>
         <p className="c-message">{t.body}</p></>}
-        <Receipts>{t.receipts.map(([a, b]) => <Receipt key={a} meta={b}>{a}</Receipt>)}</Receipts>
+        <Receipts>{(t.receipts ?? []).map(([a, b]) => <Receipt key={a} meta={b}>{a}</Receipt>)}</Receipts>
         {draft !== undefined ? draft : t.draft && <ReplyCard paragraphs={t.draft} highlight={t.id === "brian" ? "paid the sensors back in one quarter" : undefined} />}
         {t.next && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}><span className="c-rail__label">If {t.name.split(" ")[0]} goes quiet</span>

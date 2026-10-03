@@ -42,11 +42,13 @@ export type UniboxViewProps = {
   /** Review state (outside production): /app?state=… */
   state?: UniboxReviewState;
   onArchive: (id: string) => void;
+  /** Persist a sent reply. The undo window still runs locally; the message is stored when it sends. */
+  onSend?: (id: string, text: string) => void;
   /** Unibox keys (J K ↵ Esc E H 1–6 T R ⌘↵ ⌘Z ?). Off while another dialog or the palette is open. */
   hotkeys?: boolean;
 };
 
-export function UniboxView({ threads, setThreads, active, setActive, tab, setTab, pane, setPane, state, onArchive, hotkeys = true }: UniboxViewProps) {
+export function UniboxView({ threads, setThreads, active, setActive, tab, setTab, pane, setPane, state, onArchive, onSend, hotkeys = true }: UniboxViewProps) {
   const toast = useToast();
   const seed = useMemo(() => seedFor(state), [state]);
   // M8: Grace's meeting, as the live app has it (booked) or as a handoff review state has it.
@@ -96,7 +98,9 @@ export function UniboxView({ threads, setThreads, active, setActive, tab, setTab
     const id = Object.keys(sends).find((k) => sends[k] === "sending");
     if (!id) return;
     const h = setTimeout(() => {
-      setSent((m) => ({ ...m, [id]: { text: textOf(id), at: "Just now" } })); setSend(id, "sent");
+      const text = textOf(id);
+      setSent((m) => ({ ...m, [id]: { text, at: "Just now" } })); setSend(id, "sent");
+      onSend?.(id, text);
       toast({ tone: "success", icon: "send", children: `Sent to ${threads.find((x) => x.id === id)?.name.split(" ")[0]}`, meta: "sequence stays stopped" });
     }, 900);
     return () => clearTimeout(h);

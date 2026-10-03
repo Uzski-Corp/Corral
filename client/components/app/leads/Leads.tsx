@@ -60,11 +60,11 @@ export function importSeed(s?: LeadsReviewState): ImportSeed | undefined {
 /** Signed in against the API (ENG-81): the lead CRM endpoints, whose fit to show, and the saved segments. */
 export type LeadsLive = { api: LeadsApi; product: { productId: string | null; ready: boolean }; segments: LiveSegments };
 
-export function LeadsView({ view, state, segment, importOpen, onImportOpenChange, builderOpen, onBuilderOpenChange, onEnroll, onFind, reviewSample = true, enrollAllSignal = 0, live: liveIn }: {
+export function LeadsView({ view, state, segment, importOpen, onImportOpenChange, builderOpen, onBuilderOpenChange, onEnroll, onFind, onCompanies, reviewSample = true, enrollAllSignal = 0, live: liveIn }: {
   view: "companies" | "segments"; state?: LeadsReviewState; segment?: string;
   importOpen: boolean; onImportOpenChange: (o: boolean) => void; builderOpen: boolean; onBuilderOpenChange: (o: boolean) => void;
   /** small selections open the shell's enroll dialog; large ones confirm here */ onEnroll: (n: number, includesReplied: boolean) => void;
-  onFind: () => void; reviewSample?: boolean; /** bump to enroll everything in the view (segments: "Enroll segment") */ enrollAllSignal?: number;
+  onFind: () => void; /** Segments empty state: open Companies, where a segment is saved from filters. */ onCompanies?: () => void; reviewSample?: boolean; /** bump to enroll everything in the view (segments: "Enroll segment") */ enrollAllSignal?: number;
   /** Present when signed in against the API; a review state always shows the sample. */ live?: LeadsLive;
 }) {
   const toast = useToast();
@@ -250,6 +250,13 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
   const counts = lv ? lv.counts : undefined;
   const importLive = lv ? { existing: lv.existing, runner: lv.importer, sample: undefined } : { existing: EXISTING, runner: undefined, sample: reviewSample ? sampleTradeShow : undefined };
   const loadMore = lv ? (e: React.UIEvent<HTMLDivElement>) => { const el = e.currentTarget; if (lv.hasMore && el.scrollTop + el.clientHeight > el.scrollHeight - 400) lv.more(); } : undefined;
+  if (view === "segments" && live && live.segments.phase === "ready" && live.segments.list.length === 0) return (
+    <div className="c-view c-view--center">
+      <EmptyState art="range" title="No segments yet" actions={onCompanies ? <Button variant="primary" onClick={onCompanies}><Icon name="building" />Open companies</Button> : undefined}>
+        Save a set of filters from Companies. It stays in the sidebar and updates as the list changes.
+      </EmptyState>
+    </div>
+  );
   if (phaseNow === "loading") return <div className="c-view l-leads"><Subbar view={view} tab={tab} setTab={setTab} counts={counts} /><div className="c-view__scroll"><SkeletonTable rows={10} label={seg ? `Loading ${seg}` : "Loading companies"} /></div></div>;
   if (phaseNow === "error") return (
     <div className="c-view c-view--center">

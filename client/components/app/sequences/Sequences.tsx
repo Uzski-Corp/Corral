@@ -22,13 +22,24 @@ const f = (n: number) => n.toLocaleString("en-US");
  * between them, a step's editor with its preview against a real company, and the mailbox pool.
  * Review states are frozen; the default view is live (launch runs its checks, pause and resume).
  */
-export function SequencesView({ state, tab, onTabChange, pool, onPoolChange, newSignal = 0 }: {
+export type SequenceCatalog = {
+  phase: "loading" | "ready" | "error";
+  list: Sequence[];
+  onRetry?: () => void;
+  onPersist?: (seq: Sequence) => void;
+};
+
+export function SequencesView({ state, tab, onTabChange, pool, onPoolChange, newSignal = 0, catalog }: {
   state?: SequenceReviewState; tab: SeqTab; onTabChange: (t: SeqTab) => void;
   pool: Mailbox[]; onPoolChange: (p: Mailbox[]) => void; newSignal?: number;
+  /** Signed-in sequences. When set, the sample list is not used. */
+  catalog?: SequenceCatalog;
 }) {
   const toast = useToast();
-  const frozen = !!state;
-  const seed = useMemo(() => seedFor(state), [state]);
+  const frozen = !!state || !!catalog;
+  const seed = useMemo(() => (catalog
+    ? { list: catalog.list, open: catalog.list[0]?.id ?? null, tab: "sequences" as const, pool, phase: catalog.phase === "ready" ? undefined : catalog.phase }
+    : seedFor(state)), [catalog, pool, state]);
   const [list, setList] = useState<Sequence[]>(seed.list);
   const [open, setOpen] = useState<string | null>(seed.open);
   const [step, setStep] = useState<number | undefined>(seed.step);
@@ -40,15 +51,25 @@ export function SequencesView({ state, tab, onTabChange, pool, onPoolChange, new
 
   const seq = list.find((s) => s.id === open);
   const issues = useMemo(() => (seq && seq.status === "draft" ? issuesOf(seq.steps, seq.missing, seq.audience.count) : []), [seq]);
-  const put = (id: string, patch: Partial<Sequence> | ((s: Sequence) => Partial<Sequence>)) =>
-    setList((l) => l.map((s) => (s.id === id ? { ...s, ...(typeof patch === "function" ? patch(s) : patch) } : s)));
+  // The save goes out here, not inside the state updater: React may run an updater twice.
+  const put = (id: string, patch: Partial<Sequence> | ((s: Sequence) => Partial<Sequence>)) => {
+    const cur = list.find((s) => s.id === id);
+    if (!cur) return;
+    const next = { ...cur, ...(typeof patch === "function" ? patch(cur) : patch) };
+    setList((l) => l.map((s) => (s.id === id ? next : s)));
+    catalog?.onPersist?.(next);
+  };
   const putStep = (i: number, st: Step) => seq && put(seq.id, (s) => ({ steps: s.steps.map((x, k) => (k === i ? st : x)), updated: "just now" }));
   const putGate = (i: number, g: Gate) => seq && put(seq.id, (s) => ({ steps: s.steps.map((x, k) => (k === i ? { ...x, gate: g } : x)), updated: "just now" }));
 
   const blank = (id: string): Sequence => ({ id, name: "Untitled sequence", status: "draft", product: "ColdTrace Sensors", audience: { label: "F&B · East Africa", count: 312 },
       steps: [{ id: `${id}-1`, thread: "new", subject: "", body: "" }], window: "Their morning, 08:00–11:00", by: "Tomás Ibarra", updated: "just now", missing: { cold_storage: 41 } });
   const start = (withCorral: boolean) => {
-    const id = `new-${list.length}`;
+    // Signed in, the id becomes the sequence's public id on the server, so it can't repeat one in the list.
+    let n = list.length;
+    while (list.some((s) => s.id === `new-${n}`)) n += 1;
+    const id = `new-${n}`;
+    // A blank draft is stored on its first edit (start can run during render, so no request here).
     setList((l) => [blank(id), ...l]); setOpen(id); setStep(0); setCopilot(withCorral); setTried(false);
   };
   const create = (withCorral: boolean) => { start(withCorral); onTabChange("sequences"); };

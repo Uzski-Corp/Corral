@@ -96,7 +96,13 @@ export function DropZone({ onFiles, compact, children, hint, accept = ACCEPT_ATT
 }
 
 /* ------------------------------------------------------------ URL adder */
-export function UrlAdder({ onAdd, defaultValue = "", defaultError }: { onAdd: (host: string, path: string, whole: boolean) => void; defaultValue?: string; defaultError?: string }) {
+const SAMPLE_SITE = "coldtrace.io/pricing";
+
+export function UrlAdder({ onAdd, defaultValue = "", defaultError, placeholder = SAMPLE_SITE }: {
+  onAdd: (host: string, path: string, whole: boolean) => void; defaultValue?: string; defaultError?: string;
+  /** Their site, when the signed-in workspace has one. Otherwise the sample address. */
+  placeholder?: string;
+}) {
   const [v, setV] = useState(defaultValue);
   const [whole, setWhole] = useState("This page");
   const [err, setErr] = useState<string | undefined>(defaultError);
@@ -109,7 +115,7 @@ export function UrlAdder({ onAdd, defaultValue = "", defaultError }: { onAdd: (h
     <FormField label="Or add a web page" error={err} help={err ? undefined : "Corral reads the page when you add it. When the page changes, choose Re-read on its row."}
       action={<Segmented label="How much to read" options={["This page", "Whole section"]} value={whole} onChange={setWhole} />}>
       <form className="k-url" onSubmit={(e) => { e.preventDefault(); submit(); }}>
-        <TextInput icon="globe" placeholder="coldtrace.io/pricing" value={v} onChange={(e) => { setV(e.target.value); if (err) setErr(undefined); }} inputMode="url" autoComplete="url" />
+        <TextInput icon="globe" placeholder={placeholder} value={v} onChange={(e) => { setV(e.target.value); if (err) setErr(undefined); }} inputMode="url" autoComplete="url" />
         <Button type="submit" disabled={!v.trim()}>Add page</Button>
       </form>
     </FormField>
@@ -178,8 +184,9 @@ export function ReplacingCard({ src }: { src: Source }) {
   );
 }
 
-export function UploadDialog({ open, onClose, q, product, existing = [], inline, onReplace, replacing, firstProduct }: {
+export function UploadDialog({ open, onClose, q, product, existing = [], inline, onReplace, replacing, firstProduct, site }: {
   open: boolean; onClose: () => void; q: UploadQueue; product: string; existing?: string[]; inline?: boolean; onReplace?: (it: QueueItem) => void;
+  /** Placeholder for the web page field: the signed-in workspace's site. */ site?: string;
   /** "Replace file": the source the next file replaces (the dialog takes one file, no web pages). */
   replacing?: Source;
   /** No product yet: name it with the first upload. */
@@ -201,7 +208,7 @@ export function UploadDialog({ open, onClose, q, product, existing = [], inline,
       {replacing && <ReplacingCard src={replacing} />}
       {firstProduct && !replacing && <FirstProductField fp={firstProduct} />}
       <DropZone compact={q.items.length > 0 || !!replacing} onFiles={(f) => q.addFiles(replacing ? f.slice(0, 1) : f, replacing ? existing.filter((n) => n !== replacing.name) : existing)} />
-      {!replacing && <UrlAdder onAdd={q.addUrl} />}
+      {!replacing && <UrlAdder onAdd={q.addUrl} placeholder={site} />}
       {q.items.length > 0 && (
         <section className="k-queue" aria-label="This upload">
           <ul>{q.items.map((it) => <QueueRow key={it.id} it={it} onRetry={() => q.retry(it.id)} onDismiss={() => q.dismiss(it.id)} onReplace={() => { onReplace?.(it); q.dismiss(it.id); }} />)}</ul>

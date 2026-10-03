@@ -63,6 +63,19 @@ export function takeDrop<T>(files: T[]): { accepted: T[]; overflow: number } {
 
 export type UrlCheck = { ok: true; url: string; host: string; path: string } | { ok: false; message: string };
 
+/** The add-page placeholder: their site, without the scheme or a trailing slash. */
+export function siteHint(website: string | null | undefined): string | undefined {
+  const raw = website?.trim();
+  if (!raw) return undefined;
+  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`;
+  let u: URL;
+  try { u = new URL(withScheme); } catch { return undefined; }
+  if (!u.hostname.includes(".")) return undefined;
+  const host = u.hostname.replace(/^www\./, "");
+  const path = u.pathname === "/" ? "" : u.pathname.replace(/\/$/, "");
+  return `${host}${path}`;
+}
+
 /** Accepts "coldtrace.io/pricing" as well as full URLs; only http(s), only public-looking hosts. */
 export function checkUrl(input: string): UrlCheck {
   const raw = input.trim();

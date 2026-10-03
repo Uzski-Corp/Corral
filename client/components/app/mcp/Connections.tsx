@@ -20,10 +20,10 @@ const HEALTH = {
   ok: { tone: "ok", word: "Working" }, scope: { tone: "caution", word: "Missing a scope" }, expired: { tone: "bad", word: "Key expired" }, limited: { tone: "caution", word: "Rate limited" },
 } as const;
 
-export function McpConnections({ seed }: { seed: DevSeed }) {
+export function McpConnections({ seed, live, onDisconnect }: { seed: DevSeed; live?: Connection[] | null; onDisconnect?: (id: string) => void }) {
   const toast = useToast();
-  const [conns, setConns] = useState<Connection[]>(() => seed.empty ? [] : seed.problems
-    ? [...CONNECTIONS.map((c) => (PROBLEMS[c.id] ? { ...c, ...PROBLEMS[c.id] } : c)), { ...ZAPIER, ...PROBLEMS.cn_zapier }] : CONNECTIONS);
+  const [conns, setConns] = useState<Connection[]>(() => live ?? (seed.empty ? [] : seed.problems
+    ? [...CONNECTIONS.map((c) => (PROBLEMS[c.id] ? { ...c, ...PROBLEMS[c.id] } : c)), { ...ZAPIER, ...PROBLEMS.cn_zapier }] : CONNECTIONS));
   const [dialog, setDialog] = useState(seed.dialog);
   const [pick, setPick] = useState<ClientId>(seed.client ?? "cursor");
   const [auth, setAuth] = useState<Auth>(seed.auth ?? "oauth");
@@ -46,6 +46,7 @@ export function McpConnections({ seed }: { seed: DevSeed }) {
   const disconnect = () => {
     if (!cur) return;
     setConns((l) => l.filter((x) => x.id !== cur.id)); setOpen(undefined); close();
+    if (live) onDisconnect?.(cur.id);
     toast({ children: `Disconnected ${cur.name} on ${cur.device}`, meta: "its next call gets 401" });
   };
 

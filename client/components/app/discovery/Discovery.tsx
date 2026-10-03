@@ -19,17 +19,29 @@ const f = (n: number) => n.toLocaleString("en-US");
  * on the right (stages, results arriving with their enrichment state), a result's detail with
  * provenance per field. Review states are frozen; the default view ticks the running run to done.
  */
-export function DiscoveryView({ state, setupOpen, onSetupOpenChange, onOpenCompanies, onSegment }: {
+export type DiscoveryCatalog = {
+  phase: "loading" | "ready" | "error";
+  runs: Run[];
+  productName?: string;
+  onRetry?: () => void;
+  /** Persist a run the person starts. The row stays queued on the server. */
+  onCreate?: (run: Run) => void;
+};
+
+export function DiscoveryView({ state, setupOpen, onSetupOpenChange, onOpenCompanies, onSegment, catalog }: {
   state?: DiscoveryReviewState; setupOpen: boolean; onSetupOpenChange: (o: boolean) => void;
   onOpenCompanies: () => void; onSegment?: (name: string) => void;
+  /** Signed-in data. When set, the sample runs are not used. */
+  catalog?: DiscoveryCatalog;
 }) {
   const toast = useToast();
-  const frozen = !!state;
-  const seeded = useMemo(() => runsFor(state), [state]);
+  const frozen = !!state || !!catalog;
+  const seeded = useMemo(() => (catalog ? { runs: catalog.runs, open: catalog.runs[0]?.id ?? null } : runsFor(state)), [catalog, state]);
   const [runs, setRuns] = useState<Run[]>(seeded.runs);
   const [open, setOpen] = useState<string | null>(seeded.open);
   const [detail, setDetail] = useState<string | undefined>(state === "detail" ? "kilima" : undefined);
-  const [phase, setPhase] = useState<"ready" | "loading" | "error">(state === "loading" ? "loading" : state === "error" ? "error" : "ready");
+  const [localPhase, setPhase] = useState<"ready" | "loading" | "error">(state === "loading" ? "loading" : state === "error" ? "error" : "ready");
+  const phase = catalog ? catalog.phase : localPhase;
   const [seed, setSeed] = useState<RunSetupSeed | undefined>(state === "new-error" ? SETUP_ERROR_SEED : undefined);
   const [countdown, setCountdown] = useState<number | undefined>(undefined);
   const [tick, setTick] = useState(0);
@@ -86,6 +98,7 @@ export function DiscoveryView({ state, setupOpen, onSetupOpenChange, onOpenCompa
       stages: { search: r.queued ? blank : { done: 0, total: 18, state: "running" }, read: blank, score: blank, people: blank, verify: blank },
       found: 0, added: 0, updated: 0, fits: 0, credits: { used: 0, estimate: 221 } };
     setRuns((rs) => [nr, ...rs]); setOpen(id); setDetail(undefined); onSetupOpenChange(false); setSeed(undefined);
+    catalog?.onCreate?.(nr);
     toast({ icon: "globe", children: r.queued ? `Queued ${r.name}` : `Started ${r.name}`, meta: r.queued ? `starts after ${running?.name}` : "you can close this page" });
   };
 
@@ -102,12 +115,12 @@ export function DiscoveryView({ state, setupOpen, onSetupOpenChange, onOpenCompa
   );
   if (phase === "error") return (
     <div className="c-view c-view--center d-view"><ErrorState title="Couldn’t load discovery runs" detail="GET /api/v1/discovery/runs · 503"
-      actions={<Button variant="primary" onClick={() => setPhase("ready")}><Icon name="refresh" />Try again</Button>}>
+      actions={<Button variant="primary" onClick={() => { catalog?.onRetry?.(); setPhase("ready"); }}><Icon name="refresh" />Try again</Button>}>
       Runs in progress keep going on the server; this is only the page failing to load them.</ErrorState></div>
   );
   if (runs.length === 0) return (
     <div className="c-view c-view--center d-view">
-      <EmptyState art="range" title="Find companies that fit ColdTrace Sensors"
+      <EmptyState art="range" title={`Find companies that fit ${catalog?.productName || "ColdTrace Sensors"}`}
         actions={<Button variant="primary" onClick={() => onSetupOpenChange(true)}><Icon name="globe" />Start your first run</Button>}>
         Corral writes searches from your knowledge base, reads each company&rsquo;s website, scores the fit, and finds the person to write to, with where every detail came from. Nothing is sent to anyone.
       </EmptyState>

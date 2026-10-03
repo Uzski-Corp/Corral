@@ -232,9 +232,9 @@ describe("SourceDetail", () => {
   });
 });
 
-function Queue({ initial = [] as QueueItem[], onDone = vi.fn(), open = true }) {
+function Queue({ initial = [] as QueueItem[], onDone = vi.fn(), open = true, site }: { initial?: QueueItem[]; onDone?: (it: QueueItem) => void; open?: boolean; site?: string }) {
   const q = useUploadQueue({ initial, onDone });
-  return <><UploadDialog open={open} onClose={vi.fn()} q={q} product="ColdTrace Sensors" existing={["ColdTrace pitch 2026.pdf"]} inline /><UploadTray q={q} onOpen={vi.fn()} inline /></>;
+  return <><UploadDialog open={open} onClose={vi.fn()} q={q} product="ColdTrace Sensors" site={site} existing={["ColdTrace pitch 2026.pdf"]} inline /><UploadTray q={q} onOpen={vi.fn()} inline /></>;
 }
 const pick = (files: { name: string; size: number }[]) => {
   const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
@@ -273,6 +273,10 @@ describe("Upload", () => {
       fireEvent.click(screen.getByRole("button", { name: /Retry/ }));
       expect(screen.queryByText(/Upload stopped\./)).toBeNull();
     } finally { vi.useRealTimers(); }
+  });
+  it("uses the signed-in site as the placeholder", () => {
+    render(<Queue site="thamani.co.ke" />);
+    expect(screen.getByRole("textbox", { name: "Or add a web page" })).toHaveAttribute("placeholder", "thamani.co.ke");
   });
   it("explains a bad web address and queues a good one", async () => {
     render(<Queue />);
