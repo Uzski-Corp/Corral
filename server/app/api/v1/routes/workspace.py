@@ -27,7 +27,7 @@ from app.core.config import Settings
 from app.core.errors import ApiProblem
 from app.kb.service import DuplicateSource, KnowledgeBaseService
 from app.kb.web import FetchConfig, FetchFailure, SafeFetcher, UrlRejected
-from app.models.identity import Organization
+from app.models.identity import Membership, Organization, User
 from app.models.knowledge import Product
 from app.onboarding.logo import EXT, sniff_image
 from app.onboarding.site import read_public_site
@@ -119,6 +119,25 @@ async def _out(db: DbDep, org: Organization) -> WorkspaceOut:
 @router.get("")
 async def get_workspace(ctx: AuthContextDep, db: DbDep) -> WorkspaceOut:
     return await _out(db, ctx.org)
+
+
+@router.get("/members")
+async def list_members(ctx: AuthContextDep, db: DbDep) -> list[dict[str, str]]:
+    """People in this workspace. A new account has one row: the person who signed up."""
+    rows = (
+        await db.execute(
+            select(Membership, User)
+            .join(User, User.id == Membership.user_id)
+            .where(Membership.org_id == ctx.org.id)
+            .order_by(Membership.created_at)
+        )
+    ).all()
+    out = []
+    for membership, user in rows:
+        parts = [user.first_name or "", user.last_name or ""]
+        name = " ".join(part for part in parts if part).strip() or user.email
+        out.append({"id": str(user.id), "name": name, "email": user.email, "role": membership.role})
+    return out
 
 
 @router.patch("", dependencies=WRITE)

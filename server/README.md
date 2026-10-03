@@ -13,6 +13,7 @@ uvicorn app.main:create_app --factory --reload --port 8000
   draining) · `GET /metrics` (Prometheus) · API: `/api/v1/*` · Docs: http://localhost:8000/docs
 - Lint/format/types: `ruff check . && ruff format --check . && mypy`
 - Migrations: `alembic revision --autogenerate -m "msg"` then `alembic upgrade head` (needs Postgres)
+- Demo data: `uv run python -m app.seed --org <slug-or-uuid>` fills that one workspace with the ColdTrace story. Signup never runs it; a new account stays empty.
 
 ## Auth (WorkOS AuthKit)
 

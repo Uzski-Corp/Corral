@@ -2,7 +2,10 @@ from fastapi import APIRouter, Depends
 
 from app.api.v1.routes import (
     companies,
+    developers,
+    discovery,
     inbox,
+    integrations,
     kb,
     knowledge,
     lead_imports,
@@ -26,9 +29,13 @@ for module in (
     lead_imports,
     sequences,
     inbox,
+    discovery,
+    integrations,
+    developers,
     knowledge,
     products,
     kb,
     workspace,
 ):
     api_router.include_router(module.router, dependencies=[Depends(require_auth)])
+api_router.include_router(sequences.mailbox_router, dependencies=[Depends(require_auth)])
