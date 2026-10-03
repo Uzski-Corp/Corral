@@ -25,7 +25,7 @@ const ME = {
   role: "owner",
 };
 
-const FRESH = { deny: false, down: false, sendLimited: 0, kbDown: false, kbEmpty: false, kbSlow: false, deleteFails: false, leadsDown: false, leadsEmpty: false, activity: false };
+const FRESH = { deny: false, down: false, sendLimited: 0, kbDown: false, kbEmpty: false, kbSlow: false, deleteFails: false, leadsDown: false, leadsEmpty: false, activity: false, integrations: false };
 let scenario = { ...FRESH };
 let sends = new Map();
 let calls = [];
@@ -401,6 +401,61 @@ const BRIAN = {
   fit: 88, status: "Interested", snippet: "Four rooms", subject: "Re: Spoilage", body: "Thursday?", avatar: "", time: "09:40",
   unread: true, handled: false, needs_you: true, receipts: [], history: [{ from: "them", who: "Brian Kamau", at: "Today", body: "Thursday?" }],
 };
+/* M14: integrations as the real API serves them. {"integrations": true}: Cal.com connected with one booking,
+   Phoenix connected with nothing yet, AutoSend's sign-in expired 2h ago. Connect, disconnect and the mapping write here. */
+const minAgo = (m) => new Date(Date.now() - m * 60_000).toISOString();
+let integ = {};
+const PROVIDERS = ["cal", "phoenix", "autosend"];
+function integrationsSeed() {
+  integ = {};
+  if (scenario.activity) integ.cal = { status: "connected", connectedAt: minAgo(19 * 1440), by: ME.user.id, statusAt: minAgo(19 * 1440), mapping: null, logs: [] };
+  if (scenario.integrations) {
+    integ.cal = { status: "connected", connectedAt: minAgo(19 * 1440), by: ME.user.id, statusAt: minAgo(19 * 1440), mapping: null,
+      logs: [{ id: "l1", at: minAgo(18), dir: "in", event: "BOOKING_CREATED", result: "ok", detail: "bk_1 · signature checked" }] };
+    integ.phoenix = { status: "connected", connectedAt: minAgo(3 * 1440), by: "u_teammate", statusAt: minAgo(3 * 1440), mapping: null, logs: [] };
+    integ.autosend = { status: "reauth", connectedAt: minAgo(17 * 1440), by: ME.user.id, statusAt: minAgo(130), mapping: null, logs: [] };
+  }
+}
+const integSummary = (provider) => {
+  const r = integ[provider]; const last = r.logs[0];
+  return { provider, status: r.status, config: {}, connectedAt: r.connectedAt, lastEvent: last ? { event: last.event, at: last.at, result: last.result } : null };
+};
+const integDetail = (provider) => {
+  const r = integ[provider] ?? { status: "off", connectedAt: null, by: null, statusAt: null, mapping: null, logs: [] };
+  const kind = { reauth: "token-expired", error: "refused" }[r.status];
+  return { ...(integ[provider] ? integSummary(provider) : { provider, status: "off", config: {}, connectedAt: null, lastEvent: null }), id: provider, account: null,
+    connectedById: r.by, statusAt: r.statusAt, problem: kind ? { kind, since: r.statusAt } : null, mapping: provider === "phoenix" ? r.mapping : null, supportsTest: false };
+};
+function integrationsRoute(req, res, path) {
+  const m = /^\/api\/v1\/integrations(?:\/(cal|phoenix|autosend|[^/]+))?(?:\/(logs|mapping))?$/.exec(path);
+  if (!m) return false;
+  const [, provider, sub] = m;
+  if (!provider) return req.method === "GET" ? (json(res, 200, Object.keys(integ).map(integSummary)), true) : false;
+  if (!PROVIDERS.includes(provider)) return json(res, 404, { error: "not_found", detail: "Unknown integration." }), true;
+  if (!sub && req.method === "GET") return json(res, 200, integDetail(provider)), true;
+  if (sub === "logs" && req.method === "GET") return json(res, 200, integ[provider]?.logs ?? []), true;
+  if (req.headers.origin !== FRONTEND) return json(res, 403, { detail: "Origin not allowed" }), true;
+  readBody(req).then((buf) => {
+    const body = JSON.parse(String(buf) || "{}");
+    if (!sub && req.method === "PATCH") {
+      const was = integ[provider];
+      const r = was ?? { status: "off", connectedAt: null, by: null, statusAt: null, mapping: null, logs: [] };
+      if (body.status !== r.status) r.statusAt = new Date().toISOString();
+      if (body.status === "connected" && (r.status === "off" || !r.connectedAt)) { r.connectedAt = new Date().toISOString(); r.by = ME.user.id; }
+      if (body.status === "off") { r.connectedAt = null; r.by = null; }
+      r.status = body.status; integ[provider] = r;
+      return json(res, 200, { provider, status: r.status, config: {} });
+    }
+    if (sub === "mapping" && req.method === "PUT") {
+      if (provider !== "phoenix") return json(res, 404, { error: "not_found", detail: "Only Phoenix has a field mapping." });
+      if (!integ.phoenix || integ.phoenix.status === "off") return json(res, 409, { error: "not_connected", detail: "Connect Phoenix before saving a mapping." });
+      integ.phoenix.mapping = body.rows.length ? body.rows : null;
+      return json(res, 200, integDetail("phoenix"));
+    }
+    json(res, 405, { error: "method_not_allowed", detail: "Not allowed." });
+  });
+  return true;
+}
 function activityRoute(req, res, path) {
   if (!signedIn(req)) return false;
   const on = !!scenario.activity;
@@ -411,11 +466,11 @@ function activityRoute(req, res, path) {
   if (path === "/api/v1/mailboxes" && req.method === "GET") return json(res, 200, { mailboxes: on ? [{ id: "tomas", address: "tomas@coldtrace.io", owner: "Tomas", provider: "google", state: "warm", cap: 35, sentToday: 31, bouncedToday: 0, bounce30: 0, complaints30: 0, auth: { spf: true, dkim: true, dmarc: true }, sequences: 1 }] : [], sent: on ? 31 : 0, cap: on ? 35 : 0, attention: 0 }), true;
   if (path === "/api/v1/discovery/runs" && req.method === "GET") return json(res, 200, { runs: on ? [{ id: "dairy", name: "Dairy & cold rooms · East Africa", status: "running", product: "ColdTrace Sensors", by: "Tomás", criteria: { industries: [], countries: [], sizes: [], queries: [] }, limit: 10, enrichAt: 70, stages: { search: { done: 1, total: 1, state: "done" }, read: { done: 0, total: 1, state: "waiting" }, score: { done: 0, total: null, state: "waiting" }, people: { done: 0, total: null, state: "waiting" }, verify: { done: 0, total: null, state: "waiting" } }, found: 6, added: 0, updated: 0, fits: 4, credits: { used: 1, estimate: 2 } }] : [], credits: { month: on ? 2000 : 0, used: on ? 540 : 0, left: on ? 1460 : 0 } }), true;
   if (path === "/api/v1/discovery/credits" && req.method === "GET") return json(res, 200, { month: 0, used: 0, left: 0 }), true;
-  if (path === "/api/v1/integrations" && req.method === "GET") return json(res, 200, on ? [{ provider: "cal", status: "connected", config: {} }] : []), true;
+  if (integrationsRoute(req, res, path)) return true;
   if (path === "/api/v1/workspace/members" && req.method === "GET") return json(res, 200, [{ id: ME.user.id, name: "Wanjiru Mwangi", email: "wanjiru@kilima.co.ke", role: "owner" }]), true;
   if (path === "/api/v1/developers/keys" && req.method === "GET") return json(res, 200, on ? [{ id: "key_n8n", name: "n8n lead sync", env: "live", last4: "7Qa2", scopes: ["leads:read"], by: "Tomás", created: "2026-08-12T10:00:00Z", expires: null, calls7d: 3 }] : []), true;
   // {"mcpHost": true}: a host has connected and made its first call (the Waiting dialog's "Check again" finds it).
-  if (path === "/api/v1/developers/connections" && req.method === "GET") return json(res, 200, scenario.mcpHost ? [{ id: "cn_1", client: "cursor", name: "Cursor", device: "Cursor", who: "Wanjiru Mwangi", auth: "oauth", preset: "Read only", access: {}, since: "Today", last: "Just now", lastTool: "tools/list", calls7d: 1, health: "ok" }] : []), true;
+  if (path === "/api/v1/developers/connections" && req.method === "GET") return json(res, 200, scenario.mcpHost ? [{ id: "cn_1", client: "cursor", name: "Cursor", firstCallAt: minAgo(2), who: "Wanjiru Mwangi", auth: "oauth", preset: "Read only", access: {}, since: "Today", last: "Just now", lastTool: "tools/list", calls7d: 1, health: "ok" }] : []), true;
   if (/^\/api\/v1\/developers\/connections\/[^/]+\/calls$/.test(path) && req.method === "GET") return json(res, 200, [{ at: "2026-10-03T12:00:00Z", tool: "tools/list", args: "", status: 200, ms: 40 }]), true;
   if (path === "/api/v1/leads" && req.method === "GET") return json(res, 200, on ? [{ id: "p1", email: "grace@nyota.co.tz", first_name: "Grace", last_name: "Holloway", company_name: "Nyota Beverages", company_id: null, title: "VP Operations", phone: null, linkedin_url: null, email_status: "verified", is_primary: true, unsubscribed_at: null, source: "manual", created_at: "2026-09-01T00:00:00Z", updated_at: "2026-09-01T00:00:00Z" }] : []), true;
   return false;
@@ -437,12 +492,13 @@ const server = http.createServer((req, res) => {
     let body = ""; req.on("data", (c) => (body += c)); req.on("end", () => {
       const was = scenario.kbEmpty, wasLeads = scenario.leadsEmpty;
       scenario = { ...scenario, ...JSON.parse(body || "{}") };
+      integrationsSeed();
       if (scenario.kbEmpty !== was) resetKb();
       if (scenario.leadsEmpty !== wasLeads) resetCrm();
       json(res, 200, scenario);
     }); return;
   }
-  if (path === "/__mock/reset" && req.method === "POST") { scenario = { ...FRESH }; calls = []; sends = new Map(); resetKb(); resetCrm(); resetWorkspace(); return json(res, 200, {}); }
+  if (path === "/__mock/reset" && req.method === "POST") { scenario = { ...FRESH }; integrationsSeed(); calls = []; sends = new Map(); resetKb(); resetCrm(); resetWorkspace(); return json(res, 200, {}); }
   if (path === "/__mock/calls") return json(res, 200, calls);
 
   if (path === "/api/v1/auth/login" && req.method === "GET") {
