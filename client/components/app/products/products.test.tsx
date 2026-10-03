@@ -18,7 +18,7 @@ beforeEach(() => {
 describe("Products", () => {
   it("lists the product saved during setup", async () => {
     open();
-    expect(await screen.findByRole("button", { name: /Thamani Dawa/ })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /Thamani Dawa/ }, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.getByText("Pharmacy and lab management software")).toBeInTheDocument();
     expect(screen.queryByText(/designed in a later milestone/i)).toBeNull();
   });

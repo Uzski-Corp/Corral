@@ -188,7 +188,7 @@ async def _put_logo(store: ObjectStore, *, key: str, body: bytes, content_type: 
 
 def _from_mail(url: str | None) -> bool:
     """A picture we stored lives under /avatars/. Anything else came from the mail account."""
-    return bool(url) and "/avatars/" not in url
+    return url is not None and url != "" and "/avatars/" not in url
 
 
 @router.post("/picture", dependencies=WRITE)
