@@ -9,16 +9,23 @@ import {
   type Condition, type Gate, type Issue, type Step,
 } from "@/lib/sequences/sequence";
 import type { SeqStatus, Sequence } from "./data";
+import { StatusTag } from "../StatusTag";
+import type { StatusKind } from "@/lib/status/tags";
+import { ArrowsClockwise, EnvelopeSimple } from "@phosphor-icons/react/dist/ssr";
 
 const f = (n: number) => n.toLocaleString("en-US");
 
-/* ---------------------------------------------------------------- status */
-const TAG: Record<SeqStatus, { label: string; tone: string }> = {
-  draft: { label: "Draft", tone: "neutral" }, launching: { label: "Launching", tone: "live" }, running: { label: "Running", tone: "live" }, paused: { label: "Paused", tone: "caution" },
-};
-export function SeqTag({ status }: { status: SeqStatus }) {
-  const t = TAG[status];
-  return <span className={cx("d-runtag", `is-${t.tone}`)}>{t.tone === "live" && <span className="d-live" aria-hidden="true" />}{t.label}</span>;
+/* ---------------------------------------------------------------- status (M13: the shared StatusTag, lib/status/tags.ts) */
+export function seqStatusKind(status: SeqStatus, queue?: Sequence["queue"]): StatusKind {
+  switch (status) {
+    case "launching": return "checking";
+    case "queued": return queue?.reason === "mailbox" ? "waiting-mailbox" : "queued";
+    case "running": return "live";
+    default: return status;
+  }
+}
+export function SeqTag({ status, queue }: { status: SeqStatus; queue?: Sequence["queue"] }) {
+  return <StatusTag kind={seqStatusKind(status, queue)} />;
 }
 
 /** Subject or body with its variables shown as tokens. */
@@ -44,8 +51,8 @@ export function SeqList({ list, open, onOpen, onNew }: { list: Sequence[]; open:
           <li key={s.id}>
             <button type="button" className={cx("d-runrow", open === s.id && "is-on")} aria-current={open === s.id ? "true" : undefined} onClick={() => onOpen(s.id)}>
               <span className="d-runrow__name">{s.name}</span>
-              <span className="d-runrow__line">{summaryOf(s.steps)} · {s.run ? `${f(s.run.enrolled)} enrolled, ${pct(s.run.replied, s.run.enrolled)} replied` : `${f(s.audience.count)} companies`}</span>
-              <span className="d-runrow__meta"><SeqTag status={s.status} />{s.updated} · {s.by.split(" ")[0]}</span>
+              <span className="d-runrow__line">{summaryOf(s.steps)} · {s.run ? `${f(s.run.enrolled)} enrolled, ${pct(s.run.replied, s.run.enrolled)} replied` : s.audience.count ? `${f(s.audience.count)} companies` : "No audience yet"}</span>
+              <span className="d-runrow__meta"><SeqTag status={s.status} queue={s.queue} />{s.updated} · {s.by.split(" ")[0]}</span>
             </button>
           </li>
         ))}
@@ -131,8 +138,8 @@ export function SeqHeader({ seq, actions }: { seq: Sequence; actions: ReactNode 
     <div className="d-run__head">
       <div className="d-run__titles">
         <h2>{seq.name}</h2>
-        <p className="d-run__meta"><SeqTag status={seq.status} /><span>{summaryOf(seq.steps)}</span><span aria-hidden="true">·</span>
-          <span>{f(seq.audience.count)} companies in {seq.audience.label}</span><span aria-hidden="true">·</span><span>{seq.window}</span></p>
+        <p className="d-run__meta"><SeqTag status={seq.status} queue={seq.queue} /><span>{summaryOf(seq.steps)}</span><span aria-hidden="true">·</span>
+          <span>{seq.audience.count ? `${f(seq.audience.count)} companies in ${seq.audience.label}` : "No audience yet"}</span><span aria-hidden="true">·</span><span>{seq.window}</span></p>
       </div>
       <div className="d-acts">{actions}</div>
     </div>
@@ -192,6 +199,43 @@ export function Launching({ seq }: { seq: Sequence }) {
         </li>))}
       </ol>
       <p className="c-faint q-launching__note">The first emails go out Thursday from 08:10 their time. You can close this page.</p>
+    </section>
+  );
+}
+
+/* ---------------------------------------------------------------- M13 (gap 5): after the checks, never an endless "launching" */
+export const LAUNCH_COPY = {
+  mailbox: "Connect a mailbox to start sending.", connect: "Connect mailbox",
+  window: (first?: string) => `First emails go out ${first ?? "in the next send window"}.`,
+  sending: (sent: number, total: number) => `${f(sent)} of ${f(total)} first emails sent.`,
+  failed: "Sending stopped.", retry: "Try again", nothing: "Nothing has been sent.",
+} as const;
+const TRACK: { id: "queued" | "sending" | "live"; label: string }[] = [{ id: "queued", label: "Queued" }, { id: "sending", label: "Sending" }, { id: "live", label: "Live" }];
+
+/** Queued (waiting for a mailbox or the window) → Sending → Live, or Failed. One tag, one line, one action, and where it is on the way. */
+export function LaunchState({ seq, onConnect, onRetry }: { seq: Sequence; onConnect?: () => void; onRetry?: () => void }) {
+  const st = seq.status;
+  if (st !== "queued" && st !== "sending" && st !== "failed") return null;
+  const at = st === "queued" ? 0 : 1;
+  const waitingMailbox = st === "queued" && seq.queue?.reason === "mailbox";
+  const line = waitingMailbox ? LAUNCH_COPY.mailbox
+    : st === "queued" ? LAUNCH_COPY.window(seq.queue?.first)
+    : st === "sending" ? LAUNCH_COPY.sending(seq.sending?.sent ?? 0, seq.sending?.total ?? seq.audience.count)
+    : seq.failure?.line ?? LAUNCH_COPY.failed;
+  const action = waitingMailbox && onConnect ? <Button variant="primary" onClick={onConnect}><EnvelopeSimple size={14} />{LAUNCH_COPY.connect}</Button>
+    : st === "failed" && onRetry ? <Button variant="primary" onClick={onRetry}><ArrowsClockwise size={14} />{LAUNCH_COPY.retry}</Button> : null;
+  return (
+    <section className={cx("q-launch", `is-${st}`, waitingMailbox && "is-mailbox")} aria-label="Launch status">
+      <div className="q-launch__top" role="status">
+        <span className="u-sr">{seqStatusKind(st, seq.queue) === "waiting-mailbox" ? "Waiting for mailbox" : st}: </span>
+        <span className="q-launch__line">{line}</span>
+        {action && <span className="q-launch__act">{action}</span>}
+      </div>
+      <ol className="q-track" aria-label="Launch progress">{TRACK.map((x, i) => (
+        <li key={x.id} className={cx(i < at && "is-done", i === at && (st === "failed" ? "is-bad" : "is-now"))} aria-current={i === at ? "step" : undefined}>
+          <span className="q-track__dot" aria-hidden="true" />{x.label}</li>))}</ol>
+      {st === "sending" && seq.sending && <span className="q-launch__meter" aria-hidden="true"><span style={{ width: `${Math.round((seq.sending.sent / Math.max(1, seq.sending.total)) * 100)}%` }} /></span>}
+      {st === "failed" && seq.failure?.detail && <span className="c-mono q-launch__detail">{seq.failure.detail}</span>}
     </section>
   );
 }

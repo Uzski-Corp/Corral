@@ -21,10 +21,19 @@
  *   autosend          AutoSend open: its role (after the reply, never cold) and its journeys
  *   loading           skeleton rows
  *   load-error        the page couldn't load; nothing was disconnected
+ * Team and Billing (M13)
+ *   team              the members: you (owner), a member, an invite still pending; a row menu each; Invite
+ *   team-solo         only you: "Just you so far" and Invite
+ *   team-invite       the Invite dialog (emails, role)
+ *   team-loading      skeleton rows
+ *   billing           no plan yet: the three plans with {price} placeholders, or talk to us
+ *   billing-loading   skeleton
  */
 export const SETTINGS_REVIEW_STATES = [
   "integrations", "none", "connect-cal", "connecting", "connect-erp", "connect-erp-failed", "connect-autosend",
   "connected", "reauth", "error", "disconnect", "logs", "mapping", "mapping-errors", "scopes", "autosend", "loading", "load-error",
+  /* M13: Settings → Team and Billing */
+  "team", "team-solo", "team-invite", "team-loading", "billing", "billing-loading",
 ] as const;
 export type SettingsReviewState = (typeof SETTINGS_REVIEW_STATES)[number];
 

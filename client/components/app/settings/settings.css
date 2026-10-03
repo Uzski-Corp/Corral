@@ -1,0 +1,33 @@
+/* Settings → Team and Billing (M13). Tokens only; rows follow the 40/52 rhythm, no cards inside cards. */
+@layer components {
+.t-page, .b-page { max-width: 760px; gap: 20px; }
+.t-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.t-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--color-border-subtle); }
+.t-row { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 10px 4px; border-bottom: 1px solid var(--color-border-subtle); }
+.t-who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.t-name { display: flex; align-items: center; gap: 8px; font-size: var(--text-label); line-height: 18px; font-weight: 500; color: var(--color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.t-row.is-invited .t-name { font-weight: 400; color: var(--color-text-secondary); }
+.t-you { font-size: var(--text-meta); font-weight: 400; color: var(--color-text-quaternary); }
+.t-mail { font-size: var(--text-meta); line-height: 16px; color: var(--color-text-tertiary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.t-role { width: 72px; text-align: right; font-size: var(--text-label); color: var(--color-text-secondary); }
+.t-tag { margin-left: 4px; }
+.t-solo { padding-top: 8px; }
+.b-hero { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.b-hero .c-empty { padding: 28px 24px 12px; }
+.b-plans { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--color-border-subtle); }
+.b-plan { display: flex; align-items: center; gap: 16px; min-height: 64px; padding: 12px 4px; border-bottom: 1px solid var(--color-border-subtle); }
+.b-plan__txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.b-plan__name { display: flex; align-items: baseline; gap: 8px; font-size: var(--text-content); font-weight: 500; color: var(--color-text); }
+.b-plan__tag { font-size: var(--text-meta); font-weight: 400; color: var(--color-text-quaternary); }
+.b-plan__line { font-size: var(--text-label); line-height: 18px; color: var(--color-text-tertiary); }
+.b-plan__price { width: 120px; display: flex; align-items: baseline; justify-content: flex-end; gap: 6px; font-size: var(--text-label); color: var(--color-text); }
+.b-plan__per { font-size: var(--text-meta); color: var(--color-text-quaternary); }
+.b-plan .c-btn { min-width: 96px; justify-content: center; }
+.b-foot { margin: 0; text-align: center; font-size: var(--text-label); }
+@container shell (max-width: 767px) {
+  .t-role { display: none; }
+  .b-plan { flex-wrap: wrap; gap: 8px 12px; }
+  .b-plan__txt { flex-basis: 100%; }
+  .b-plan__price { width: auto; justify-content: flex-start; flex: 1; }
+}
+}

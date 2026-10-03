@@ -172,6 +172,22 @@ button.c-toggle { border: 0; padding: 0; cursor: pointer; transition: background
 .c-empty__art { width: 128px; height: 76px; border-radius: 10px; background: center/cover no-repeat; box-shadow: inset 0 0 0 1px rgb(0 0 0 / .06); }
 .c-empty__art--range { background-image: url(/corral/or/range-sky.jpg); background-position: 50% 70%; }
 .c-empty__art--grass { background-image: url(/corral/or/range-grass.jpg); }
+/* M13 empty state: the Open Range mark (horizon crop or hairline) with one Phosphor glyph resting on the horizon.
+   Replaces the illustrated c-empty__mark images. Only tokens; the crop is the existing range-grass image. */
+.c-empty--m13 { gap: 20px; }
+.c-empty--m13 .c-empty__txt { gap: 6px; max-width: 320px; }
+.c-empty--m13:not(.c-empty--compact) .c-empty__txt p.c-strong { font-size: var(--text-lead); line-height: 24px; letter-spacing: var(--tracking-heading); }
+.c-empty--m13 .c-actions { margin-top: 2px; flex-wrap: wrap; justify-content: center; }
+.c-empty__mark { position: relative; display: inline-flex; flex-shrink: 0; }
+.c-empty__mark--crop { width: 104px; height: 60px; margin-bottom: 14px; border-radius: var(--radius-card);
+  background: url(/corral/or/range-grass.jpg) 50% 13% / 210% auto no-repeat; box-shadow: inset 0 0 0 1px rgb(0 0 0 / .06); }
+.c-empty__mark--line { width: 136px; height: 32px; }
+.c-empty__mark--line::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--color-border); }
+.c-empty__glyph { position: absolute; left: 50%; width: 32px; height: 32px; margin-left: -16px; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--color-canvas); color: var(--color-text-secondary); box-shadow: var(--shadow-button); }
+.c-empty__mark--crop .c-empty__glyph { bottom: -16px; }
+.c-empty__mark--line .c-empty__glyph { top: 0; }
+.c-empty__mark--error .c-empty__glyph { color: var(--color-negative-600); }
 .c-banner { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: var(--radius-button); background: var(--b50); box-shadow: inset 0 0 0 1px var(--b200); }
 .c-banner > svg { color: var(--b600); margin-top: 2px; flex-shrink: 0; }
 .c-banner__txt { flex: 1; display: flex; flex-direction: column; gap: 2px; line-height: 18px; }

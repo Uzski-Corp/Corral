@@ -30,12 +30,12 @@ describe("run progress", () => {
     expect(runHeadline({ ...base, status: "queued" })).toBe("Queued · starts in a moment");
     expect(runHeadline({ ...base, status: "paused", limitedBy: "Hunter" })).toBe("Paused · Hunter limit, resumes by itself");
     expect(runHeadline({ ...base, status: "paused" })).toBe("Paused · a provider limit, resumes by itself");
-    expect(runHeadline({ ...base, status: "failed", found: 41, failure: { stage: "search", title: "t", fix: "f" } })).toBe("Stopped at search · 41 companies kept");
-    expect(runHeadline({ ...base, status: "failed", found: 1 })).toBe("Stopped at search · 1 company kept");
+    expect(runHeadline({ ...base, status: "failed", found: 41, failure: { stage: "search", title: "t", fix: "f" } })).toBe("Failed at search · 41 companies kept");
+    expect(runHeadline({ ...base, status: "failed", found: 1 })).toBe("Failed at search · 1 company kept");
     expect(runHeadline({ ...base, status: "cancelled" })).toBe("Cancelled · 212 companies kept");
-    expect(runHeadline({ ...base, status: "done", found: 0 })).toBe("Finished · no companies matched");
-    expect(runHeadline({ ...base, status: "done", fits: 22 })).toBe("Finished · 212 companies, 22 fit 80+");
-    expect(runHeadline({ ...base, status: "partial", skipped: [["blocked", 7], ["timeout", 5]] })).toBe("Finished · 212 companies, 31 fit 80+ · 12 couldn’t be read");
+    expect(runHeadline({ ...base, status: "done", found: 0 })).toBe("Done · no companies matched");
+    expect(runHeadline({ ...base, status: "done", fits: 22 })).toBe("Done · 212 companies, 22 fit 80+");
+    expect(runHeadline({ ...base, status: "partial", skipped: [["blocked", 7], ["timeout", 5]] })).toBe("Done · 212 companies, 31 fit 80+ · 12 couldn’t be read");
     expect(plural(1, "run")).toBe("1 run");
     expect(plural(1200, "run")).toBe("1,200 runs");
   });

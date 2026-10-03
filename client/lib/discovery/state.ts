@@ -9,6 +9,7 @@
  *   new            New run: criteria from the knowledge base, limits, credit estimate
  *   new-error      New run with problems: no country picked, not enough credits
  *   queued         a run waiting for the one ahead of it
+ *   starting       (M13) a run the server has accepted but no worker has picked up: Queued, not Running
  *   running        a run mid-way: stages, results arriving, enrichment per row
  *   done           a finished run: summary, results, make a segment
  *   partial        finished, but some sites couldn't be read (by reason, with retry)
@@ -18,7 +19,7 @@
  *   detail         a result open in the detail rail with provenance per field
  */
 export const DISCOVERY_REVIEW_STATES = [
-  "empty", "loading", "error", "new", "new-error", "queued", "running", "done", "partial", "failed", "rate-limited", "zero", "detail",
+  "empty", "loading", "error", "new", "new-error", "queued", "starting", "running", "done", "partial", "failed", "rate-limited", "zero", "detail",
 ] as const;
 export type DiscoveryReviewState = (typeof DISCOVERY_REVIEW_STATES)[number];
 

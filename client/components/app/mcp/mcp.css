@@ -177,6 +177,9 @@
 .m-steps li { display: flex; gap: 10px; align-items: flex-start; }
 .m-steps__n { flex-shrink: 0; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 11px; font-weight: 500; color: var(--color-text-secondary); box-shadow: inset 0 0 0 1px var(--color-border); }
 .m-wait { display: flex; flex-direction: column; gap: 14px; }
+/* M13: "No hosts connected" (the empty list, and inside Waiting) */
+.m-start--empty { padding: 8px 20px; box-shadow: none; }
+.m-wait__hosts { border-radius: var(--radius-card); background: var(--color-surface-muted); box-shadow: 0 0 0 1px var(--color-border-subtle); }
 .m-waitsteps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: var(--color-text-tertiary); }
 .m-waitsteps li { display: flex; align-items: center; gap: 8px; }
 .m-waitsteps .is-done { color: var(--color-text-secondary); }

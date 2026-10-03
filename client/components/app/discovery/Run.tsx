@@ -9,22 +9,26 @@ import { Progress } from "../kb/parts";
 import { formatCountdown } from "@/lib/auth/code";
 import { SKIP_TEXT, STAGES, currentStage, etaText, overallPercent, plural, runHeadline, zeroResultHints, type Run, type RunStatus, type StageProgress } from "@/lib/discovery/run";
 import type { Result } from "./data";
+import { StatusTag } from "../StatusTag";
+import { STATUS_TAG, type StatusKind } from "@/lib/status/tags";
 
 const f = (n: number) => n.toLocaleString("en-US");
 
 /* ---------------------------------------------------------------- status */
 
-export function runTone(r: Pick<Run, "status" | "found">): { label: string; tone: "live" | "neutral" | "caution" | "negative" } {
-  const m: Record<RunStatus, { label: string; tone: "live" | "neutral" | "caution" | "negative" }> = {
-    running: { label: "Running", tone: "live" }, queued: { label: "Queued", tone: "neutral" }, paused: { label: "Paused", tone: "caution" },
-    done: { label: r.found ? "Finished" : "No results", tone: "neutral" }, partial: { label: "Finished · some skipped", tone: "caution" },
-    failed: { label: "Stopped", tone: "negative" }, cancelled: { label: "Cancelled", tone: "neutral" },
+/** M13 (gap 6): a run's status in the shared vocabulary (lib/status/tags.ts), the same words the server stores. */
+export function runStatusKind(r: Pick<Run, "status" | "found">): StatusKind {
+  const m: Record<RunStatus, StatusKind> = {
+    queued: "queued", running: "running", paused: "paused", done: r.found ? "done" : "no-results", partial: "done-partial", failed: "failed", cancelled: "cancelled",
   };
   return m[r.status];
 }
+export function runTone(r: Pick<Run, "status" | "found">): { label: string; tone: "live" | "neutral" | "caution" | "negative" | "positive" } {
+  const t = STATUS_TAG[runStatusKind(r)];
+  return { label: t.label, tone: t.tone === "info" ? "live" : t.tone };
+}
 export function RunTag({ run }: { run: Pick<Run, "status" | "found"> }) {
-  const t = runTone(run);
-  return <span className={cx("d-runtag", `is-${t.tone}`)}>{t.tone === "live" && <span className="d-live" aria-hidden="true" />}{t.label}</span>;
+  return <StatusTag kind={runStatusKind(run)} />;
 }
 
 /* ---------------------------------------------------------------- runs list */
@@ -102,6 +106,11 @@ function Criteria({ run }: { run: Run }) {
 }
 
 function StatusBanner({ run, countdown, onAction }: { run: Run; countdown?: number; onAction: (a: RunAction) => void }) {
+  if (run.status === "queued" && !run.after) return (
+    <Banner tone="info" icon="clock" title="Queued" action={<Button onClick={() => onAction("unqueue")}>Remove from queue</Button>}>
+      Starts in a moment. Nothing is spent until it does.
+    </Banner>
+  );
   if (run.status === "queued") return (
     <Banner tone="info" icon="clock" title={`Queued behind ${run.after}`} action={<Button onClick={() => onAction("unqueue")}>Remove from queue</Button>}>
       Corral runs one discovery at a time per workspace, so credits and provider limits go to one run. This one starts by itself, in about 9 min.
@@ -201,7 +210,7 @@ export function RunPanel({ run, results, active, onOpen, onAction, countdown, ac
                   : st && (run.status === "running" || run.status === "paused") ? "New rows arrive as sites are read" : "Every company here is in Companies"}
               </span>
             </div>
-            <SegmentTable label={`Results: ${run.name}`} leads={shown} selected={sel} active={active} onOpen={onOpen}
+            <SegmentTable fitLabel={run.product ? `Fit · ${run.product}` : "Fit"} label={`Results: ${run.name}`} leads={shown} selected={sel} active={active} onOpen={onOpen}
               onToggle={(id) => setSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; })} />
             {shown.length < counts[tab] && <p className="l-more c-faint">Showing the first {f(shown.length)} of {f(counts[tab])}. The rest load as you scroll.</p>}
           </div>

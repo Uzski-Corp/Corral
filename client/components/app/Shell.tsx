@@ -126,7 +126,7 @@ export function SideNav({ active, onNavigate, collapsed, onSearch, segment, onSe
   active: ViewId; onNavigate?: (v: ViewId) => void; collapsed?: boolean; onSearch?: () => void; segment?: string; onSegment?: (s: string) => void;
   account?: ShellAccountProp; onSignOut?: () => void; pool?: ShellPool; onPool?: () => void;
   /** Live nav counts (M7: Unibox = threads that need you); omitted views keep the sample count. */ counts?: Partial<Record<ViewId, string>>;
-  /** Saved segments with their counts (ENG-81: from the API); default: the sample three. */ segments?: [string, number][];
+  /** Saved segments with their counts (ENG-81: from the API). M13: with none, the group is left out (Segments shows its empty state). */ segments?: [string, number][];
 }) {
   const router = useRouter();
   const signOut = onSignOut ?? (() => router.push("/sign-in"));
@@ -143,7 +143,7 @@ export function SideNav({ active, onNavigate, collapsed, onSearch, segment, onSe
         <NavRow icon="search" label="Search" kbd="⌘K" collapsed={collapsed} onClick={onSearch} />
         <div className="c-side__gap" />
         {top.map((n) => { const count = counts?.[n.id] ?? n.count; return <NavRow key={n.id} icon={n.icon} label={n.label} count={offline ? undefined : count} dot={collapsed && !offline && !!count} active={active === n.id && !(n.id === "segments" && segment)} collapsed={collapsed} onClick={() => onNavigate?.(n.id)} />; })}
-        {!collapsed && <>
+        {!collapsed && segments.length > 0 && <>
           <div className="c-side__label">Saved segments</div>
           {segments.map(([s, n]) => (
             <button type="button" key={s} className={cx("c-nav c-nav--seg", segment === s && active === "segments" && "is-active")} onClick={() => onSegment?.(s)}>

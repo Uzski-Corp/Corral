@@ -13,6 +13,7 @@ import { Dialog, DropdownMenu, Tooltip } from "./Overlays";
 import { Checkbox, DatePicker, FormField, RadioGroup, Select } from "./Form";
 import { Tabs } from "./Tabs";
 import { EmptyState, ErrorState, SkeletonTable } from "./States";
+import { ContactsEmpty, SegmentsEmpty } from "./Empties";
 import type { ContactsReviewState } from "@/lib/contacts/state";
 import { ToastProvider, useToast } from "./Toaster";
 import { SessionUnavailable, type SessionUnavailableProps } from "./SessionUnavailable";
@@ -28,7 +29,10 @@ import { CREDITS, DiscoveryView, type DiscoveryCatalog } from "./discovery";
 import type { DiscoveryReviewState } from "@/lib/discovery/state";
 import { SequencesView, seedFor, type SequenceCatalog, type SeqTab } from "./sequences";
 import type { KeysApi } from "./mcp/Keys";
-import type { ApiKey as ApiKeyRow } from "./mcp/data";
+import type { TeamApi } from "./settings";
+import type { Member } from "@/lib/api";
+import type { WorkspaceInvite } from "@/lib/api/workspace";
+import { firstCallFrom, type ApiKey as ApiKeyRow, type Connection as ConnRow, type FirstCallCheck } from "./mcp/data";
 import type { SequenceReviewState } from "@/lib/sequences/state";
 import { poolSummary } from "@/lib/sequences/sequence";
 import { UniboxView, UNIBOX_TABS, needsYou, UNIBOX_THREADS, uniboxSeedFor, type UniboxTab } from "./unibox";
@@ -81,12 +85,10 @@ function ContactsView({ state, onFind, people }: {
   const empty = phase === "empty";
   return (
     <div className="c-view">
-      <div className="c-subbar"><Tabs label="Contacts" value="dm" tabs={[{ id: "dm", label: "Decision-makers", count: empty ? 0 : 412 }, { id: "all", label: "Everyone", count: empty ? 0 : "3,902" }]} /></div>
-      {phase === "ready" && <div className="c-view__scroll"><SegmentTable leads={people?.rows} selected={new Set()} label="Contacts" /></div>}
+      <div className="c-subbar"><Tabs label="Contacts" value="dm" tabs={[{ id: "dm", label: "Decision-makers", count: empty ? 0 : people ? undefined : 412 }, { id: "all", label: "Everyone", count: empty ? 0 : people ? people.rows.length : "3,902" }]} /></div>
+      {phase === "ready" && <div className="c-view__scroll"><SegmentTable leads={people?.rows} selected={new Set()} label="Contacts" fitLabel={people ? "Fit" : undefined} /></div>}
       {phase === "loading" && <div className="c-view__scroll" style={{ overflow: "hidden" }} /* a skeleton never scrolls */><SkeletonTable rows={9} label="Loading contacts" /></div>}
-      {empty && <div className="c-view c-view--center"><EmptyState art="grass" title="No contacts yet" actions={<Button variant="primary" onClick={onFind}><Icon name="search" />Find companies</Button>}>
-        People arrive as Corral reads companies: the decision-makers it finds on each site, with where it found them.
-      </EmptyState></div>}
+      {empty && <div className="c-view c-view--center"><ContactsEmpty onFind={onFind} /></div>}
       {phase === "error" && <div className="c-view c-view--center"><ErrorState title="Couldn’t load contacts" detail="GET /api/v1/contacts · 503"
         actions={<Button variant="primary" onClick={() => { people?.onRetry?.(); setPhase("loading"); }}><Icon name="refresh" />Try again</Button>}>
         Nothing is lost. Corral keeps reading companies and finding people while this page is down.
@@ -172,7 +174,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
   const data = useAppData();
   const inboxLive = !!data && !unibox;
   const settingsPage = settingsTabOf(settingsTab);
-  const [setSection, setSetSection] = useState(developer ? SECTION_TITLE[sectionOf(developer)] : settingsPage ? settingsTabLabel(settingsPage) : "Integrations");
+  const [setSection, setSetSection] = useState(developer ? SECTION_TITLE[sectionOf(developer)] : settingsPage ? settingsTabLabel(settingsPage) : settings?.startsWith("team") ? "Team" : settings?.startsWith("billing") ? "Billing" : "Integrations");
   const toast = useToast();
   const signOut = useCallback(() => {
     if (!onSignOut) { router.push("/sign-in"); return; }
@@ -284,7 +286,11 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
   const [seqList, setSeqList] = useState<SequenceCatalog["list"]>([]);
   const [creditsLeft, setCreditsLeft] = useState<number | null>(null);
   const [integrationConn, setIntegrationConn] = useState<Record<"cal" | "phoenix" | "autosend", "off" | "connected" | "reauth" | "error" | "connecting"> | null>(null);
-  const [members, setMembers] = useState<{ name: string; email: string; role: string }[] | null>(null);
+  const [members, setMembers] = useState<Member[] | null>(null);
+  const [invites, setInvites] = useState<WorkspaceInvite[] | null>(null);
+  // Team writes the pending list it was given plus what it adds; the ref keeps the latest without remounting Team.
+  const invitesRef = useRef<WorkspaceInvite[]>([]);
+  useEffect(() => { invitesRef.current = invites ?? []; }, [invites]);
   const [liveKeys, setLiveKeys] = useState<import("./mcp/data").ApiKey[] | null>(null);
   const [liveConns, setLiveConns] = useState<import("./mcp/data").Connection[] | null>(null);
   const [contactPhase, setContactPhase] = useState<"loading" | "ready" | "error">(contactsLive ? "loading" : "ready");
@@ -349,6 +355,27 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
     seqKnown.current.add(id);
     void data.sequences.create({ id, ...body }).then((r) => { if (!r.ok) seqKnown.current.delete(id); });
   }, [data]);
+  const teamApi = useMemo<TeamApi | undefined>(() => {
+    if (!data) return undefined;
+    const save = async (next: WorkspaceInvite[]) => {
+      const r = await data.workspace.update({ invites: next });
+      if (r.ok) invitesRef.current = r.value.invites;
+      return r.ok;
+    };
+    return {
+      invite: (emails, role) => save([...invitesRef.current, ...emails.map((email): WorkspaceInvite => ({ email, role: role === "admin" ? "admin" : "member" }))]),
+      cancel: (email) => save(invitesRef.current.filter((i) => i.email.toLowerCase() !== email.toLowerCase())),
+    };
+  }, [data]);
+  const mcpCheck = useMemo<FirstCallCheck | undefined>(() => (data ? async (known) => {
+    const list = await data.developers.connections();
+    const fresh = list.ok ? list.value.find((c) => typeof c.id === "string" && !known.includes(c.id)) : undefined;
+    if (!fresh) return null;
+    const conn = fresh as unknown as ConnRow;
+    const calls = await data.developers.calls(conn.id);
+    const first = firstCallFrom(conn, calls.ok ? calls.value : []);
+    return first ? { conn, first } : null;
+  } : undefined), [data]);
   const keysApi = useMemo<KeysApi | undefined>(() => (data ? {
     create: async (d) => {
       const r = await data.developers.createKey({ name: d.name, env: d.env, scopes: d.scopes, expires: d.expires });
@@ -372,7 +399,8 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
       }
       setIntegrationConn(conn);
     });
-    void data.integrations.members(c.signal).then((r) => { if (!c.signal.aborted && r.ok) setMembers(r.value); });
+    void data.integrations.members(c.signal).then((r) => { if (!c.signal.aborted) setMembers(r.ok ? r.value : []); });
+    void data.workspace.get(c.signal).then((r) => { if (!c.signal.aborted) setInvites(r.ok ? r.value.invites : []); });
     void data.developers.keys(c.signal).then((r) => { if (!c.signal.aborted && r.ok) setLiveKeys(r.value as import("./mcp/data").ApiKey[]); });
     void data.developers.connections(c.signal).then((r) => { if (!c.signal.aborted && r.ok) setLiveConns(r.value as import("./mcp/data").Connection[]); });
     return () => c.abort();
@@ -479,8 +507,10 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
     : view === "knowledge" ? [ws, "Knowledge base", productName]
     : view === "sequences" && seqTab === "pool" ? [ws, "Sequences", "Mailbox pool"]
     : view === "settings" ? [ws, "Settings", setSection]
-    : segment ? [ws, "Segments", segment] : [ws, label];
-  const table = view === "companies" || view === "segments";
+    : segment && !(view === "segments" && leads === "empty") ? [ws, "Segments", segment] : [ws, label];
+  // M13 gap 2: no saved segments yet (or the review state) shows the segments empty state instead of the table.
+  const noSegments = view === "segments" && (leads === "empty" || (liveSegments ? liveSegments.phase === "ready" && liveSegments.list.length === 0 : SAVED_SEGMENTS.length === 0));
+  const table = view === "companies" || (view === "segments" && !noSegments);
   const findCompanies = () => { go("discovery"); setSetupOpen(true); };
   const actions = view === "unibox" ? <>
       <DropdownMenu align="end" width={240} label="Product" items={[{ heading: "Replies about" }, { label: "All products", checked: true }, { label: "ColdTrace Sensors", meta: "11" }, { label: "ColdTrace Gateway", meta: "1" }]}
@@ -500,7 +530,8 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
     : view === "discovery" ? <><span className="d-credits"><span className="c-num c-strong">{(discoveryLive ? creditsLeft ?? 0 : CREDITS.left).toLocaleString("en-US")}</span> credits left this month</span>{discovery !== "empty" && (!discoveryLive || discRuns.length > 0) && <Button variant="primary" onClick={() => setSetupOpen(true)}><Icon name="plus" />New run</Button>}</>
     : view === "sequences" ? (seqTab === "pool"
       ? <Button onClick={() => router.push("/onboarding?step=4")}><Icon name="plus" />Connect a mailbox</Button>
-      : sequences !== "empty" && sequences !== "loading" && sequences !== "error" && (!sequencesLive || seqList.length > 0) ? <Button variant="primary" onClick={() => setNewSeq((x) => x + 1)}><Icon name="plus" />New sequence</Button> : null)
+      : sequences !== "empty" && sequences !== "loading" && sequences !== "error" && (!sequencesLive || seqList.length > 0) ? <Button onClick={() => setNewSeq((x) => x + 1)}><Icon name="plus" />New sequence</Button> : null)
+    : view === "segments" && noSegments ? null
     : view === "segments" ? <><Button onClick={() => toast({ icon: "upload", children: `Exporting ${segment}`, meta: "CSV lands in your downloads" })}>Export</Button><Button variant="primary" onClick={() => setEnrollAll((x) => x + 1)}><Icon name="seq" />Enroll segment</Button></>
     : view === "products" && data ? <Button variant="primary" onClick={() => setAdding(true)}><Icon name="plus" />Add a product</Button>
     : null;
@@ -510,22 +541,25 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
       <AppShell frame={frame} className={className} active={view} onNavigate={go} crumbs={sessionError ? [ws, "Not connected"] : crumbs} actions={sessionError ? null : actions} collapsed={collapsed} onCollapsedChange={setCollapsed}
         onSearch={() => setPalette(true)} segment={segment} onSegment={(s) => place("segments", { segment: s })} defaultDrawer={drawer} hotkeys={hotkeys} account={account} onSignOut={signOut}
         pool={{ sent: poolNow.sent, cap: poolNow.cap, mailboxes: poolNow.total, attention: poolNow.attention }} onPool={() => { go("sequences"); setSeqTab("pool"); }}
-        counts={{ unibox: String(inboxLive && view === "unibox" && inboxPhase === "ready" ? needsYou(threads) : inboxLive ? (needsCount ?? 0) : needsYou(threads)) }} segments={sidebarSegments}>
+        counts={{ unibox: String(inboxLive && view === "unibox" && inboxPhase === "ready" ? needsYou(threads) : inboxLive ? (needsCount ?? 0) : needsYou(threads)) }} segments={view === "segments" && leads === "empty" ? [] : sidebarSegments}>
         {sessionError ? <SessionUnavailable {...sessionError} /> : <>
         {view === "unibox" && <UniboxView key={unibox ?? inboxPhase} state={unibox ?? (inboxLive && inboxPhase !== "ready" ? inboxPhase : undefined)} threads={threads} setThreads={setThreads} active={active} setActive={setActive} tab={tab} setTab={setTab} pane={pane} setPane={setPane}
           onArchive={archive} onSend={data && !unibox ? (id, text) => { void data.inbox.send(id, text); } : undefined} hotkeys={hotkeys && !palette && !enroll && !kbAdd && !importOpen && !setupOpen} />}
         {table && <LeadsView key={`${view}-${segment ?? ""}`} view={view} state={leads} segment={segment} importOpen={importOpen} onImportOpenChange={setImportOpen}
-          builderOpen={builderOpen} onBuilderOpenChange={setBuilderOpen} enrollAllSignal={enrollAll} onFind={findCompanies} onCompanies={() => go("companies")} onEnroll={(n, replied) => { setEnrollFor({ n, replied }); setEnroll(true); }} live={leadsLive} />}
+          builderOpen={builderOpen} onBuilderOpenChange={setBuilderOpen} enrollAllSignal={enrollAll} onFind={findCompanies} onEnroll={(n, replied) => { setEnrollFor({ n, replied }); setEnroll(true); }} live={leadsLive} />}
         {view === "discovery" && <DiscoveryView key={discovery ?? (discoveryLive ? `${discPhase}:${discRuns.length}` : "sample")} state={discovery} catalog={discoveryLive ? { phase: discPhase, runs: discRuns, productName: data?.me.organization.name, onRetry: () => { setDiscPhase("loading"); setDiscTry((n) => n + 1); }, onCreate: (run) => { void data?.discovery.create({ name: run.name, status: "queued" }); } } : undefined} setupOpen={setupOpen} onSetupOpenChange={setSetupOpen} onOpenCompanies={() => go("companies")} />}
-        {view === "sequences" && <SequencesView key={sequences ?? (sequencesLive ? `${seqPhase}:${seqList.length}` : "sample")} state={sequences} catalog={sequencesLive ? { phase: seqPhase, list: seqList, onRetry: () => { setSeqPhase("loading"); setSeqTry((n) => n + 1); }, onPersist: persistSequence } : undefined} tab={seqTab} onTabChange={setSeqTab} pool={pool} onPoolChange={setPool} newSignal={newSeq} />}
+        {view === "sequences" && <SequencesView key={sequences ?? (sequencesLive ? `${seqPhase}:${seqList.length}` : "sample")} state={sequences} catalog={sequencesLive ? { phase: seqPhase, list: seqList, onRetry: () => { setSeqPhase("loading"); setSeqTry((n) => n + 1); }, onPersist: persistSequence } : undefined} tab={seqTab} onTabChange={setSeqTab} pool={pool} onPoolChange={setPool} newSignal={newSeq} onConnectMailbox={() => router.push("/onboarding?step=4")} />}
+        {noSegments && <div className="c-view c-view--center"><SegmentsEmpty onCreate={() => { place("companies"); setBuilderOpen(true); }}
+          onImport={() => { place("companies"); setImportOpen(true); }} /></div>}
         {view === "contacts" && <ContactsView key={contacts ?? contactPhase} state={contacts} people={contactsLive ? { phase: contactPhase, rows: contactRows, onRetry: () => { setContactPhase("loading"); setContactTry((n) => n + 1); } } : undefined} onFind={() => place("discovery")} />}
-        {view === "settings" && <SettingsView key={`${settings ?? developer ?? "live"}-${tabNow ?? "integrations"}`} state={settings} developer={developer} tab={tabNow} onSection={(label, id) => { setSetSection(label); place("settings", { tab: id }); }} liveIntegrations={settingsLive ? (integrationConn ?? { cal: "off", phoenix: "off", autosend: "off" }) : undefined} members={settingsLive ? (members ?? []) : undefined} billingEmpty={settingsLive} liveKeys={settingsLive ? (liveKeys ?? []) : undefined} liveConnections={settingsLive ? (liveConns ?? []) : undefined}
+        {view === "settings" && <SettingsView key={`${settings ?? developer ?? "live"}-${tabNow ?? "integrations"}`} state={settings} developer={developer} tab={tabNow} onSection={(label, id) => { setSetSection(label); place("settings", { tab: id }); }} liveIntegrations={settingsLive ? (integrationConn ?? { cal: "off", phoenix: "off", autosend: "off" }) : undefined}
+          members={settingsLive ? members : undefined} invites={settingsLive ? invites : undefined} teamApi={settingsLive ? teamApi : undefined} liveKeys={settingsLive ? (liveKeys ?? []) : undefined} liveConnections={settingsLive ? (liveConns ?? []) : undefined}
           keysApi={settingsLive ? keysApi : undefined} viewer={settingsLive ? viewer : undefined}
           onDisconnect={settingsLive ? (id) => { void data?.developers.deleteConnection(id); } : undefined}
-          onIntegration={settingsLive ? (id, status) => { void data?.integrations.update(id, { status }); } : undefined} />}
+          onIntegration={settingsLive ? (id, status) => { void data?.integrations.update(id, { status }); } : undefined} mcpCheck={settingsLive ? mcpCheck : undefined} />}
         {view === "knowledge" && <KnowledgeBase key={kbLive ? "live" : "sample"} state={kb} addOpen={kbAdd} onAddOpenChange={setKbAdd} contained={frame === "contained"} live={kbLive} />}
         {view === "products" && data && <ProductsView adding={adding} onAddingChange={setAdding} onChanged={() => kbProducts?.retry()} onOpen={(id) => { kbProducts?.select(id); place("knowledge"); }} />}
-        {!table && view !== "unibox" && view !== "contacts" && view !== "knowledge" && view !== "discovery" && view !== "sequences" && view !== "settings" && !(view === "products" && data) && <PendingView id={view} onSearch={() => setPalette(true)} />}
+        {!table && !noSegments && view !== "unibox" && view !== "contacts" && view !== "knowledge" && view !== "discovery" && view !== "sequences" && view !== "settings" && !(view === "products" && data) && <PendingView id={view} onSearch={() => setPalette(true)} />}
         </>}
       </AppShell>
       {palette && <CommandPalette open onClose={() => setPalette(false)} {...cmds} />}

@@ -2,7 +2,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button, cx } from "../primitives";
 import { Icon } from "../icons";
-import { EmptyState, ErrorState, Skeleton, SkeletonTable } from "../States";
+import { ErrorState, Skeleton, SkeletonTable } from "../States";
+import { DiscoveryEmpty } from "../Empties";
 import { useToast } from "../Toaster";
 import { LeadDetail } from "../leads/Detail";
 import { scoreFor } from "../fit/data";
@@ -11,6 +12,7 @@ import type { DiscoveryReviewState } from "@/lib/discovery/state";
 import { DEMO_TODAY_M4, provOf, resultsFor, runsFor, type Result } from "./data";
 import { RunPanel, RunsList, type RunAction } from "./Run";
 import { RunSetup, SETUP_ERROR_SEED, type RunSetupSeed } from "./Setup";
+import { useAppData } from "@/components/session/AppData";
 
 const f = (n: number) => n.toLocaleString("en-US");
 
@@ -76,6 +78,7 @@ export function DiscoveryView({ state, setupOpen, onSetupOpenChange, onOpenCompa
   }, [run, frozen, tick]);
   const lead = detail ? results.find((r) => r.id === detail) : undefined;
   const running = runs.find((r) => r.status === "running" || r.status === "paused");
+  const me = useAppData()?.person.name ?? "You";
 
   const act = (a: RunAction) => {
     if (!run) return;
@@ -93,14 +96,22 @@ export function DiscoveryView({ state, setupOpen, onSetupOpenChange, onOpenCompa
   const start = (r: { name: string; criteria: Run["criteria"]; limit: number; enrichAt: number; queued: boolean }) => {
     const id = `new-${runs.length}`;
     const blank = { done: 0, total: null, state: "waiting" as const };
-    const nr: Run = { id, name: r.name, product: "ColdTrace Sensors", by: "Tomás Ibarra", criteria: r.criteria, limit: r.limit, enrichAt: r.enrichAt,
-      status: r.queued ? "queued" : "running", after: r.queued ? running?.name : undefined, position: 1, started: r.queued ? undefined : "just now",
-      stages: { search: r.queued ? blank : { done: 0, total: 18, state: "running" }, read: blank, score: blank, people: blank, verify: blank },
+    // M13 (gap 6): every new run starts Queued, as the server stores it; it turns Running when a worker picks it up.
+    const nr: Run = { id, name: r.name, product: "ColdTrace Sensors", by: me, criteria: r.criteria, limit: r.limit, enrichAt: r.enrichAt,
+      status: "queued", after: r.queued ? running?.name : undefined, position: r.queued ? 1 : 0, started: undefined,
+      stages: { search: blank, read: blank, score: blank, people: blank, verify: blank },
       found: 0, added: 0, updated: 0, fits: 0, credits: { used: 0, estimate: 221 } };
     setRuns((rs) => [nr, ...rs]); setOpen(id); setDetail(undefined); onSetupOpenChange(false); setSeed(undefined);
     catalog?.onCreate?.(nr);
-    toast({ icon: "globe", children: r.queued ? `Queued ${r.name}` : `Started ${r.name}`, meta: r.queued ? `starts after ${running?.name}` : "you can close this page" });
+    toast({ icon: "globe", children: `Queued ${r.name}`, meta: r.queued ? `starts after ${running?.name}` : "starts in a moment · you can close this page" });
   };
+  // A queued run with nothing ahead is picked up shortly (the worker); then it is Running.
+  const pickup = !frozen ? runs.find((r) => r.status === "queued" && !r.after) : undefined;
+  useEffect(() => {
+    if (!pickup) return;
+    const t = setTimeout(() => setRuns((rs) => rs.map((r) => (r.id === pickup.id ? { ...r, status: "running", started: "just now", stages: { ...r.stages, search: { done: 0, total: 18, state: "running" } } } : r))), 1800);
+    return () => clearTimeout(t);
+  }, [pickup]);
 
   const setup = <RunSetup open={setupOpen} onClose={() => { onSetupOpenChange(false); setSeed(undefined); }} onStart={start} seed={seed} key={JSON.stringify(seed ?? null)}
     queueBehind={running?.name} held={running ? running.credits.estimate - running.credits.used : 0} />;
@@ -120,10 +131,7 @@ export function DiscoveryView({ state, setupOpen, onSetupOpenChange, onOpenCompa
   );
   if (runs.length === 0) return (
     <div className="c-view c-view--center d-view">
-      <EmptyState art="range" title={`Find companies that fit ${catalog?.productName || "ColdTrace Sensors"}`}
-        actions={<Button variant="primary" onClick={() => onSetupOpenChange(true)}><Icon name="globe" />Start your first run</Button>}>
-        Corral writes searches from your knowledge base, reads each company&rsquo;s website, scores the fit, and finds the person to write to, with where every detail came from. Nothing is sent to anyone.
-      </EmptyState>
+      <DiscoveryEmpty onStart={() => onSetupOpenChange(true)} />
       {setup}
     </div>
   );

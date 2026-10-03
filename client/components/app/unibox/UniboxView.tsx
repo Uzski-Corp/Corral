@@ -6,7 +6,8 @@ import type { Thread } from "../data";
 import { Button, Kbd } from "../primitives";
 import { Icon } from "../icons";
 import { Tabs } from "../Tabs";
-import { EmptyState, ErrorState, Skeleton, SkeletonThreads } from "../States";
+import { ErrorState, Skeleton, SkeletonThreads } from "../States";
+import { UniboxEmpty } from "../Empties";
 import { useToast } from "../Toaster";
 import { ContextRail, ReadingPane, ThreadList } from "../Unibox";
 import { UNDO_SECONDS, canSend, type DraftKind, type SendKind } from "@/lib/unibox/draft";
@@ -206,10 +207,7 @@ export function UniboxView({ threads, setThreads, active, setActive, tab, setTab
 
   const handledN = threads.filter((x) => x.handled).length;
   const empty = !tabList.length ? (
-    tab === "snoozed" ? <EmptyState art="range" title="Nothing snoozed">Press <span className="c-kbd">H</span> on a thread to hide it until a date. It comes back to the top of Needs you on that morning.</EmptyState>
-    : tab === "meetings" ? <EmptyState art="range" title="No meetings booked yet">When someone books through your Cal.com link, the thread moves here and the sequence stops.</EmptyState>
-    : <EmptyState art="range" title="Nothing needs you" actions={handledN ? <Button onClick={() => setTab("all")}>See what Corral handled</Button> : undefined}>
-        Every reply is answered or waiting on the other side. {handledN ? `Corral handled ${handledN} on its own (out of office, unsubscribes, bounces); they’re in All.` : ""} New replies land here first.</EmptyState>
+    <div className="c-view c-view--center"><UniboxEmpty tab={tab} onHandled={handledN ? () => setTab("all") : undefined} /></div>
   ) : null;
 
   const a: DraftActions | undefined = !t ? undefined : {

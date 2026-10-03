@@ -83,7 +83,7 @@ describe("/onboarding and /app pages keep their review params", () => {
     resetConfigCache();
     const page = await app(["discovery"], { state: "empty" });
     render(AppLayout({ children: page, params: Promise.resolve({}) } as never));
-    expect(await screen.findByText("Find companies that fit ColdTrace Sensors")).toBeInTheDocument();
+    expect(await screen.findByText("Find your market")).toBeInTheDocument();
   });
 
   it("opens a sequences review state (M6)", async () => {
@@ -91,7 +91,7 @@ describe("/onboarding and /app pages keep their review params", () => {
     resetConfigCache();
     const page = await app(["sequences"], { state: "empty" });
     render(AppLayout({ children: page, params: Promise.resolve({}) } as never));
-    expect(await screen.findByText("Write your first sequence")).toBeInTheDocument();
+    expect(await screen.findByText("No sequences yet")).toBeInTheDocument();
   });
 
   it("opens a unibox review state (M7)", async () => {

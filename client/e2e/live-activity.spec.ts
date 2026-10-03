@@ -23,7 +23,7 @@ test.describe("live activity", () => {
 
     await page.goto("/app/discovery");
     await expect(page.getByText("Dairy & cold rooms · East Africa")).toHaveCount(0);
-    await expect(page.getByText(/Find companies that fit/)).toBeVisible();
+    await expect(page.getByText("Find your market")).toBeVisible();
 
     await page.goto("/app/sequences");
     await expect(page.getByText("Cold-room pilot")).toHaveCount(0);

@@ -3,14 +3,16 @@ import { useEffect, useMemo, useState } from "react";
 import { Button, cx } from "../primitives";
 import { Icon } from "../icons";
 import { Dialog } from "../Overlays";
-import { EmptyState, ErrorState, Skeleton } from "../States";
+import { ErrorState, Skeleton } from "../States";
+import { SequencesEmpty } from "../Empties";
 import { Tabs } from "../Tabs";
 import { useToast } from "../Toaster";
 import { DEMO_TODAY_M4 } from "../discovery/data";
 import { issuesOf, poolSummary, sendDays, spanDays, type Gate, type Mailbox, type Step } from "@/lib/sequences/sequence";
 import type { SequenceReviewState } from "@/lib/sequences/state";
-import { seedFor, type Sequence } from "./data";
-import { IssuesBanner, Launching, PausedBanner, RunNumbers, SeqHeader, SeqList, StepList } from "./Steps";
+import { blankSequence, seedFor, type Sequence } from "./data";
+import { IssuesBanner, LaunchState, Launching, PausedBanner, RunNumbers, SeqHeader, SeqList, StepList } from "./Steps";
+import { useAppData } from "@/components/session/AppData";
 import { StepEditor } from "./Editor";
 import { PoolView } from "./Pool";
 
@@ -29,11 +31,12 @@ export type SequenceCatalog = {
   onPersist?: (seq: Sequence) => void;
 };
 
-export function SequencesView({ state, tab, onTabChange, pool, onPoolChange, newSignal = 0, catalog }: {
+export function SequencesView({ state, tab, onTabChange, pool, onPoolChange, newSignal = 0, catalog, onConnectMailbox }: {
   state?: SequenceReviewState; tab: SeqTab; onTabChange: (t: SeqTab) => void;
   pool: Mailbox[]; onPoolChange: (p: Mailbox[]) => void; newSignal?: number;
   /** Signed-in sequences. When set, the sample list is not used. */
   catalog?: SequenceCatalog;
+  /** M13: where "Connect mailbox" goes (onboarding step 4 in the app). Defaults to the Mailbox pool tab. */ onConnectMailbox?: () => void;
 }) {
   const toast = useToast();
   const frozen = !!state || !!catalog;
@@ -62,8 +65,9 @@ export function SequencesView({ state, tab, onTabChange, pool, onPoolChange, new
   const putStep = (i: number, st: Step) => seq && put(seq.id, (s) => ({ steps: s.steps.map((x, k) => (k === i ? st : x)), updated: "just now" }));
   const putGate = (i: number, g: Gate) => seq && put(seq.id, (s) => ({ steps: s.steps.map((x, k) => (k === i ? { ...x, gate: g } : x)), updated: "just now" }));
 
-  const blank = (id: string): Sequence => ({ id, name: "Untitled sequence", status: "draft", product: "ColdTrace Sensors", audience: { label: "F&B · East Africa", count: 312 },
-      steps: [{ id: `${id}-1`, thread: "new", subject: "", body: "" }], window: "Their morning, 08:00–11:00", by: "Tomás Ibarra", updated: "just now", missing: { cold_storage: 41 } });
+  // M13 (gap 4): a real blank draft, owned by whoever is signed in. No sample product, audience or copy.
+  const me = useAppData()?.person.name ?? "You";
+  const blank = (id: string): Sequence => blankSequence(id, me);
   const start = (withCorral: boolean) => {
     // Signed in, the id becomes the sequence's public id on the server, so it can't repeat one in the list.
     let n = list.length;
@@ -77,20 +81,40 @@ export function SequencesView({ state, tab, onTabChange, pool, onPoolChange, new
   const [signal, setSignal] = useState(newSignal);
   if (newSignal !== signal) { setSignal(newSignal); start(false); }
 
-  // Live launch: the checks tick through, then the sequence runs.
+  // Live launch (M13, gap 5): checks → Queued (no mailbox: Waiting for mailbox) → Sending → Live, or Failed.
+  // The server owns these; the client only reflects them. A launch never sits on "launching" past its checks.
+  const sendable = pool.filter((m) => m.state === "warm" || m.state === "warming").length;
   const launching = list.find((s) => s.status === "launching");
+  const waiting = list.find((s) => s.status === "queued" && s.queue?.reason === "mailbox");
+  const sendingSeq = list.find((s) => s.status === "sending");
   useEffect(() => {
     if (frozen || !launching) return;
     const t = setTimeout(() => {
       const next = (launching.launch?.stage ?? 0) + 1;
       if (next < 3) put(launching.id, { launch: { stage: next } });
-      else {
-        put(launching.id, { status: "running", launch: undefined, run: { enrolled: 82, active: 82, replied: 0, meetings: 0, bounced: 0, unsubscribed: 0, next: "Thursday 08:10–10:40 their time: 82 emails (step 1)" } });
-        toast({ tone: "success", icon: "seq", children: `${launching.name} is running`, meta: "82 first emails from Thursday 08:10" });
-      }
+      else if (!sendable) put(launching.id, { status: "queued", launch: undefined, queue: { reason: "mailbox", since: "just now" } });
+      else put(launching.id, { status: "sending", launch: undefined, sending: { sent: 0, total: launching.audience.count } });
     }, 1100);
     return () => clearTimeout(t);
-  }, [frozen, launching, toast]);
+  }, [frozen, launching, sendable]);
+  useEffect(() => { // a mailbox connected while queued: start sending
+    if (frozen || !waiting || !sendable) return;
+    // the server picks the queued launch up on its next tick, not in the same render
+    const t = setTimeout(() => put(waiting.id, { status: "sending", queue: undefined, sending: { sent: 0, total: waiting.audience.count } }), 600);
+    return () => clearTimeout(t);
+  }, [frozen, waiting, sendable]);
+  useEffect(() => {
+    if (frozen || !sendingSeq?.sending) return;
+    const { sent, total } = sendingSeq.sending;
+    const t = setTimeout(() => {
+      if (sent + 20 < total) { put(sendingSeq.id, { sending: { sent: sent + 20, total } }); return; }
+      put(sendingSeq.id, { status: "running", sending: undefined, run: { enrolled: total, active: total, replied: 0, meetings: 0, bounced: 0, unsubscribed: 0 } });
+      toast({ tone: "success", icon: "seq", children: `${sendingSeq.name} is live`, meta: `${f(total)} first emails sent` });
+    }, 900);
+    return () => clearTimeout(t);
+  }, [frozen, sendingSeq, toast]);
+  const connectMailbox = onConnectMailbox ?? (() => onTabChange("pool"));
+  const retry = () => { if (!seq) return; put(seq.id, { status: sendable ? "sending" : "queued", failure: undefined, queue: sendable ? undefined : { reason: "mailbox", since: "just now" }, sending: { sent: 0, total: seq.audience.count } }); };
 
   const launch = () => { if (!seq) return; if (issues.length) { setTried(true); setStep(undefined); return; } setConfirm(true); };
   const go = () => { if (!seq) return; setConfirm(false); setStep(undefined); put(seq.id, { status: "launching", launch: { stage: 0 } }); };
@@ -134,17 +158,14 @@ export function SequencesView({ state, tab, onTabChange, pool, onPoolChange, new
   );
   if (list.length === 0) return (
     <div className="c-view q-view">{poolTab}<div className="c-view c-view--center">
-      <EmptyState art="range" title="Write your first sequence"
-        actions={<><Button variant="primary" onClick={() => create(true)}><Icon name="bolt" />Draft one with Corral</Button><Button onClick={() => create(false)}>Start blank</Button></>}>
-        A sequence is a few short emails, a few days apart, that stop the moment someone replies. Corral drafts each step from your knowledge base, fills in each company&rsquo;s details, and sends from your own mailboxes.
-      </EmptyState></div></div>
+      <SequencesEmpty onDraft={() => create(true)} onBlank={() => create(false)} /></div></div>
   );
 
   const actions = seq && (
     seq.status === "draft" ? <><span className="d-credits">Edited {seq.updated}</span><Button variant="primary" onClick={launch}><Icon name="send" />Launch</Button></>
-    : seq.status === "running" ? <Button onClick={pause}>Pause</Button>
+    : seq.status === "running" || seq.status === "sending" ? <Button onClick={pause}>Pause</Button>
     : seq.status === "paused" ? <Button variant="primary" onClick={resume}>Resume</Button>
-    : <Button variant="quiet" onClick={() => put(seq.id, { status: "draft", launch: undefined })}>Cancel launch</Button>
+    : <Button variant="quiet" onClick={() => put(seq.id, { status: "draft", launch: undefined, queue: undefined, sending: undefined, failure: undefined })}>Cancel launch</Button>
   );
   const s = pool.filter((m) => m.state === "warm" || m.state === "warming");
   const perDay = poolSummary(pool).tomorrow;
@@ -161,10 +182,11 @@ export function SequencesView({ state, tab, onTabChange, pool, onPoolChange, new
             <SeqHeader seq={seq} actions={actions} />
             {seq.status === "paused" && <PausedBanner seq={seq} />}
             {seq.status === "launching" && <Launching seq={seq} />}
+            <LaunchState seq={seq} onConnect={connectMailbox} onRetry={retry} />
             {tried && <IssuesBanner issues={issues} onFix={(k) => { setStep(k - 1); setCopilot(false); }} />}
             {!tried && issues.length > 0 && <p className="q-pre"><Icon name="alert" size={12} />{issues.length === 1 ? "1 thing" : `${issues.length} things`} to fix before launch<Button size="sm" variant="quiet" onClick={() => setTried(true)}>Show</Button></p>}
             <RunNumbers seq={seq} />
-            {seq.status !== "draft" && seq.status !== "launching" && step !== undefined && <p className="q-pre q-pre--info"><Icon name="pen" size={12} />Pause the sequence to change its steps; emails already sent stay as they were.</p>}
+            {seq.status !== "draft" && seq.status !== "launching" && seq.status !== "queued" && step !== undefined && <p className="q-pre q-pre--info"><Icon name="pen" size={12} />Pause the sequence to change its steps; emails already sent stay as they were.</p>}
             <StepList seq={seq} active={step} issues={tried ? issues : []} onOpen={(i) => { setStep(i); setCopilot(false); }} onGate={putGate}
               onAdd={() => { put(seq.id, (x) => ({ steps: [...x.steps, { id: `${x.id}-${x.steps.length + 1}`, thread: "reply", subject: "", body: "", gate: { wait: 3, cond: "no-reply" } }] })); setStep(seq.steps.length); }}
               openCondition={state === "conditions" ? 2 : undefined} />

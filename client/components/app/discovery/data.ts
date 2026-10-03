@@ -70,6 +70,8 @@ export function runsFor(state?: DiscoveryReviewState): { runs: Run[]; open: stri
     ? RUNS.map((r) => (r.id === "dairy" ? { ...r, status: "paused" as const, limitedBy: "Hunter", resumeIn: 262,
         stages: { ...r.stages, people: { ...r.stages.people, state: "paused" as const }, verify: { ...r.stages.verify, state: "paused" as const } } } : r))
     : RUNS;
+  // M13: "starting" = just accepted, nothing ahead of it (the server's queued, before a worker picks it up).
+  if (state === "starting") return { runs: [{ ...RUNS[1], id: "starting", after: undefined, position: 0 }, ...RUNS.filter((r) => r.id !== "dairy" && r.id !== "uganda")], open: "starting" };
   return { runs, open: pick[state ?? "running"] ?? "dairy" };
 }
 

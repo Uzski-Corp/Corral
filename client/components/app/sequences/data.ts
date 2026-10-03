@@ -4,7 +4,9 @@
 import type { Mailbox, Recipient, Step, VarKey } from "@/lib/sequences/sequence";
 import type { SequenceReviewState } from "@/lib/sequences/state";
 
-export type SeqStatus = "draft" | "launching" | "running" | "paused";
+/** M13: launching = the launch checks; queued = accepted, nothing sent (waiting for a mailbox or the send window);
+ *  sending = the first batch is going out; running = Live; failed = sending stopped. Mirrors lib/status/tags.ts. */
+export type SeqStatus = "draft" | "launching" | "queued" | "sending" | "running" | "paused" | "failed";
 export type Sequence = {
   id: string; name: string; status: SeqStatus; product: string;
   audience: { label: string; count: number; skipped?: { n: number; why: string }[] };
@@ -14,7 +16,20 @@ export type Sequence = {
   run?: { enrolled: number; active: number; replied: number; meetings: number; bounced: number; unsubscribed: number; next?: string };
   paused?: { by: string; at: string; note?: string; held: number };
   launch?: { stage: number };
+  /** M13: why a launched sequence hasn't sent. `mailbox`: no sending engine connected; `window`: waiting for the send window. */
+  queue?: { reason: "mailbox" | "window"; since: string; first?: string };
+  /** M13: the first batch going out. */
+  sending?: { sent: number; total: number };
+  /** M13: sending stopped. One line in plain words, the technical detail in mono. */
+  failure?: { line: string; detail?: string };
 };
+
+/** M13 (gap 4): a new sequence is a real blank draft. No sample product, audience, author or copy:
+ *  one email step with an empty subject and body; the editor shows "Write your first step". */
+export function blankSequence(id: string, by = "You"): Sequence {
+  return { id, name: "Untitled sequence", status: "draft", product: "", audience: { label: "", count: 0 },
+    steps: [{ id: `${id}-1`, thread: "new", subject: "", body: "" }], window: "Their morning, 08:00–11:00", by, updated: "just now", missing: {} };
+}
 
 const UNSUB = "\n\nNot useful? {{unsubscribe_link}}";
 
@@ -172,6 +187,14 @@ export function seedFor(state?: SequenceReviewState): SeqSeed {
     case "errors": return { ...base, open: "dairy", tried: true, step: 0, preview: "mbarara" };
     case "launch": return { ...base, list: list({ ...DRAFT, steps: FIXED_STEPS, missing: {} }), open: "dairy", launch: "confirm" };
     case "launching": return { ...base, list: list({ ...DRAFT, steps: FIXED_STEPS, missing: {}, status: "launching", launch: { stage: 1 } }), open: "dairy" };
+    /* M13: a blank new sequence, and the launch states after the checks */
+    case "new": return { ...base, list: [blankSequence("new-0"), ...LIVE], open: "new-0", step: 0 };
+    case "queued": return { ...base, pool: [], list: list({ ...DRAFT, steps: FIXED_STEPS, missing: {}, status: "queued", queue: { reason: "mailbox", since: "just now" } }), open: "dairy" };
+    case "queued-window": return { ...base, list: list({ ...DRAFT, steps: FIXED_STEPS, missing: {}, status: "queued", queue: { reason: "window", since: "just now", first: "Thursday 08:10 their time" } }), open: "dairy" };
+    case "sending": return { ...base, list: list({ ...DRAFT, steps: FIXED_STEPS, missing: {}, status: "sending", sending: { sent: 34, total: 82 } }), open: "dairy" };
+    case "live": return { ...base, open: "pilot" };
+    case "failed": return { ...base, list: list({ ...DRAFT, steps: FIXED_STEPS, missing: {}, status: "failed", sending: { sent: 0, total: 82 },
+      failure: { line: "Your mailboxes refused the first batch. Nothing was sent.", detail: "smtp 535 · authentication failed" } }), open: "dairy" };
     case "running": return { ...base, open: "pilot" };
     case "paused": return { ...base, open: "proof" };
     case "mailboxes": return { ...base, tab: "pool", pool: POOL_ISSUES };

@@ -7,6 +7,7 @@
  *   GET    /api/v1/developers/connections
  *   POST   /api/v1/developers/connections
  *   DELETE /api/v1/developers/connections/{id}
+ *   GET    /api/v1/developers/connections/{id}/calls -> newest first: { at, tool, args, status, ms }
  */
 import { err, ok, type Result } from "../result";
 import type { ApiClient } from "./client";
@@ -21,6 +22,7 @@ export type DevelopersApi = {
   connections(signal?: AbortSignal): Promise<Result<Loose[], ApiError>>;
   createConnection(body: Loose): Promise<Result<Loose, ApiError>>;
   deleteConnection(id: string): Promise<Result<void, ApiError>>;
+  calls(id: string, signal?: AbortSignal): Promise<Result<Loose[], ApiError>>;
 };
 
 const none = (input: unknown): Result<void, string> => (input === undefined || input === "" ? ok(undefined) : err("expected empty"));
@@ -33,6 +35,7 @@ export function createDevelopersApi(client: ApiClient): DevelopersApi {
     rotateKey: (id, overlap) => client.request(`/api/v1/developers/keys/${encodeURIComponent(id)}/rotate`, { method: "POST", body: { overlap }, decode: looseObject }),
     connections: (signal) => client.request("/api/v1/developers/connections", { decode: looseList, signal }),
     createConnection: (body) => client.request("/api/v1/developers/connections", { method: "POST", body, decode: looseObject }),
+    calls: (id, signal) => client.request(`/api/v1/developers/connections/${encodeURIComponent(id)}/calls`, { decode: looseList, signal }),
     deleteConnection: (id) => client.request(`/api/v1/developers/connections/${encodeURIComponent(id)}`, { method: "DELETE", decode: none }),
   };
 }

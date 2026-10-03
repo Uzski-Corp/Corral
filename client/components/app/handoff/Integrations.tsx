@@ -8,7 +8,7 @@ import { Icon } from "../icons";
 import { Dialog } from "../Overlays";
 import { Checkbox, FormField, Select, TextInput } from "../Form";
 import { Tabs } from "../Tabs";
-import { Banner, EmptyState, ErrorState, Skeleton, Spinner } from "../States";
+import { Banner, ErrorState, Skeleton, Spinner } from "../States";
 import { useToast } from "../Toaster";
 import { dealPayload, filterLogs, healthOf, isProblem, mappingIssues, RESULT_WORD, type Connection, type IntegrationId, type LogFilter, type LogRow, type MapRow } from "@/lib/integrations/integrations";
 import type { SettingsReviewState } from "@/lib/integrations/state";
@@ -18,6 +18,10 @@ import { AUTOSEND_SENDER, CORRAL_FIELDS, ERP_FIELDS, ERP_URL, GRACE_VALUES, INTE
 import { BrandLockup, Pill, Tile } from "./Handoff";
 import { ProfileSettings } from "./ProfileSettings";
 import { WorkspaceSettings } from "./WorkspaceSettings";
+import { BillingView, TeamView, teamFromApi, type TeamApi, type TeamMember } from "../settings";
+import { useAppData } from "@/components/session/AppData";
+import { displayName, type Member } from "@/lib/api";
+import type { WorkspaceInvite } from "@/lib/api/workspace";
 
 type Tab = SettingsSeed["tab"];
 type DialogKind = NonNullable<SettingsSeed["dialog"]>;
@@ -37,11 +41,21 @@ export const settingsTabOf = (tab?: string): string | undefined => SECTIONS.find
 export const settingsTabLabel = (tab: string): string => SECTIONS.find((x) => x.id === tab)!.label;
 
 /** The settings page. Integrations (M8) and Developers (M9) are designed; the others keep their place. */
-export function SettingsView({ state, developer, tab, onSection, liveIntegrations, members, billingEmpty, liveKeys, liveConnections, keysApi, viewer, onDisconnect, onIntegration }: {
+/** M13: which review states open Team or Billing. */
+const sectionFor = (s?: SettingsReviewState) => (s?.startsWith("team") ? "team" : s?.startsWith("billing") ? "billing" : undefined);
+/** Review-only placeholders (example.com, never a made-up person). Live: the members API. */
+const REVIEW_TEAM: Omit<TeamMember, "invitedAt">[] = [
+  { id: "m2", name: "Teammate", email: "teammate@example.com", role: "member", status: "active" },
+  { id: "i1", name: null, email: "sales@example.com", role: "member", status: "invited" },
+];
+
+export function SettingsView({ state, developer, tab, onSection, liveIntegrations, members, invites, teamApi, liveKeys, liveConnections, keysApi, viewer, onDisconnect, onIntegration, mcpCheck }: {
   state?: SettingsReviewState; developer?: McpReviewState; tab?: string; onSection?: (label: string, id: string) => void;
   liveIntegrations?: Record<IntegrationId, Connection> | null;
-  members?: { name: string; email: string; role: string }[] | null;
-  billingEmpty?: boolean;
+  /** Signed in: GET /workspace/members (null while it loads) and the workspace's pending invites. */
+  members?: Member[] | null;
+  invites?: WorkspaceInvite[] | null;
+  teamApi?: TeamApi;
   liveKeys?: import("../mcp/data").ApiKey[] | null;
   liveConnections?: import("../mcp/data").Connection[] | null;
   /** Signed in: what persists a key, a disconnect and an integration's status, and who is looking. */
@@ -49,8 +63,18 @@ export function SettingsView({ state, developer, tab, onSection, liveIntegration
   viewer?: import("@/lib/mcp/keys").Viewer;
   onDisconnect?: (id: string) => void;
   onIntegration?: (id: IntegrationId, status: "off" | "connected") => void;
+  mcpCheck?: import("../mcp/data").FirstCallCheck;
 }) {
-  const [section, setSection] = useState<string>(developer ? sectionOf(developer) : settingsTabOf(tab) ?? "integrations");
+  const [section, setSection] = useState<string>(developer ? sectionOf(developer) : settingsTabOf(tab) ?? sectionFor(state) ?? "integrations");
+  const data = useAppData();
+  const [now] = useState(() => new Date());
+  const me: TeamMember = data
+    ? { id: data.me.user.id, name: displayName(data.me.user), email: data.me.user.email, role: data.me.role === "admin" ? "admin" : data.me.role === "member" ? "member" : "owner", status: "active", avatarUrl: data.me.user.profilePictureUrl, you: true }
+    : { id: "me", name: null, email: "you@example.com", role: "owner", status: "active", you: true };
+  const liveTeam = members !== undefined;
+  const team: TeamMember[] = liveTeam
+    ? teamFromApi(members ?? [], invites ?? [], { id: me.id, avatarUrl: me.avatarUrl })
+    : state === "team-solo" ? [me] : [me, ...REVIEW_TEAM.map((m) => ({ ...m, invitedAt: m.status === "invited" ? new Date(now.getTime() - 2 * 86_400_000).toISOString() : undefined }))];
   const s = SECTIONS.find((x) => x.id === section)!;
   const go = (id: string) => {
     setSection(id);
@@ -76,30 +100,11 @@ export function SettingsView({ state, developer, tab, onSection, liveIntegration
         {section === "integrations" ? <Integrations key={state ?? (liveIntegrations ? "api" : "sample")} state={state} live={liveIntegrations} onChange={liveIntegrations && !state ? onIntegration : undefined} />
           : section === "profile" ? <ProfileSettings />
           : section === "workspace" ? <WorkspaceSettings />
-          : section === "team" && members ? <TeamList members={members} />
-          : section === "billing" && billingEmpty ? <BillingEmpty />
-          : isDev(section) ? <Developer key={`${section}-${developer ?? "live"}-${liveKeys?.length ?? "s"}-${liveConnections?.length ?? "s"}`} section={section} state={developer && sectionOf(developer) === section ? developer : undefined} keys={developer ? null : liveKeys} connections={developer ? null : liveConnections} keysApi={keysApi} viewer={viewer} onDisconnect={onDisconnect} />
+          : section === "team" ? <TeamView key={state ?? (liveTeam ? `api-${members?.length ?? "loading"}-${invites?.length ?? 0}` : "live")} members={team} now={now} load={state === "team-loading" || (liveTeam && members === null) ? "loading" : undefined} defaultInvite={state === "team-invite"} live={liveTeam ? teamApi : undefined} />
+          : section === "billing" ? <BillingView key={state ?? "live"} load={state === "billing-loading" ? "loading" : undefined} />
+          : isDev(section) ? <Developer key={`${section}-${developer ?? "live"}-${liveKeys?.length ?? "s"}-${liveConnections?.length ?? "s"}`} section={section} state={developer && sectionOf(developer) === section ? developer : undefined} keys={developer ? null : liveKeys} connections={developer ? null : liveConnections} keysApi={keysApi} viewer={viewer} onDisconnect={onDisconnect} check={mcpCheck} />
           : <div className="i-later"><h2>{s.label}</h2><p className="c-muted">{s.note}. Designed in a later milestone; this keeps its place in Settings.</p></div>}
       </div>
-    </div>
-  );
-}
-
-function TeamList({ members }: { members: { name: string; email: string; role: string }[] }) {
-  return (
-    <div className="i-page">
-      <div className="i-head"><h2>Team</h2><p>People who can open this workspace.</p></div>
-      <ul className="i-list">
-        {members.map((m) => <li key={m.email} className="i-row"><div><b>{m.name}</b><div className="c-muted">{m.email}</div></div><span className="c-muted">{m.role}</span></li>)}
-      </ul>
-    </div>
-  );
-}
-
-function BillingEmpty() {
-  return (
-    <div className="i-page i-page--center">
-      <EmptyState art="grass" title="No plan yet">Billing starts when a plan is attached to this workspace. Nothing is charged.</EmptyState>
     </div>
   );
 }

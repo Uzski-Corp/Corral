@@ -3,8 +3,18 @@ import { accessOf, PRESETS, type AccessMap, type ExpiryId, type KeyEnv, type Vie
 import type { Auth, ClientId } from "@/lib/mcp/tools";
 import type { McpReviewState } from "@/lib/mcp/state";
 
-/** The design's "now": Wed 30 Sep 2026, 09:45 EAT (the Unibox's morning). */
-export const NOW = new Date("2026-09-30T09:45:00+03:00");
+/** When the review fixtures below were written (Wed 30 Sep 2026, 09:45 EAT). M13: never rendered as "now";
+ *  `rebaseKey` moves a fixture's dates so they keep the same distance from the real clock (gap 4). */
+export const FIXTURES_WRITTEN = new Date("2026-09-30T09:45:00+03:00");
+/** @deprecated M13: measure against the real clock (`useNow()`), not a fixed sample date. Kept for old tests only. */
+export const NOW = FIXTURES_WRITTEN;
+const shiftIso = (iso: string | undefined, by: number) => (iso ? new Date(new Date(iso).getTime() + by).toISOString() : iso);
+/** A review key with its created / expires / last-used dates moved to the real clock. Live keys come from the API as they are. */
+export function rebaseKey(k: ApiKey, now: Date): ApiKey {
+  const by = now.getTime() - FIXTURES_WRITTEN.getTime();
+  return { ...k, created: shiftIso(k.created, by)!, expires: k.expires === null ? null : shiftIso(k.expires, by)!, lastUsed: shiftIso(k.lastUsed, by),
+    revoked: k.revoked, oldUntil: shiftIso(k.oldUntil, by), refused: k.refused && { ...k.refused, last: shiftIso(k.refused.last, by)! } };
+}
 
 export type ApiKey = {
   id: string; name: string; env: KeyEnv; last4: string; scopes: string[]; by: string; created: string;
@@ -77,7 +87,21 @@ export type DevDialog = "connect" | "waiting" | "connected" | "revoke-conn" | "c
 /** Who's looking. Tomás owns ColdTrace's workspace; Amara is a member (keys-member). */
 export const OWNER: Viewer = { name: "Tomás Ibarra", role: "owner" };
 export const MEMBER: Viewer = { name: "Amara Njoroge", role: "member" };
+/** M13 (gap 4): what the server saw on a new connection's first call. `host` is the MCP host's own name
+ *  (the `clientInfo` it sends on initialize), shown as is; never a sample name. */
+export type FirstCall = { host: string; version?: string; account?: string; tool: string; atIso: string };
+/** Signed in, what the Waiting dialog's "Check again" asks: a connection the list didn't have, with its first call. */
+export type FirstCallCheck = (known: string[]) => Promise<{ conn: Connection; first: FirstCall } | null>;
+/** The real API has no `clientInfo`: the host is the connection's own name, the tool and time its oldest call.
+ *  No call yet means the host hasn't arrived. */
+export function firstCallFrom(conn: { name: string; lastTool?: string }, calls: { at?: unknown; tool?: unknown }[]): FirstCall | null {
+  const oldest = calls.filter((c) => typeof c.tool === "string").at(-1);
+  const tool = typeof oldest?.tool === "string" ? oldest.tool : conn.lastTool;
+  if (!tool) return null;
+  return { host: conn.name, tool, atIso: typeof oldest?.at === "string" ? oldest.at : "" };
+}
 export type DevSeed = {
+  firstCall?: FirstCall;
   viewer?: Viewer;
   load?: "loading" | "error"; empty?: boolean; dialog?: DevDialog; client?: ClientId; auth?: Auth;
   open?: string; errors?: boolean; problems?: boolean; key?: string; consent?: boolean;
@@ -92,7 +116,7 @@ export function devSeed(s?: McpReviewState): DevSeed {
     case "mcp-connect-key": return { dialog: "connect", client: "vscode", auth: "key" };
     case "mcp-consent": return { consent: true };
     case "mcp-waiting": return { dialog: "waiting", client: "cursor", auth: "oauth" };
-    case "mcp-connected": return { dialog: "connected", client: "cursor", auth: "oauth" };
+    case "mcp-connected": return { dialog: "connected", client: "cursor", auth: "oauth", firstCall: { host: "Cursor", version: "1.7.2", tool: "tools/list", atIso: "" } };
     case "mcp-activity": return { open: "cn_cursor" };
     case "mcp-error": return { problems: true };
     case "mcp-revoke": return { open: "cn_cursor", dialog: "revoke-conn" };

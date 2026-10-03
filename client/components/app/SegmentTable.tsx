@@ -10,25 +10,28 @@ import { Sidebar } from "./Sidebar";
 import { Icon } from "./icons";
 import type { Sort, SortKey } from "@/lib/leads/segment";
 
-const HEADERS: [string, SortKey][] = [["Company", "company"], ["Decision-maker", "person"], ["Fit · ColdTrace", "fit"], ["Email", "email"], ["Reply", "reply"], ["Last touch", "last"]];
+const HEADERS: [string, SortKey][] = [["Company", "company"], ["Decision-maker", "person"], ["Fit", "fit"], ["Email", "email"], ["Reply", "reply"], ["Last touch", "last"]];
 
 /**
  * The lead table (M1 look, M3 behaviour). Every M3 prop is optional, so the M1 uses stay as they were:
  * `sort` + `onSort` make headers sortable (aria-sort), `allChecked` + `onToggleAll` add the header checkbox,
  * `onOpen` makes rows open the lead detail (`active` marks the open one).
  */
-export function SegmentTable({ leads = LEADS, selected, onToggle, limit, hover, label = "Segment: Food & Beverage, East Africa", sort, onSort, allChecked, onToggleAll, onOpen, active, fitOf }: {
+export function SegmentTable({ leads = LEADS, selected, onToggle, limit, hover, label = "Segment: Food & Beverage, East Africa", sort, onSort, allChecked, onToggleAll, onOpen, active, fitOf, fitLabel = "Fit · ColdTrace" }: {
   leads?: Lead[]; selected: Set<string>; onToggle?: (id: string) => void; limit?: number; hover?: string; label?: string;
   sort?: Sort; onSort?: (key: SortKey) => void; allChecked?: boolean | "mixed"; onToggleAll?: () => void; onOpen?: (id: string) => void; active?: string;
   /** M5: how each row's fit bar is marked (scoring, not scored, low confidence, changed, yours, error). */
   fitOf?: (l: Lead) => { value: number } & FitBarMeta;
+  /** The fit column names the product it scores against. Signed in: the real product, or plain "Fit" without one. */
+  fitLabel?: string;
 }) {
   return (
     <div className={cx("c-table", onOpen && "c-table--open")} role="table" aria-label={label}>
       {/* ARIA table: every row owns columnheader/cell children, so the grid-laid spans keep their look. */}
       <div className="c-tr c-thead" role="row">
         <span role="columnheader" aria-label="Select">{onToggleAll && <Check on={allChecked === true} mixed={allChecked === "mixed"} onChange={onToggleAll} label="Select all rows" />}</span>
-        {HEADERS.map(([h, key]) => {
+        {HEADERS.map(([h0, key]) => {
+          const h = key === "fit" ? fitLabel : h0;
           const on = sort?.key === key;
           if (!onSort) return <span key={h} role="columnheader">{h}</span>;
           return (

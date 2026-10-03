@@ -107,10 +107,11 @@ describe("DiscoveryView", () => {
 
   it("starts from nothing, and recovers from loading errors", async () => {
     const { unmount } = render(<Host state="empty" />);
-    await userEvent.click(screen.getByRole("button", { name: "Start your first run" }));
+    await userEvent.click(screen.getByRole("button", { name: "Start a run" }));
     const dlg = screen.getByRole("dialog", { name: "New discovery run" });
     await userEvent.click(within(dlg).getByRole("button", { name: "Start run" }));
-    expect(await screen.findByText("Started Dairy & Cold storage · East Africa")).toBeInTheDocument();
+    // M13: a new run is Queued until the server picks it up, never "Started" on the client's say-so
+    expect(await screen.findByText("Queued Dairy & Cold storage · East Africa")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Dairy & Cold storage · East Africa" })).toBeInTheDocument();
     unmount();
     const r2 = render(<Host state="error" />);
@@ -142,7 +143,7 @@ describe("DiscoveryView", () => {
     expect(screen.getByRole("region", { name: "Dairy & cold rooms · East Africa" })).toBeInTheDocument();
     for (let i = 0; i < 80 && !screen.queryByText("Dairy & cold rooms · East Africa finished"); i++) act(() => { vi.advanceTimersByTime(1400); });
     expect(screen.getByText("Dairy & cold rooms · East Africa finished")).toBeInTheDocument();
-    expect(screen.getAllByText("Finished").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Done").length).toBeGreaterThan(0);
   });
 });
 

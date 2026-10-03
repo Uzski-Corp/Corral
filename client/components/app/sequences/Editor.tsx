@@ -10,6 +10,8 @@ import { SOURCE, ageDays, formatAge } from "@/lib/discovery/provenance";
 import { VARIABLES, render, stepDays, subjectOf, tokensIn, varDef, type Issue, type Part, type Recipient, type Step, type VarKey, type VarValue } from "@/lib/sequences/sequence";
 import { COPILOT, MISSING_WHY, RECIPIENTS, type Copilot, type Sequence } from "./data";
 import { TokenText } from "./Steps";
+import { EmptyState } from "../States";
+import { UsersThree } from "@phosphor-icons/react/dist/ssr";
 
 const UNSUB_LINE = "\n\nNot useful? {{unsubscribe_link}}";
 export const stripCites = (s: string) => s.replace(/\[\d+\]/g, "");
@@ -30,6 +32,8 @@ export function StepEditor({ seq, i, onClose, onChange, preview, onPreview, copi
   const body = copilot ? stripCites(COPILOT.body) : s.body;
   const subject = copilot && s.thread === "new" ? COPILOT.subject : subjectOf(seq.steps, i);
   const bodyIssue = tried ? issues.find((x) => x.kind !== "subject") : undefined;
+  // M13 (gap 4): a blank draft has no audience yet, so there is no one to preview as. Never fall back to a sample company.
+  const noAudience = seq.audience.count === 0;
 
   const insert = (k: VarKey) => {
     const el = wrap.current?.querySelector("textarea"); const tok = `{{${k}}}`;
@@ -47,25 +51,26 @@ export function StepEditor({ seq, i, onClose, onChange, preview, onPreview, copi
         <span style={{ flex: 1 }} />
         <button type="button" className="c-iconbtn q-ed__x" aria-label="Close step" onClick={onClose}><Icon name="x" /></button>
       </div>
-      <div className="q-ed__tabs"><Tabs variant="pill" label="Step editor" value={pane} onChange={(v) => setPane(v as "write" | "preview")} tabs={[{ id: "write", label: "Write" }, { id: "preview", label: `Preview as ${r.person.split(" ")[0]}` }]} /></div>
+      <div className="q-ed__tabs"><Tabs variant="pill" label="Step editor" value={pane} onChange={(v) => setPane(v as "write" | "preview")} tabs={[{ id: "write", label: "Write" }, { id: "preview", label: noAudience ? "Preview" : `Preview as ${r.person.split(" ")[0]}` }]} /></div>
       <div className="q-ed__cols">
         <div className="q-ed__write">
           {copilot ? <CopilotPanel c={COPILOT} onUse={() => { onChange({ ...s, subject: s.thread === "new" ? COPILOT.subject : s.subject, body: stripCites(COPILOT.body) }); onCopilot(false); }} onKeep={() => onCopilot(false)} /> : <>
             {s.thread === "new" || i === 0
-              ? <FormField label="Subject"><TextInput value={s.subject} disabled={!editable} onChange={(e) => onChange({ ...s, subject: e.target.value })} /></FormField>
+              ? <FormField label="Subject"><TextInput value={s.subject} placeholder="Subject" disabled={!editable} onChange={(e) => onChange({ ...s, subject: e.target.value })} /></FormField>
               : <div className="c-field"><span className="c-field__top"><span className="q-lab">Subject</span></span><p className="q-re"><TokenText text={subjectOf(seq.steps, i)} /><span className="c-faint"> · same thread as step 1</span></p></div>}
             <FormField label="Message" error={bodyIssue ? `${bodyIssue.title}. ${bodyIssue.fix}` : undefined}
               action={editable ? <span className="q-tools">
                 <DropdownMenu align="start" width={300} label="Insert variable" items={[{ heading: "Insert at the cursor" }, ...VARIABLES.map((v) => ({ label: v.label, meta: <span className="c-mono">{v.key}</span>, onSelect: () => insert(v.key) }))]}
                   trigger={(tp) => <button type="button" className="c-btn c-btn--quiet" {...tp}><span className="q-brace" aria-hidden="true">{"{ }"}</span>Insert variable</button>} />
                 <Button variant="quiet" onClick={() => onCopilot(true)}><Icon name="bolt" />Draft with Corral</Button></span> : undefined}>
-              <div ref={wrap}><Textarea rows={13} value={s.body} disabled={!editable} onChange={(e) => onChange({ ...s, body: e.target.value })} /></div>
+              <div ref={wrap}><Textarea rows={13} value={s.body} placeholder={i === 0 ? "Write your first step" : `Write step ${i + 1}`} disabled={!editable} onChange={(e) => onChange({ ...s, body: e.target.value })} /></div>
             </FormField>
           </>}
           <VarChecks s={copilot ? { ...s, subject, body } : s} seq={seq} tried={tried} onFallback={editable && !copilot ? addFallback : undefined} onUnsub={editable && !copilot ? addUnsub : undefined} />
         </div>
         <div className="q-ed__preview">
-          <Preview subject={subject} body={body} r={r} onPreview={onPreview} audience={seq.audience.count} tried={tried} />
+          {noAudience ? <EmptyState id="preview-no-audience" glyph={UsersThree} mark="line" compact title="No audience yet">Pick a segment to preview this step.</EmptyState>
+            : <Preview subject={subject} body={body} r={r} onPreview={onPreview} audience={seq.audience.count} tried={tried} />}
         </div>
       </div>
     </section>
@@ -88,7 +93,7 @@ function VarChecks({ s, seq, tried, onFallback, onUnsub }: { s: Step; seq: Seque
           return (
             <li key={t.key} className={cx(bad && (tried ? "is-error" : "is-warn"))}>
               <span className="q-tok">{t.key}</span>
-              <span className="q-checks__t">{!def ? "Not a variable" : miss === 0 ? `Filled for all ${n}` : t.fallback ? `Empty for ${miss} of ${n}; they get “${t.fallback}”` : `Empty for ${miss} of ${n}`}</span>
+              <span className="q-checks__t">{!def ? "Not a variable" : n === 0 ? "Checked once there’s an audience" : miss === 0 ? `Filled for all ${n}` : t.fallback ? `Empty for ${miss} of ${n}; they get “${t.fallback}”` : `Empty for ${miss} of ${n}`}</span>
               {def && miss > 0 && !t.fallback && onFallback && <Button size="sm" variant="quiet" onClick={() => onFallback(def.key)}>Add a fallback</Button>}
             </li>
           );

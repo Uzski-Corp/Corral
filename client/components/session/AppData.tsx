@@ -9,8 +9,8 @@
  */
 import { createContext, useContext, type ReactNode } from "react";
 import {
-  developersApiFor, discoveryApiFor, displayName, inboxApiFor, integrationsApiFor, kbApiFor, leadsApiFor, sequencesApiFor,
-  type DevelopersApi, type DiscoveryApi, type InboxApi, type IntegrationsApi, type KbApi, type LeadsApi, type Me, type SequencesApi,
+  developersApiFor, discoveryApiFor, displayName, inboxApiFor, integrationsApiFor, kbApiFor, leadsApiFor, sequencesApiFor, workspaceApiFor,
+  type DevelopersApi, type DiscoveryApi, type InboxApi, type IntegrationsApi, type KbApi, type LeadsApi, type Me, type SequencesApi, type WorkspaceApi,
 } from "@/lib/api";
 import { getConfig, type ClientConfig } from "@/lib/config";
 import type { Person } from "@/lib/kb/map";
@@ -24,6 +24,8 @@ export type AppData = {
   discovery: DiscoveryApi;
   integrations: IntegrationsApi;
   developers: DevelopersApi;
+  /** The workspace profile; Team reads and writes its pending invites. */
+  workspace: WorkspaceApi;
   me: Me;
   /** The signed-in person as the mappers name them ("Added by Wanjiru Mwangi"). */
   person: Person;
@@ -37,7 +39,7 @@ export function AppDataProvider({ value, children }: { value: AppData | null; ch
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
-export function appDataFor(me: Me, config: ClientConfig = getConfig(), apis: Partial<Pick<AppData, "kb" | "leads" | "inbox" | "sequences" | "discovery" | "integrations" | "developers">> = {}): AppData {
+export function appDataFor(me: Me, config: ClientConfig = getConfig(), apis: Partial<Pick<AppData, "kb" | "leads" | "inbox" | "sequences" | "discovery" | "integrations" | "developers" | "workspace">> = {}): AppData {
   return {
     kb: apis.kb ?? kbApiFor(config),
     leads: apis.leads ?? leadsApiFor(config),
@@ -46,6 +48,7 @@ export function appDataFor(me: Me, config: ClientConfig = getConfig(), apis: Par
     discovery: apis.discovery ?? discoveryApiFor(config),
     integrations: apis.integrations ?? integrationsApiFor(config),
     developers: apis.developers ?? developersApiFor(config),
+    workspace: apis.workspace ?? workspaceApiFor(config),
     me,
     person: { id: me.user.id, name: displayName(me.user) },
   };

@@ -33,8 +33,8 @@ const defaultNow = () => new Date();
 
 /* ------------------------------------------------------------ product */
 /** The product whose fit the table shows: the oldest one, as the knowledge base defaults to. */
-export function useLeadProduct(kb: KbApi | null): { productId: string | null; ready: boolean } {
-  const [state, setState] = useState<{ productId: string | null; ready: boolean }>({ productId: null, ready: false });
+export function useLeadProduct(kb: KbApi | null): { productId: string | null; productName?: string | null; ready: boolean } {
+  const [state, setState] = useState<{ productId: string | null; productName?: string | null; ready: boolean }>({ productId: null, ready: false });
   useEffect(() => {
     if (!kb) return;
     const c = new AbortController();
@@ -42,7 +42,7 @@ export function useLeadProduct(kb: KbApi | null): { productId: string | null; re
       if (c.signal.aborted) return;
       // No product (or no answer): the table still loads, without fit.
       const first = r.ok ? [...r.value].sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0] : undefined;
-      setState({ productId: first?.id ?? null, ready: true });
+      setState({ productId: first?.id ?? null, productName: first?.name ?? null, ready: true });
     });
     return () => c.abort();
   }, [kb]);

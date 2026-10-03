@@ -137,6 +137,8 @@ describe("developers api", () => {
     expect((await api.connections()).ok).toBe(true);
     capture("post", "/api/v1/developers/connections", { id: "c2" });
     expect((await api.createConnection({ host: "claude" })).ok).toBe(true);
+    capture("get", "/api/v1/developers/connections/c2/calls", [{ at: "2026-10-03T12:00:00Z", tool: "tools/list" }]);
+    expect(await api.calls("c2")).toEqual({ ok: true, value: [{ at: "2026-10-03T12:00:00Z", tool: "tools/list" }] });
     const del = capture("delete", "/api/v1/developers/connections/c2", null, 204);
     expect(await api.deleteConnection("c2")).toEqual({ ok: true, value: undefined });
     expect(del[0].method).toBe("DELETE");

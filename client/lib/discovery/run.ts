@@ -70,12 +70,12 @@ export function runHeadline(r: Run): string {
   switch (r.status) {
     case "queued": return r.after ? `Queued · starts after ${r.after}` : "Queued · starts in a moment";
     case "paused": return `Paused · ${r.limitedBy ?? "a provider"} limit, resumes by itself`;
-    case "failed": return `Stopped at ${stageMeta(r.failure?.stage ?? "search").label.toLowerCase()} · ${plural(r.found, "company", "companies")} kept`;
+    case "failed": return `Failed at ${stageMeta(r.failure?.stage ?? "search").label.toLowerCase()} · ${plural(r.found, "company", "companies")} kept`;
     case "cancelled": return `Cancelled · ${plural(r.found, "company", "companies")} kept`;
     case "done": case "partial": {
-      if (r.found === 0) return "Finished · no companies matched";
+      if (r.found === 0) return "Done · no companies matched";
       const skipped = (r.skipped ?? []).reduce((a, [, n]) => a + n, 0);
-      return `Finished · ${plural(r.found, "company", "companies")}, ${f(r.fits)} fit 80+${skipped ? ` · ${f(skipped)} couldn’t be read` : ""}`;
+      return `Done · ${plural(r.found, "company", "companies")}, ${f(r.fits)} fit 80+${skipped ? ` · ${f(skipped)} couldn’t be read` : ""}`;
     }
     default: {
       const st = currentStage(r);

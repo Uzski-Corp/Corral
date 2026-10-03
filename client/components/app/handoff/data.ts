@@ -167,6 +167,9 @@ export function settingsSeed(s?: SettingsReviewState): SettingsSeed {
     case "autosend": return { ...base, open: "autosend" };
     case "loading": return { ...base, load: "loading" };
     case "load-error": return { ...base, load: "error" };
+    // M13: Team and Billing pick their own section (sectionFor); the integrations seed stays at rest.
+    case "team": case "team-solo": case "team-invite": case "team-loading":
+    case "billing": case "billing-loading": return base;
   }
 }
 
