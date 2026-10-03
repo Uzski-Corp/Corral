@@ -692,7 +692,17 @@ async def list_connections(session: AsyncSession, org_id: uuid.UUID) -> list[dic
         .scalars()
         .all()
     )
-    return [connection_out(row) for row in rows]
+    first = dict(
+        (
+            await session.execute(
+                select(McpCall.connection_id, func.min(McpCall.created_at))
+                .where(McpCall.org_id == org_id)
+                .group_by(McpCall.connection_id)
+            )
+        ).all()
+    )
+    # MCP sends no clientInfo Corral keeps: a connection reads by its name and its oldest call.
+    return [connection_out(row) | {"firstCallAt": _iso(first.get(row.id))} for row in rows]
 
 
 async def create_connection(

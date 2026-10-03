@@ -390,6 +390,7 @@ async def test_connections_calls_and_delete(api: AsyncClient) -> None:
     conns = (await api.get("/api/v1/developers/connections")).json()
     assert [c["id"] for c in conns] == ["cn_cursor"]
     assert conns[0]["device"] == "Tomas's MacBook Pro"
+    assert conns[0]["firstCallAt"] is not None  # the oldest of its calls
     calls = (await api.get("/api/v1/developers/connections/cn_cursor/calls")).json()
     assert calls[0]["tool"] == "get_thread"
     assert (await api.get("/api/v1/developers/connections/nope/calls")).status_code == 404
@@ -401,6 +402,8 @@ async def test_connections_calls_and_delete(api: AsyncClient) -> None:
     made_id = made.json()["id"]
     assert made.json()["auth"] == "key"
     assert (await api.get(f"/api/v1/developers/connections/{made_id}/calls")).json() == []
+    listed = {c["id"]: c for c in (await api.get("/api/v1/developers/connections")).json()}
+    assert listed[made_id]["firstCallAt"] is None  # no call yet
     assert (await api.delete(f"/api/v1/developers/connections/{made_id}")).status_code == 204
     assert (await api.delete("/api/v1/developers/connections/cn_cursor")).status_code == 204
     assert (await api.delete("/api/v1/developers/connections/cn_cursor")).status_code == 404
