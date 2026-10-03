@@ -268,3 +268,40 @@
 
 /* the list row: a meeting that moved, was cancelled or nobody joined */
 .h-rowtag.is-no-show { color: var(--color-caution-600); }
+
+/* M14: a connected integration from real data (Live.tsx). Rows, not cards; one hairline between them. Unlayered, like the rest of this file. */
+.l-page { gap: 18px; }
+.l-over { display: flex; flex-direction: column; gap: 28px; max-width: 760px; }
+.l-acct { margin: 0; border-top: 1px solid var(--color-border-subtle); }
+.l-acct__row { display: grid; grid-template-columns: 140px minmax(0, 1fr); align-items: center; gap: 12px; min-height: 44px; padding: 8px 4px; border-bottom: 1px solid var(--color-border-subtle); font-size: var(--text-label); }
+.l-acct__row dt { color: var(--color-text-tertiary); }
+.l-acct__row dd { margin: 0; min-width: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; color: var(--color-text); overflow-wrap: anywhere; }
+.l-acct__row dd .c-mono { font-size: var(--text-meta); }
+.l-acct__end { border-bottom: 0; min-height: 40px; }
+.l-acct__end dd { justify-content: flex-end; grid-column: 1 / -1; }
+.l-note { margin: 0; display: flex; align-items: center; gap: 8px; font-size: var(--text-label); color: var(--color-text-secondary); }
+.l-more { align-self: flex-start; font-size: var(--text-label); }
+.l-empty .c-empty { padding: 28px 16px; }
+.l-log { display: flex; flex-direction: column; gap: 10px; max-width: 860px; }
+.l-log__list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--color-border-subtle); }
+.l-log__row { display: grid; grid-template-columns: 132px minmax(140px, 200px) 120px minmax(0, 1fr); align-items: center; gap: 12px; min-height: 44px; padding: 8px 4px; border-bottom: 1px solid var(--color-border-subtle); font-size: var(--text-label); }
+.l-log__at { font-size: var(--text-meta); color: var(--color-text-tertiary); white-space: nowrap; }
+.l-log__ev { display: inline-flex; align-items: center; gap: 6px; min-width: 0; color: var(--color-text); }
+.l-log__ev svg { flex: none; color: var(--color-text-quaternary); }
+.l-log__ev .c-mono { font-size: var(--text-meta); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.l-log__row > .d-runtag { justify-self: start; }
+.l-log__detail { min-width: 0; color: var(--color-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.l-log__keep { margin: 0; font-size: var(--text-meta); }
+.l-map__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.l-map__head p { margin: 0; }
+.l-maptable th[scope="row"] { width: 46%; }
+.l-payload summary { cursor: pointer; font-size: var(--text-label); color: var(--color-text-secondary); }
+.l-payload[open] summary { margin-bottom: 8px; }
+@container shell (max-width: 767px) {
+  .l-acct__row { grid-template-columns: 1fr; gap: 2px; align-items: start; }
+  .l-acct__end dd { justify-content: flex-start; }
+  .l-log__row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "ev tag" "at at" "detail detail"; gap: 4px 10px; padding: 10px 2px; }
+  .l-log__ev { grid-area: ev; } .l-log__row > .d-runtag { grid-area: tag; justify-self: end; }
+  .l-log__at { grid-area: at; } .l-log__detail { grid-area: detail; white-space: normal; }
+  .l-maptable th[scope="row"] { width: auto; }
+}

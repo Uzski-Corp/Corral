@@ -25,7 +25,7 @@
 .b-plan .c-btn { min-width: 96px; justify-content: center; }
 .b-foot { margin: 0; text-align: center; font-size: var(--text-label); }
 @container shell (max-width: 767px) {
-  .t-role { display: none; }
+  .t-role { width: auto; font-size: var(--text-meta); color: var(--color-text-tertiary); } /* M14: no row menu, so the role stays */
   .b-plan { flex-wrap: wrap; gap: 8px 12px; }
   .b-plan__txt { flex-basis: 100%; }
   .b-plan__price { width: auto; justify-content: flex-start; flex: 1; }

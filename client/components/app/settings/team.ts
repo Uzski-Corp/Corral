@@ -1,47 +1,52 @@
-/* Settings → Team (M13, gap 3): the shape the member list reads. Plain module: no React. */
+/* Settings → Team (M13, gap 3; M14: Krak's API shapes). Plain module: no React.
+   The members API gives only {id, name, email, role}. Which row is you, and your avatar, come from the session;
+   pending invites live on the workspace. Changing a role or removing someone isn't in the API yet, so the page
+   doesn't offer it (M14 ruling: hidden, not disabled). */
 export type TeamRole = "owner" | "admin" | "member";
-export type TeamMember = {
-  id: string;
-  /** Null for an invite nobody has accepted yet: the row shows the email instead. */
-  name: string | null;
-  email: string;
-  role: TeamRole;
-  status: "active" | "invited";
-  avatarUrl?: string | null;
-  /** ISO time the invite went out (invited rows). */
-  invitedAt?: string;
-  /** The signed-in person's own row. */
-  you?: boolean;
+/** GET members: exactly what the API returns. `role` may be a role this build doesn't know yet. */
+export type Member = { id: string; name: string; email: string; role: TeamRole | (string & {}) };
+/** On the workspace: an invite nobody has accepted yet. Only `email` is certain; the rest shows when present. */
+export type WorkspaceInvite = { email: string; role?: Member["role"]; invitedAt?: string };
+/** The signed-in person, from the session (WorkOS). */
+export type TeamSession = { userId: string; email: string; avatarUrl?: string | null };
+
+/** One row on the page: a member, or a pending invite. */
+export type TeamRow = {
+  key: string; kind: "member" | "invite";
+  name: string; email: string; role?: Member["role"];
+  you: boolean; avatarUrl?: string | null; invitedAt?: string;
 };
-/** What signed-in Team reads and writes. The API has no role change, removal or invite email yet:
- *  invites are stored on the workspace as pending (the same list onboarding writes). */
-export type TeamApi = {
-  invite(emails: string[], role: TeamRole): Promise<boolean>;
-  cancel(email: string): Promise<boolean>;
-};
-type ApiMember = { id: string; name: string; email: string; role: string };
-type ApiInvite = { email: string; role: string };
-const roleOf = (r: string): TeamRole => (r === "owner" || r === "admin" ? r : "member");
-/** GET /workspace/members plus the workspace's pending invites, as Team rows. The API sends the email as the
- *  name when none is set, has no avatar (only the session has yours) and no invite time. */
-export function teamFromApi(members: ApiMember[], invites: ApiInvite[], me: { id: string; avatarUrl?: string | null }): TeamMember[] {
-  const active = members.map((m): TeamMember => ({
-    id: m.id, name: m.name && m.name !== m.email ? m.name : null, email: m.email, role: roleOf(m.role), status: "active",
-    ...(m.id === me.id ? { you: true, avatarUrl: me.avatarUrl ?? null } : {}),
-  }));
-  const here = new Set(active.map((m) => m.email.toLowerCase()));
-  const pending = invites.filter((i) => !here.has(i.email.toLowerCase()))
-    .map((i): TeamMember => ({ id: `invite:${i.email}`, name: null, email: i.email, role: roleOf(i.role), status: "invited" }));
-  return [...active, ...pending];
-}
+
+/** Signed in: where Invite saves. Invites are stored on the workspace as pending; no email is sent yet. */
+export type TeamApi = { invite(emails: string[], role: TeamRole): Promise<boolean> };
+
 export const ROLE_WORD: Record<TeamRole, string> = { owner: "Owner", admin: "Admin", member: "Member" };
 export const ROLE_HINT: Record<TeamRole, string> = {
   owner: "Everything, including billing and removing people.",
   admin: "Everything except billing.",
   member: "Works leads, sequences and the Unibox.",
 };
-/** The only owner can't leave or be demoted until someone else is an owner. */
-export const soleOwner = (list: TeamMember[], m: TeamMember) => m.role === "owner" && list.filter((x) => x.role === "owner" && x.status === "active").length === 1;
+/** "Owner", or an unknown role as the API spells it, capitalised. */
+export const roleWord = (r?: string) => (!r ? "" : r in ROLE_WORD ? ROLE_WORD[r as TeamRole] : r.charAt(0).toUpperCase() + r.slice(1));
+
+const isYou = (m: Member, s?: TeamSession) => !!s && (m.id === s.userId || m.email.toLowerCase() === s.email.toLowerCase());
+/** You first, then everyone else by name, then invites (newest first). An invite for someone already a member is dropped. */
+export function teamRows(members: Member[], invites: WorkspaceInvite[], session?: TeamSession): TeamRow[] {
+  const you = members.filter((m) => isYou(m, session));
+  const rest = members.filter((m) => !isYou(m, session)).sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
+  const taken = new Set(members.map((m) => m.email.toLowerCase()));
+  const pending = invites.filter((i) => !taken.has(i.email.toLowerCase())).sort((a, b) => (b.invitedAt ?? "").localeCompare(a.invitedAt ?? ""));
+  return [
+    ...[...you, ...rest].map((m): TeamRow => {
+      const y = isYou(m, session);
+      return { key: m.id, kind: "member", name: m.name, email: m.email, role: m.role, you: y, avatarUrl: y ? session?.avatarUrl : undefined };
+    }),
+    ...pending.map((i): TeamRow => ({ key: `invite:${i.email.toLowerCase()}`, kind: "invite", name: "", email: i.email, role: i.role, you: false, invitedAt: i.invitedAt })),
+  ];
+}
+/** Just you: one member (you), nobody invited. */
+export const isSolo = (rows: TeamRow[]) => rows.length === 1 && rows[0].you;
+
 const EMAIL = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
 /** Splits a pasted list ("a@x.com, b@y.com") into addresses, and the ones that aren't. */
 export function parseInvites(text: string, taken: readonly string[]): { ok: string[]; bad: string[]; dupes: string[] } {

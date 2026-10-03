@@ -12,6 +12,8 @@
  *   failed       Failed                 negative   none
  *   cancelled    Cancelled              neutral    none
  *   draft        Draft                  neutral    none
+ *   (M14 integrations) Connected positive solid · Connecting info pulse · Delivered positive · Retrying info pulse
+ *                      Rejected negative · Ignored neutral (a duplicate delivery) · a broken sign-in reads Failed
  *
  * "Started" is never a status: a run is Queued until the server says it is running.
  */
@@ -19,7 +21,9 @@ export type StatusTone = "neutral" | "info" | "positive" | "caution" | "negative
 export type StatusDot = "hollow" | "pulse" | "solid" | "none";
 export type StatusKind =
   | "draft" | "checking" | "queued" | "waiting-mailbox" | "running" | "sending" | "live"
-  | "paused" | "done" | "done-partial" | "no-results" | "failed" | "cancelled";
+  | "paused" | "done" | "done-partial" | "no-results" | "failed" | "cancelled"
+  /* M14: integrations (the connection, and each log row) */
+  | "connected" | "connecting" | "delivered" | "retrying" | "rejected" | "ignored";
 
 export const STATUS_TAG: Record<StatusKind, { label: string; tone: StatusTone; dot: StatusDot }> = {
   draft: { label: "Draft", tone: "neutral", dot: "none" },
@@ -35,4 +39,10 @@ export const STATUS_TAG: Record<StatusKind, { label: string; tone: StatusTone; d
   "no-results": { label: "No results", tone: "neutral", dot: "none" },
   failed: { label: "Failed", tone: "negative", dot: "none" },
   cancelled: { label: "Cancelled", tone: "neutral", dot: "none" },
+  connected: { label: "Connected", tone: "positive", dot: "solid" },
+  connecting: { label: "Connecting", tone: "info", dot: "pulse" },
+  delivered: { label: "Delivered", tone: "positive", dot: "none" },
+  retrying: { label: "Retrying", tone: "info", dot: "pulse" },
+  rejected: { label: "Rejected", tone: "negative", dot: "none" },
+  ignored: { label: "Ignored", tone: "neutral", dot: "none" },
 };

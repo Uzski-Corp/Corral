@@ -27,7 +27,8 @@ export const SITE_TIMEOUT_MS = 25_000;
 export const LOGO_MAX_BYTES = 2 * 1024 * 1024;
 
 export type SitePage = { path: string; title: string };
-export type WorkspaceInvite = { email: string; role: "admin" | "member" | "viewer" };
+/** A pending invite. `invitedAt` (ISO) is when it was first added; older invites have none. */
+export type WorkspaceInvite = { email: string; role: "admin" | "member" | "viewer"; invitedAt?: string };
 export type WorkspaceProduct = { id: string; name: string; description: string | null };
 export type Workspace = {
   id: string;
@@ -81,7 +82,8 @@ function invitesOf(v: unknown): Result<WorkspaceInvite[], string> {
     if (!email.ok) return email;
     const role = field(item, "role", (x): x is WorkspaceInvite["role"] => typeof x === "string" && (ROLES as readonly string[]).includes(x), "a role", "invite");
     if (!role.ok) return role;
-    invites.push({ email: email.value, role: role.value });
+    const at = item.invited_at;
+    invites.push({ email: email.value, role: role.value, ...(typeof at === "string" ? { invitedAt: at } : {}) });
   }
   return ok(invites);
 }
@@ -140,7 +142,8 @@ export type WorkspaceUpdate = {
   timezone?: string;
   team_size?: string;
   skipped?: number[];
-  invites?: WorkspaceInvite[];
+  /** The whole pending list. Only email and role are sent: the server keeps each invite's time. */
+  invites?: Pick<WorkspaceInvite, "email" | "role">[];
   complete?: boolean;
 };
 
@@ -162,7 +165,10 @@ function decodePicture(input: unknown): Result<{ pictureUrl: string }, string> {
 export function createWorkspaceApi(client: ApiClient): WorkspaceApi {
   return {
     get: (signal) => client.request(WORKSPACE_PATHS.workspace, { decode: decodeWorkspace, signal }),
-    update: (body, signal) => client.request(WORKSPACE_PATHS.workspace, { method: "PATCH", body, decode: decodeWorkspace, signal }),
+    update: (body, signal) => client.request(WORKSPACE_PATHS.workspace, {
+      method: "PATCH", decode: decodeWorkspace, signal,
+      body: body.invites ? { ...body, invites: body.invites.map(({ email, role }) => ({ email, role })) } : body,
+    }),
     uploadLogo(file, signal) {
       const form = new FormData();
       form.append("file", file, file.name ?? "logo");

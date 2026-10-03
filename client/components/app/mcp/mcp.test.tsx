@@ -206,8 +206,12 @@ describe("MCP connections", () => {
     show("mcp-connected");
     expect(within(dialog()).getByText(`Cursor sees ${nRead} tools.`)).toBeInTheDocument();
     expect(within(dialog()).queryByText(/coldtrace/i)).not.toBeInTheDocument();
+    // M14: no clientInfo, so no host version: the connection's name and its oldest call
+    expect(within(dialog()).getByText(/^Read only · first call Today, \d\d:\d\d\.$/)).toBeInTheDocument();
+    expect(within(dialog()).queryByText(/1\.7\.2/)).not.toBeInTheDocument();
     await userEvent.click(within(dialog()).getByRole("button", { name: "Done" }));
     expect(screen.getByText("Cursor connected")).toBeInTheDocument();
+    expect(screen.getByText(/^First call today, \d\d:\d\d$/)).toBeInTheDocument();
     expect(within(screen.getByRole("list", { name: "Connected clients" })).getAllByRole("listitem")).toHaveLength(CONNECTIONS.length + 1);
   });
 

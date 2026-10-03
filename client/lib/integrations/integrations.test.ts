@@ -86,7 +86,7 @@ describe("logs", () => {
 
 describe("settings review states", () => {
   it("only on view=settings, only with review states on", () => {
-    expect(SETTINGS_REVIEW_STATES).toHaveLength(24);
+    expect(SETTINGS_REVIEW_STATES).toHaveLength(32);
     expect(settingsReviewState("settings", "logs", true)).toBe("logs");
     expect(settingsReviewState("settings", "nope", true)).toBeUndefined();
     expect(settingsReviewState("unibox", "logs", true)).toBeUndefined();

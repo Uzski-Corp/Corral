@@ -28,12 +28,23 @@
  *   team-loading      skeleton rows
  *   billing           no plan yet: the three plans with {price} placeholders, or talk to us
  *   billing-loading   skeleton
+ * A connected integration from real data (M14): no sample account, logs or mapping
+ *   int-connected     Cal.com: the account, connected since, by whom, Disconnect; recent activity
+ *   int-quiet         AutoSend connected, nothing yet: "No activity yet" with Send a test
+ *   int-quiet-cal     Cal.com connected, nothing yet (no test: Cal.com can't take one)
+ *   int-mapping       Phoenix with no saved mapping: the defaults as editable rows, tagged Defaults
+ *   int-logs          Phoenix activity: time, event, status tag, one line each
+ *   int-logs-loading  skeleton rows
+ *   int-expired       Cal.com's sign-in expired: Failed, one line, Reconnect
+ *   int-reconnecting  Reconnect pressed: Connecting until the sign-in comes back
  */
 export const SETTINGS_REVIEW_STATES = [
   "integrations", "none", "connect-cal", "connecting", "connect-erp", "connect-erp-failed", "connect-autosend",
   "connected", "reauth", "error", "disconnect", "logs", "mapping", "mapping-errors", "scopes", "autosend", "loading", "load-error",
   /* M13: Settings → Team and Billing */
   "team", "team-solo", "team-invite", "team-loading", "billing", "billing-loading",
+  /* M14: a connected integration from real data */
+  "int-connected", "int-quiet", "int-quiet-cal", "int-mapping", "int-logs", "int-logs-loading", "int-expired", "int-reconnecting",
 ] as const;
 export type SettingsReviewState = (typeof SETTINGS_REVIEW_STATES)[number];
 

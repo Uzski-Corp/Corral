@@ -42,6 +42,9 @@ import { isAppPath } from "@/lib/auth/paths";
 import { SettingsView, settingsTabLabel, settingsTabOf } from "./handoff";
 import { ProductsView } from "./products/Products";
 import type { SettingsReviewState } from "@/lib/integrations/state";
+import { detailFromApi, type LastEvent } from "@/lib/integrations/live";
+import type { MapRow } from "@/lib/integrations/integrations";
+import type { LoadDetail } from "./handoff/Integrations";
 import { SECTION_TITLE, sectionOf, type McpReviewState } from "@/lib/mcp/state";
 
 /** Fixed "today" for the demo so static renders are deterministic. Replace with new Date(). */
@@ -286,6 +289,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
   const [seqList, setSeqList] = useState<SequenceCatalog["list"]>([]);
   const [creditsLeft, setCreditsLeft] = useState<number | null>(null);
   const [integrationConn, setIntegrationConn] = useState<Record<"cal" | "phoenix" | "autosend", "off" | "connected" | "reauth" | "error" | "connecting"> | null>(null);
+  const [integrationLast, setIntegrationLast] = useState<Partial<Record<"cal" | "phoenix" | "autosend", LastEvent | null>>>({});
   const [members, setMembers] = useState<Member[] | null>(null);
   const [invites, setInvites] = useState<WorkspaceInvite[] | null>(null);
   // Team writes the pending list it was given plus what it adds; the ref keeps the latest without remounting Team.
@@ -364,9 +368,15 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
     };
     return {
       invite: (emails, role) => save([...invitesRef.current, ...emails.map((email): WorkspaceInvite => ({ email, role: role === "admin" ? "admin" : "member" }))]),
-      cancel: (email) => save(invitesRef.current.filter((i) => i.email.toLowerCase() !== email.toLowerCase())),
     };
   }, [data]);
+  // M14: a connected integration's page reads only the API: its detail and its log, together.
+  const loadDetail = useCallback<LoadDetail>(async (id) => {
+    if (!data) return null;
+    const [d, l] = await Promise.all([data.integrations.detail(id), data.integrations.logs(id)]);
+    return d.ok && l.ok ? detailFromApi(id, d.value, l.value) : null;
+  }, [data]);
+  const saveMapping = useCallback(async (id: string, rows: MapRow[]) => (data ? (await data.integrations.saveMapping(id, rows)).ok : false), [data]);
   const mcpCheck = useMemo<FirstCallCheck | undefined>(() => (data ? async (known) => {
     const list = await data.developers.connections();
     const fresh = list.ok ? list.value.find((c) => typeof c.id === "string" && !known.includes(c.id)) : undefined;
@@ -392,11 +402,15 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
     if (!settingsLive || !data) return;
     const c = new AbortController();
     void data.integrations.list(c.signal).then((r) => {
-      if (c.signal.aborted || !r.ok) return;
+      if (c.signal.aborted) return;
       const conn = { cal: "off" as const, phoenix: "off" as const, autosend: "off" as const };
-      for (const row of r.value) {
-        if (row.provider === "cal" || row.provider === "phoenix" || row.provider === "autosend") conn[row.provider] = row.status as typeof conn.cal;
+      const last: Partial<Record<keyof typeof conn, LastEvent | null>> = {};
+      for (const row of r.ok ? r.value : []) {
+        if (row.provider !== "cal" && row.provider !== "phoenix" && row.provider !== "autosend") continue;
+        conn[row.provider] = row.status as typeof conn.cal;
+        last[row.provider] = row.lastEvent ? { event: row.lastEvent.event, at: row.lastEvent.at } : null;
       }
+      setIntegrationLast(last);
       setIntegrationConn(conn);
     });
     void data.integrations.members(c.signal).then((r) => { if (!c.signal.aborted) setMembers(r.ok ? r.value : []); });
@@ -552,11 +566,12 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
         {noSegments && <div className="c-view c-view--center"><SegmentsEmpty onCreate={() => { place("companies"); setBuilderOpen(true); }}
           onImport={() => { place("companies"); setImportOpen(true); }} /></div>}
         {view === "contacts" && <ContactsView key={contacts ?? contactPhase} state={contacts} people={contactsLive ? { phase: contactPhase, rows: contactRows, onRetry: () => { setContactPhase("loading"); setContactTry((n) => n + 1); } } : undefined} onFind={() => place("discovery")} />}
-        {view === "settings" && <SettingsView key={`${settings ?? developer ?? "live"}-${tabNow ?? "integrations"}`} state={settings} developer={developer} tab={tabNow} onSection={(label, id) => { setSetSection(label); place("settings", { tab: id }); }} liveIntegrations={settingsLive ? (integrationConn ?? { cal: "off", phoenix: "off", autosend: "off" }) : undefined}
+        {view === "settings" && <SettingsView key={`${settings ?? developer ?? "live"}-${tabNow ?? "integrations"}`} state={settings} developer={developer} tab={tabNow} onSection={(label, id) => { setSetSection(label); place("settings", { tab: id }); }} liveIntegrations={settingsLive ? integrationConn : undefined} liveLast={settingsLive ? integrationLast : undefined}
+          loadDetail={settingsLive ? loadDetail : undefined} onSaveMapping={settingsLive ? saveMapping : undefined}
           members={settingsLive ? members : undefined} invites={settingsLive ? invites : undefined} teamApi={settingsLive ? teamApi : undefined} liveKeys={settingsLive ? (liveKeys ?? []) : undefined} liveConnections={settingsLive ? (liveConns ?? []) : undefined}
           keysApi={settingsLive ? keysApi : undefined} viewer={settingsLive ? viewer : undefined}
           onDisconnect={settingsLive ? (id) => { void data?.developers.deleteConnection(id); } : undefined}
-          onIntegration={settingsLive ? (id, status) => { void data?.integrations.update(id, { status }); } : undefined} mcpCheck={settingsLive ? mcpCheck : undefined} />}
+          onIntegration={settingsLive ? async (id, status) => (data ? (await data.integrations.update(id, { status })).ok : false) : undefined} mcpCheck={settingsLive ? mcpCheck : undefined} />}
         {view === "knowledge" && <KnowledgeBase key={kbLive ? "live" : "sample"} state={kb} addOpen={kbAdd} onAddOpenChange={setKbAdd} contained={frame === "contained"} live={kbLive} />}
         {view === "products" && data && <ProductsView adding={adding} onAddingChange={setAdding} onChanged={() => kbProducts?.retry()} onOpen={(id) => { kbProducts?.select(id); place("knowledge"); }} />}
         {!table && !noSegments && view !== "unibox" && view !== "contacts" && view !== "knowledge" && view !== "discovery" && view !== "sequences" && view !== "settings" && !(view === "products" && data) && <PendingView id={view} onSearch={() => setPalette(true)} />}

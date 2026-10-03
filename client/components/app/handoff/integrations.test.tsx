@@ -147,3 +147,71 @@ describe("Settings → Integrations", () => {
     expect(screen.getByRole("list", { name: "Integrations" })).toBeInTheDocument();
   });
 });
+
+describe("M14 · a connected integration from real data", () => {
+  it("shows the account, since when and by whom, and Disconnect; no sample account", () => {
+    show("int-connected");
+    const acct = screen.getByLabelText("Connected account");
+    expect(acct).toHaveTextContent("you@example.com");
+    expect(acct).toHaveTextContent(/Connected by\s*You/);
+    expect(within(acct).getByRole("button", { name: "Disconnect" })).toBeInTheDocument();
+    expect(screen.queryByText(/tomas|coldtrace|Grace/i)).not.toBeInTheDocument();
+    expect(screen.getAllByText("Connected").length).toBeGreaterThan(0);
+  });
+
+  it("no activity yet: the shared empty state, with Send a test where the integration takes one", async () => {
+    const { unmount } = show("int-quiet");
+    expect(screen.getByText("No activity yet")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Send a test" }));
+    expect(screen.getByText("Test sent to AutoSend")).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "AutoSend activity" })).toHaveTextContent("Delivered");
+    unmount();
+    show("int-quiet-cal");
+    expect(screen.getByText("No activity yet")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Send a test" })).not.toBeInTheDocument();
+  });
+
+  it("field mapping with nothing saved: the defaults, tagged, editable, resettable", async () => {
+    show("int-mapping");
+    expect(screen.getByText("Defaults")).toBeInTheDocument();
+    expect(screen.queryByText(/fit_score|corral_url|Grace/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save mapping" })).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: /Fill Source from/ }));
+    await userEvent.click(screen.getByRole("option", { name: /Nothing/ }));
+    expect(screen.getByText("Edited")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save mapping" })).toBeEnabled();
+    await userEvent.click(screen.getByRole("button", { name: /Reset to defaults/ }));
+    expect(screen.getByText("Defaults")).toBeInTheDocument();
+  });
+
+  it("logs: time, event, status tag and a line per row; a skeleton while loading", () => {
+    const { unmount } = show("int-logs");
+    const rows = within(screen.getByRole("list", { name: "Phoenix ERP activity" })).getAllByRole("listitem");
+    expect(rows).toHaveLength(5);
+    expect(rows[0]).toHaveTextContent(/deal\.create.*Failed.*401 invalid_signature/);
+    expect(rows[1]).toHaveTextContent("Retrying");
+    unmount();
+    show("int-logs-loading");
+    expect(screen.getByText("Loading activity")).toBeInTheDocument();
+  });
+
+  it("token expired: Failed, one line, Reconnect, then Connecting and back to Connected", async () => {
+    show("int-expired");
+    expect(screen.getAllByText("Failed").length).toBeGreaterThan(0);
+    expect(screen.getByText(/^Sign-in expired 2h ago\.$/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Reconnect" }));
+    expect(screen.getByText("Connecting")).toBeInTheDocument();
+    expect(await screen.findByText("Cal.com reconnected", {}, { timeout: 3000 })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Reconnect" })).not.toBeInTheDocument();
+  });
+});
+
+describe("M14 · team in Krak's shapes", () => {
+  it("has no row menu: role change and remove aren't offered", () => {
+    show("team");
+    const list = screen.getByRole("list", { name: "Members" });
+    expect(within(list).queryAllByRole("button")).toHaveLength(0);
+    expect(list).toHaveTextContent("You");
+    expect(list).toHaveTextContent("Invited");
+  });
+});

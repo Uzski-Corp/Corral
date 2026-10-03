@@ -42,7 +42,9 @@ export const ROTATED_SECRET = "crl_live_9GvT3kLq7ZpX2wNc5RbM8sHd1yJf4uEa";
 
 export type Health = "ok" | "scope" | "expired" | "limited";
 export type Connection = {
-  id: string; client: ClientId | "n8n" | "zapier"; name: string; device: string; who: string; auth: Auth; keyName?: string;
+  /** `device`: where it runs, when Corral knows (fixtures). M14: MCP has no clientInfo, so a new connection has none;
+   *  it reads by its name and `firstCallAt`, the oldest call the server has for it (ISO). */
+  id: string; client: ClientId | "n8n" | "zapier"; name: string; device?: string; firstCallAt?: string; who: string; auth: Auth; keyName?: string;
   preset: string; access: AccessMap; since: string; last: string; lastTool: string; calls7d: number; health: Health; problem?: string;
 };
 const R = PRESETS[0].access; const D = PRESETS[1].access;
@@ -87,18 +89,21 @@ export type DevDialog = "connect" | "waiting" | "connected" | "revoke-conn" | "c
 /** Who's looking. Tomás owns ColdTrace's workspace; Amara is a member (keys-member). */
 export const OWNER: Viewer = { name: "Tomás Ibarra", role: "owner" };
 export const MEMBER: Viewer = { name: "Amara Njoroge", role: "member" };
-/** M13 (gap 4): what the server saw on a new connection's first call. `host` is the MCP host's own name
- *  (the `clientInfo` it sends on initialize), shown as is; never a sample name. */
-export type FirstCall = { host: string; version?: string; account?: string; tool: string; atIso: string };
+/** M14 (Krak): what the server has for a new connection. MCP sends no clientInfo Corral keeps, so there's no host
+ *  version: only the connection's name and its oldest call (ISO). Never a sample name. */
+export type FirstCall = { name: string; oldestCallAt: string; tool?: string };
+/** A review fixture time moved to the real clock, the way rebaseKey moves a key's dates. */
+export const rebaseIso = (iso: string, now: Date) => new Date(new Date(iso).getTime() + now.getTime() - FIXTURES_WRITTEN.getTime()).toISOString();
 /** Signed in, what the Waiting dialog's "Check again" asks: a connection the list didn't have, with its first call. */
 export type FirstCallCheck = (known: string[]) => Promise<{ conn: Connection; first: FirstCall } | null>;
-/** The real API has no `clientInfo`: the host is the connection's own name, the tool and time its oldest call.
- *  No call yet means the host hasn't arrived. */
-export function firstCallFrom(conn: { name: string; lastTool?: string }, calls: { at?: unknown; tool?: unknown }[]): FirstCall | null {
-  const oldest = calls.filter((c) => typeof c.tool === "string").at(-1);
-  const tool = typeof oldest?.tool === "string" ? oldest.tool : conn.lastTool;
-  if (!tool) return null;
-  return { host: conn.name, tool, atIso: typeof oldest?.at === "string" ? oldest.at : "" };
+const isTime = (v: unknown): v is string => typeof v === "string" && !Number.isNaN(Date.parse(v));
+/** The connection's name plus its oldest call. The list's `firstCallAt` is the server's own time for it; the calls
+ *  (newest first, the last 50) name the tool. No call yet means the host hasn't arrived. */
+export function firstCallFrom(conn: { name: string; firstCallAt?: unknown }, calls: { at?: unknown; tool?: unknown }[]): FirstCall | null {
+  const oldest = calls.at(-1);
+  const at = isTime(conn.firstCallAt) ? conn.firstCallAt : isTime(oldest?.at) ? oldest.at : undefined;
+  if (!at) return null;
+  return { name: conn.name, oldestCallAt: at, ...(typeof oldest?.tool === "string" ? { tool: oldest.tool } : {}) };
 }
 export type DevSeed = {
   firstCall?: FirstCall;
@@ -116,7 +121,7 @@ export function devSeed(s?: McpReviewState): DevSeed {
     case "mcp-connect-key": return { dialog: "connect", client: "vscode", auth: "key" };
     case "mcp-consent": return { consent: true };
     case "mcp-waiting": return { dialog: "waiting", client: "cursor", auth: "oauth" };
-    case "mcp-connected": return { dialog: "connected", client: "cursor", auth: "oauth", firstCall: { host: "Cursor", version: "1.7.2", tool: "tools/list", atIso: "" } };
+    case "mcp-connected": return { dialog: "connected", client: "cursor", auth: "oauth", firstCall: { name: "Cursor", oldestCallAt: new Date(FIXTURES_WRITTEN.getTime() - 2 * 60_000).toISOString(), tool: "tools/list" } };
     case "mcp-activity": return { open: "cn_cursor" };
     case "mcp-error": return { problems: true };
     case "mcp-revoke": return { open: "cn_cursor", dialog: "revoke-conn" };

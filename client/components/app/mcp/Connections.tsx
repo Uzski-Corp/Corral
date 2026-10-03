@@ -11,13 +11,20 @@ import { Banner, Skeleton, Spinner } from "../States";
 import { useToast } from "../Toaster";
 import { PRESETS, RATE, scopesOf, type AccessMap } from "@/lib/mcp/keys";
 import { CLIENTS, MCP_URL, client, configFor, cursorDeeplink, errorFor, stepsFor, toolsFor, type Auth, type ClientId } from "@/lib/mcp/tools";
-import { CALLS, CC_CALLS, CONNECTIONS, PROBLEMS, ZAPIER, ZAPIER_CALLS, type Connection, type DevSeed, type FirstCall, type FirstCallCheck } from "./data";
+import { CALLS, CC_CALLS, CONNECTIONS, PROBLEMS, ZAPIER, ZAPIER_CALLS, rebaseIso, type Connection, type DevSeed, type FirstCall, type FirstCallCheck } from "./data";
 import { AccessPicker, CopyBlock, Mark, Scopes, Status, topScopes, useCopy } from "./Shared";
 import { CallTable } from "./Keys";
 import { HostsEmpty } from "../Empties";
+import { useNow } from "../useNow";
+import { momentLabel } from "@/lib/time";
 import { useAppData } from "@/components/session/AppData";
 
 const MARK: Record<Connection["client"], string> = { cursor: "Cu", claude: "Cl", "claude-code": "CC", vscode: "VS", other: "{}", n8n: "n8", zapier: "Za" };
+/** " on Tomás’s MacBook Pro" when Corral knows where it runs; nothing for a connection known only by its name. */
+const onDevice = (c: Connection) => (c.device ? ` on ${c.device}` : "");
+/** What sits next to the name: where it runs, or (M14, no clientInfo) when its first call came. */
+const whereWords = (c: Connection, now: Date) => c.device ?? (c.firstCallAt ? `First call ${momentLabel(new Date(c.firstCallAt), now).replace(/^Today, /, "today, ")}` : "");
+
 const HEALTH = {
   ok: { tone: "ok", word: "Working" }, scope: { tone: "caution", word: "Missing a scope" }, expired: { tone: "bad", word: "Key expired" }, limited: { tone: "caution", word: "Rate limited" },
 } as const;
@@ -35,6 +42,7 @@ export function McpConnections({ seed, live, onDisconnect, check }: { seed: DevS
   const close = () => setDialog(undefined);
   const me = useAppData();
   const [arrived, setArrived] = useState<{ conn: Connection; first: FirstCall } | null>(null);
+  const now = useNow();
 
   if (seed.load === "loading") return (
     <div className="i-page m-page" aria-busy="true"><div className="i-head"><h2>MCP</h2></div><span className="u-sr" role="status">Loading connections</span>
@@ -42,21 +50,21 @@ export function McpConnections({ seed, live, onDisconnect, check }: { seed: DevS
       <ul className="m-conns" aria-hidden="true">{[0, 1, 2].map((i) => <li key={i} className="m-conn"><Skeleton w={32} h={32} r={8} /><div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}><Skeleton w={180} /><Skeleton w="55%" h={8} /></div><Skeleton w={70} h={20} r={5} /></li>)}</ul></div>
   );
 
-  // M13 (gap 4): the new connection is named from the server's first call, never from sample data.
-  const first = live ? arrived?.first : seed.firstCall;
+  // M13 (gap 4) / M14: the new connection is the server's: its name and its oldest call. No host version.
+  const first = live ? arrived?.first : seed.firstCall && { ...seed.firstCall, oldestCallAt: rebaseIso(seed.firstCall.oldestCallAt, now) };
   const look = check && live ? async () => { const r = await check(conns.map((c) => c.id)); if (r) { setArrived(r); setDialog("connected"); } } : undefined;
   const connected = () => {
     if (!first) { close(); return; }
-    if (arrived) { const c = arrived.conn; setConns((l) => [c, ...l.filter((x) => x.id !== c.id)]); setArrived(null); close(); toast({ tone: "success", children: `${first.host} connected`, meta: `first call: ${first.tool}` }); return; }
-    const n: Connection = { id: "cn_new", client: pick, name: first.host, device: first.version ? `${first.host} ${first.version}` : first.host, who: me?.person.name ?? "You", auth, preset: "Read only", access: PRESETS[0].access,
-      since: "Today", last: "Just now", lastTool: first.tool, calls7d: 1, health: "ok" };
-    setConns((l) => [n, ...l.filter((x) => x.id !== "cn_new")]); close(); toast({ tone: "success", children: `${first.host} connected`, meta: `first call: ${first.tool}` });
+    if (arrived) { const c = arrived.conn; setConns((l) => [c, ...l.filter((x) => x.id !== c.id)]); setArrived(null); close(); toast({ tone: "success", children: `${first.name} connected`, meta: `first call ${momentLabel(new Date(first.oldestCallAt), now)}` }); return; }
+    const n: Connection = { id: "cn_new", client: pick, name: first.name, firstCallAt: first.oldestCallAt, who: me?.person.name ?? "You", auth, preset: "Read only", access: PRESETS[0].access,
+      since: "Today", last: "Just now", lastTool: first.tool ?? "tools/list", calls7d: 1, health: "ok" };
+    setConns((l) => [n, ...l.filter((x) => x.id !== "cn_new")]); close(); toast({ tone: "success", children: `${first.name} connected`, meta: `first call ${momentLabel(new Date(first.oldestCallAt), now)}` });
   };
   const disconnect = () => {
     if (!cur) return;
     setConns((l) => l.filter((x) => x.id !== cur.id)); setOpen(undefined); close();
     if (live) onDisconnect?.(cur.id);
-    toast({ children: `Disconnected ${cur.name} on ${cur.device}`, meta: "its next call gets 401" });
+    toast({ children: `Disconnected ${cur.name}${onDevice(cur)}`, meta: "its next call gets 401" });
   };
 
   return (
@@ -66,7 +74,7 @@ export function McpConnections({ seed, live, onDisconnect, check }: { seed: DevS
       {/* Waiting until the server reports a first call; with no data yet it stays on "No hosts connected". */}
       {dialog === "connect" && <Connect pick={pick} setPick={setPick} auth={auth} setAuth={setAuth} onClose={close} onCopied={() => setDialog("waiting")} />}
       {dialog === "waiting" && <Waiting pick={pick} onClose={close} onArrived={look ? () => void look() : first ? () => setDialog("connected") : undefined} onBack={() => setDialog("connect")} />}
-      {dialog === "connected" && first && <Connected first={first} account={me?.me.user.email} onClose={connected} />}
+      {dialog === "connected" && first && <Connected first={first} now={now} account={me?.me.user.email} onClose={connected} />}
       {dialog === "revoke-conn" && cur && <RevokeConn c={cur} onClose={close} onConfirm={disconnect} />}
     </>
   );
@@ -84,6 +92,7 @@ function Endpoint() {
 }
 
 function ConnList({ conns, onConnect, onOpen }: { conns: Connection[]; onConnect: (id?: ClientId) => void; onOpen: (id: string) => void }) {
+  const now = useNow();
   const bad = conns.filter((c) => c.health !== "ok");
   const sorted = [...bad, ...conns.filter((c) => c.health === "ok")]; // what needs you first
   return (
@@ -104,7 +113,7 @@ function ConnList({ conns, onConnect, onOpen }: { conns: Connection[]; onConnect
             <li key={c.id} className={cx("m-conn", c.health !== "ok" && `is-${h.tone}`, c.id === "cn_new" && "is-new")}>
               <Mark label={MARK[c.client]} tone={c.client} />
               <div className="m-conn__txt">
-                <span className="m-conn__top"><button type="button" className="m-rowlink" onClick={() => onOpen(c.id)}>{c.name}</button><span className="c-faint">{c.device}</span><Status tone={h.tone}>{h.word}</Status></span>
+                <span className="m-conn__top"><button type="button" className="m-rowlink" onClick={() => onOpen(c.id)}>{c.name}</button><span className="c-faint">{whereWords(c, now)}</span><Status tone={h.tone}>{h.word}</Status></span>
                 <span className="m-conn__who">{c.who} · {c.auth === "oauth" ? "signed in" : <>API key <span className="c-mono">{c.keyName}</span></>} · {c.preset}</span>
                 {c.problem ? <span className={cx("m-conn__problem", `is-${h.tone}`)}><Icon name="alert" size={12} /><span>{c.problem}</span></span>
                   : <span className="m-conn__last"><span className="c-mono">{c.lastTool}</span> {c.last} · {c.calls7d.toLocaleString("en-GB")} calls this week</span>}
@@ -125,6 +134,7 @@ function ConnList({ conns, onConnect, onOpen }: { conns: Connection[]; onConnect
 /** One connection: who, what it may do, its calls. `problems`: Claude Code asking for a tool it can't use. */
 function ConnPage({ c, problems, onBack, onRevoke }: { c: Connection; problems: boolean; onBack: () => void; onRevoke: () => void }) {
   const [tab, setTab] = useState("activity");
+  const now = useNow();
   const h = HEALTH[c.health];
   const calls = c.id === "cn_cc" && problems ? CC_CALLS : c.id === "cn_zapier" ? ZAPIER_CALLS : c.id === "cn_new" ? [] : CALLS;
   const err = calls.find((x) => x.status >= 400 && x.code === "insufficient_scope");
@@ -133,7 +143,7 @@ function ConnPage({ c, problems, onBack, onRevoke }: { c: Connection; problems: 
     <div className="i-page m-page">
       <button type="button" className="i-back" onClick={onBack}><Icon name="back" size={12} />MCP</button>
       <div className="m-dhead">
-        <div className="m-dhead__id"><Mark label={MARK[c.client]} tone={c.client} /><div><h2>{c.name}</h2><span className="m-dhead__sub">{c.device} · {c.who}<Status tone={h.tone}>{h.word}</Status></span></div></div>
+        <div className="m-dhead__id"><Mark label={MARK[c.client]} tone={c.client} /><div><h2>{c.name}</h2><span className="m-dhead__sub">{whereWords(c, now)} · {c.who}<Status tone={h.tone}>{h.word}</Status></span></div></div>
         <div className="m-dhead__acts"><Button onClick={onRevoke}>Disconnect</Button></div>
       </div>
       {err && <Banner tone="caution" title="Claude Code asked to send a reply. This connection can draft but not send." action={<a className="c-btn" href="/app/settings/mcp?state=mcp-consent">Allow sending</a>}>
@@ -199,14 +209,13 @@ function Waiting({ pick, onClose, onArrived, onBack }: { pick: ClientId; onClose
   );
 }
 
-function Connected({ first, account, onClose }: { first: FirstCall; account?: string; onClose: () => void }) {
+function Connected({ first, now, account, onClose }: { first: FirstCall; now: Date; account?: string; onClose: () => void }) {
   const tools = toolsFor(scopesOf(PRESETS[0].access));
-  const host = first.version ? `${first.host} ${first.version}` : first.host;
   return (
-    <Dialog open onClose={onClose} width={520} title={`${first.host} is connected`} description={`${host} · read only${account ? ` · signed in as ${account}` : ""}. First call just now.`}
+    <Dialog open onClose={onClose} width={520} title={`${first.name} is connected`} description={`Read only${account ? ` · signed in as ${account}` : ""} · first call ${momentLabel(new Date(first.oldestCallAt), now)}.`}
       footer={<Button variant="primary" onClick={onClose}>Done</Button>}>
       <div className="m-form">
-        <Banner tone="success" title={`${first.host} sees ${tools.length} tools.`}>All of them read. To let it draft or build segments, connect again and allow more.</Banner>
+        <Banner tone="success" title={`${first.name} sees ${tools.length} tools.`}>All of them read. To let it draft or build segments, connect again and allow more.</Banner>
         <ul className="m-toolchips" aria-label="Tools it sees">{tools.map((t) => <li key={t.name} className="c-mono">{t.name}</li>)}</ul>
         <p className="m-note"><Icon name="bolt" size={12} /><span>Try asking it: “What needs me in the Unibox this morning?”</span></p>
       </div>
@@ -216,7 +225,7 @@ function Connected({ first, account, onClose }: { first: FirstCall; account?: st
 
 function RevokeConn({ c, onClose, onConfirm }: { c: Connection; onClose: () => void; onConfirm: () => void }) {
   return (
-    <Dialog open onClose={onClose} width={500} tone="danger" title={`Disconnect ${c.name} on ${c.device}?`} description="It stops at once. You can connect it again; it signs in and asks for access again."
+    <Dialog open onClose={onClose} width={500} tone="danger" title={`Disconnect ${c.name}${onDevice(c)}?`} description="It stops at once. You can connect it again; it signs in and asks for access again."
       footer={<><Button variant="quiet" onClick={onClose}>Cancel</Button><Button variant="primary" className="i-btn-danger" onClick={onConfirm}>Disconnect</Button></>}>
       <ul className="m-list">
         <li className="is-no"><Icon name="x" size={12} />Its next call gets <span className="c-mono">401 invalid_token</span>; {c.name} shows Corral as disconnected</li>
