@@ -86,3 +86,15 @@ describe("workspace api", () => {
     expect((await api.uploadPicture(new Blob(["x"]))).ok).toBe(false);
   });
 });
+
+describe("pending invites keep their time", () => {
+  it("reads invited_at and never sends it back", async () => {
+    const at = "2026-10-01T12:00:00+00:00";
+    const decoded = decodeWorkspace({ ...WS, invites: [{ email: "a@x.co", role: "admin", invited_at: at }, { email: "b@x.co", role: "member", invited_at: null }] });
+    expect(decoded.ok && decoded.value.invites).toEqual([{ email: "a@x.co", role: "admin", invitedAt: at }, { email: "b@x.co", role: "member" }]);
+    const seen: unknown[] = [];
+    server.use(http.patch(`${API}${WORKSPACE_PATHS.workspace}`, async ({ request }) => { seen.push(await request.json()); return HttpResponse.json(WS); }));
+    expect((await api.update({ invites: [{ email: "a@x.co", role: "admin", invitedAt: at } as never] })).ok).toBe(true);
+    expect(seen).toEqual([{ invites: [{ email: "a@x.co", role: "admin" }] }]);
+  });
+});
