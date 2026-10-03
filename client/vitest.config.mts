@@ -28,7 +28,7 @@ export default defineConfig({
         "app/app/**/page.tsx",
       ],
       reporter: ["text", "text-summary", "json-summary", "html"],
-      thresholds: { lines: 90, statements: 90, functions: 90, branches: 90 },
+      thresholds: { lines: 99, statements: 98, functions: 98, branches: 96 },
     },
   },
 });

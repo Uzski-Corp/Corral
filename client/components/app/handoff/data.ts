@@ -116,7 +116,7 @@ export const INTEGRATIONS: IntegrationModel[] = [
     account: [["Sends to", ERP_URL], ["Signing secret", "whsec_••••9f2c · HMAC-SHA256 · set Sep 14"], ["Phoenix sends back", "Stage changes, signed with the same secret"], ["Since", "Sep 14"]],
     last: "deal.create PX-2288 · Yesterday, 16:18" },
   { id: "autosend", name: "AutoSend", role: "Follow-up mail", tile: "As",
-    what: "Once someone replies or books, the mail that isn’t one person to one person (a reminder, a case study, onboarding) goes through AutoSend from mail.coldtrace.io, with an unsubscribe link. Cold email never does.",
+    what: "Once someone replies or books, the mail that isn’t one person to one person (a reminder, a case study, onboarding) goes through AutoSend from your sending domain, with an unsubscribe link. Cold email never does.",
     does: ["Booked: adds the guests to Before your call (one email, 24 hours before)", "Meeting ended: starts After your call (three emails over ten days)", "Cancelled, no-show or unsubscribed: nothing automatic; a person writes"],
     account: [["Project", "ColdTrace"], ["Sends as", `${AUTOSEND_SENDER} · verified`], ["Journeys", "Before your call · After your call"], ["Since", "Sep 16"]],
     last: "event meeting_booked · Yesterday, 16:18" },

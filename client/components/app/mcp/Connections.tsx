@@ -34,6 +34,7 @@ export function McpConnections({ seed, live, onDisconnect, check }: { seed: DevS
   const cur = conns.find((c) => c.id === open);
   const close = () => setDialog(undefined);
   const me = useAppData();
+  const [arrived, setArrived] = useState<{ conn: Connection; first: FirstCall } | null>(null);
 
   if (seed.load === "loading") return (
     <div className="i-page m-page" aria-busy="true"><div className="i-head"><h2>MCP</h2></div><span className="u-sr" role="status">Loading connections</span>
@@ -42,7 +43,6 @@ export function McpConnections({ seed, live, onDisconnect, check }: { seed: DevS
   );
 
   // M13 (gap 4): the new connection is named from the server's first call, never from sample data.
-  const [arrived, setArrived] = useState<{ conn: Connection; first: FirstCall } | null>(null);
   const first = live ? arrived?.first : seed.firstCall;
   const look = check && live ? async () => { const r = await check(conns.map((c) => c.id)); if (r) { setArrived(r); setDialog("connected"); } } : undefined;
   const connected = () => {
