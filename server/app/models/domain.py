@@ -95,15 +95,32 @@ class Segment(TenantModel):
 
 
 class Sequence(TenantModel):
+    """A sequence document (steps, audience, stats). Sending mail is a later engine."""
+
     __tablename__ = "sequences"
+    __table_args__ = (
+        UniqueConstraint("org_id", "slug", name="uq_sequences_org_id_slug"),
+        CheckConstraint("status IN ('draft', 'launching', 'running', 'paused')", name="status"),
+    )
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    slug: Mapped[str | None] = mapped_column(String(80))
+    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default="draft")
+    document: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default="{}")
 
 
 class InboxThread(TenantModel):
+    """One Unibox conversation. Messages and the draft live in their own tables."""
+
     __tablename__ = "inbox_threads"
+    __table_args__ = (UniqueConstraint("org_id", "slug", name="uq_inbox_threads_org_id_slug"),)
 
     subject: Mapped[str | None] = mapped_column(String(500))
+    slug: Mapped[str | None] = mapped_column(String(80))
+    handled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    triage: Mapped[str | None] = mapped_column(String(32))
+    snoozed_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    document: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default="{}")
 
 
 class KnowledgeItem(TenantModel):

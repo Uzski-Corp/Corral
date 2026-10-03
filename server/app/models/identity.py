@@ -13,6 +13,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Integer,
     String,
     UniqueConstraint,
     Uuid,
@@ -61,6 +62,8 @@ class Organization(TimestampMixin, Base):
             "team_size IS NULL OR team_size IN ('solo', 'small', 'sales')",
             name="team_size",
         ),
+        CheckConstraint("discovery_credit_month >= 0", name="discovery_credit_month"),
+        CheckConstraint("discovery_credit_used >= 0", name="discovery_credit_used"),
     )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
@@ -79,6 +82,8 @@ class Organization(TimestampMixin, Base):
     site_pages: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
     site_highlights: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
     pending_invites: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
+    discovery_credit_month: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    discovery_credit_used: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
 
     @property
     def onboarded(self) -> bool:
