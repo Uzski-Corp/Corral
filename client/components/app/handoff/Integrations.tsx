@@ -14,10 +14,18 @@ import { dealPayload, filterLogs, healthOf, isProblem, mappingIssues, RESULT_WOR
 import type { SettingsReviewState } from "@/lib/integrations/state";
 import { sectionOf, type DevSection, type McpReviewState } from "@/lib/mcp/state";
 import { Developer, McpConsent } from "../mcp";
-import { AUTOSEND_SENDER, CORRAL_FIELDS, ERP_FIELDS, ERP_URL, GRACE_VALUES, INTEGRATIONS, LOGS, MAPPING, MAPPING_BROKEN, PROBLEM, SCOPES, STAGE_MAP, integration, settingsSeed, type SettingsSeed } from "./data";
+import { AUTOSEND_SENDER, CORRAL_FIELDS, ERP_FIELDS, ERP_URL, GRACE_VALUES, INTEGRATIONS, LOGS, MAPPING, MAPPING_BROKEN, PROBLEM, SCOPES, STAGE_MAP, integration, liveSeed, settingsSeed, type SettingsSeed } from "./data";
+import { LiveIntegrationPage } from "./Live";
+import { LIVE_COPY, type IntegrationDetail, type LastEvent } from "@/lib/integrations/live";
+import { agoLabel } from "@/lib/time";
+import { useNow } from "../useNow";
 import { BrandLockup, Pill, Tile } from "./Handoff";
 import { ProfileSettings } from "./ProfileSettings";
 import { WorkspaceSettings } from "./WorkspaceSettings";
+import { BillingView, TeamView, type TeamApi, type TeamSession } from "../settings";
+import { useAppData } from "@/components/session/AppData";
+import { displayName, type Member } from "@/lib/api";
+import type { WorkspaceInvite } from "@/lib/api/workspace";
 
 type Tab = SettingsSeed["tab"];
 type DialogKind = NonNullable<SettingsSeed["dialog"]>;
@@ -37,8 +45,48 @@ export const settingsTabOf = (tab?: string): string | undefined => SECTIONS.find
 export const settingsTabLabel = (tab: string): string => SECTIONS.find((x) => x.id === tab)!.label;
 
 /** The settings page. Integrations (M8) and Developers (M9) are designed; the others keep their place. */
-export function SettingsView({ state, developer, tab, onSection }: { state?: SettingsReviewState; developer?: McpReviewState; tab?: string; onSection?: (label: string, id: string) => void }) {
-  const [section, setSection] = useState<string>(developer ? sectionOf(developer) : settingsTabOf(tab) ?? "integrations");
+/** M13: which review states open Team or Billing. */
+const sectionFor = (s?: SettingsReviewState) => (s?.startsWith("team") ? "team" : s?.startsWith("billing") ? "billing" : undefined);
+/** Review-only placeholders (example.com, never a made-up person), in the API's shapes. Live: members from the API,
+ *  invites from the workspace. */
+const REVIEW_MEMBERS: Member[] = [{ id: "m2", name: "Teammate", email: "teammate@example.com", role: "member" }];
+
+export function SettingsView({ state, developer, tab, onSection, liveIntegrations, liveLast, onSaveMapping, loadDetail, members, invites, teamApi, liveKeys, liveConnections, keysApi, viewer, onDisconnect, onIntegration, mcpCheck }: {
+  state?: SettingsReviewState; developer?: McpReviewState; tab?: string; onSection?: (label: string, id: string) => void;
+  liveIntegrations?: Record<IntegrationId, Connection> | null;
+  /** M14: GET /api/v1/integrations/:id plus its log. Signed in, the detail page reads only this, never the M8 samples. */
+  loadDetail?: LoadDetail;
+  /** Signed in: GET /workspace/members (null while it loads) and the workspace's pending invites. */
+  members?: Member[] | null;
+  invites?: WorkspaceInvite[] | null;
+  teamApi?: TeamApi;
+  liveKeys?: import("../mcp/data").ApiKey[] | null;
+  liveConnections?: import("../mcp/data").Connection[] | null;
+  /** Signed in: what persists a key, a disconnect and an integration's status, and who is looking. */
+  keysApi?: import("../mcp/Keys").KeysApi;
+  viewer?: import("@/lib/mcp/keys").Viewer;
+  onDisconnect?: (id: string) => void;
+  onIntegration?: (id: IntegrationId, status: "off" | "connected") => Promise<boolean> | void;
+  /** Signed in: each integration's newest log row, and where Phoenix's mapping is saved. */
+  liveLast?: Partial<Record<IntegrationId, LastEvent | null>>;
+  onSaveMapping?: (id: IntegrationId, rows: MapRow[]) => Promise<boolean>;
+  mcpCheck?: import("../mcp/data").FirstCallCheck;
+}) {
+  const [section, setSection] = useState<string>(developer ? sectionOf(developer) : settingsTabOf(tab) ?? sectionFor(state) ?? "integrations");
+  const data = useAppData();
+  const [now] = useState(() => new Date());
+  // You: the session says which member is you, and gives the avatar. The members API has no avatar.
+  const session: TeamSession = data ? { userId: data.me.user.id, email: data.me.user.email, avatarUrl: data.me.user.profilePictureUrl } : { userId: "me", email: "you@example.com" };
+  const meMember: Member = data ? { id: data.me.user.id, name: displayName(data.me.user), email: data.me.user.email, role: data.me.role } : { id: "me", name: "", email: "you@example.com", role: "owner" };
+  const liveTeam = members !== undefined;
+  // The members API sends the email as the name when someone has none: the row then shows the email once.
+  const teamMembers: Member[] = liveTeam ? (members ?? []).map((m) => (m.name === m.email ? { ...m, name: "" } : m))
+    : state === "team-solo" ? [meMember] : [meMember, ...REVIEW_MEMBERS];
+  const teamInvites: WorkspaceInvite[] = liveTeam ? invites ?? []
+    : state === "team-solo" ? [] : [{ email: "sales@example.com", role: "member", invitedAt: new Date(now.getTime() - 2 * 86_400_000).toISOString() }];
+  const teamLoading = state === "team-loading" || (liveTeam && members === null);
+  // Who connected an integration: you from the session, anyone else by the member list.
+  const names = Object.fromEntries((members ?? []).filter((m) => m.name && m.name !== m.email).map((m) => [m.id, m.name]));
   const s = SECTIONS.find((x) => x.id === section)!;
   const go = (id: string) => {
     setSection(id);
@@ -61,27 +109,61 @@ export function SettingsView({ state, developer, tab, onSection }: { state?: Set
         <ul aria-labelledby="i-nav-dev">{SECTIONS.filter((x) => x.group === "dev").map(item)}</ul>
       </nav>
       <div className="i-main">
-        {section === "integrations" ? <Integrations key={state ?? "live"} state={state} />
+        {section === "integrations" ? <Integrations key={state ?? (liveIntegrations ? "api" : liveIntegrations === null ? "api-loading" : "sample")} state={state} live={liveIntegrations} onChange={liveIntegrations && !state ? onIntegration : undefined} loadDetail={liveIntegrations && !state ? loadDetail : undefined} names={names} last={liveLast} onSaveMapping={onSaveMapping} />
           : section === "profile" ? <ProfileSettings />
           : section === "workspace" ? <WorkspaceSettings />
-          : isDev(section) ? <Developer key={`${section}-${developer ?? "live"}`} section={section} state={developer && sectionOf(developer) === section ? developer : undefined} />
+          : section === "team" ? <TeamView key={state ?? (liveTeam ? `api-${members?.length ?? "loading"}-${invites?.length ?? 0}` : "live")} members={teamMembers} invites={teamInvites} session={session} now={now} load={teamLoading ? "loading" : undefined} defaultInvite={state === "team-invite"}
+              onInvite={liveTeam && teamApi ? async (emails, role) => { if (!(await teamApi.invite(emails, role))) throw new Error("The invites weren’t saved."); } : undefined} />
+          : section === "billing" ? <BillingView key={state ?? "live"} load={state === "billing-loading" ? "loading" : undefined} />
+          : isDev(section) ? <Developer key={`${section}-${developer ?? "live"}-${liveKeys?.length ?? "s"}-${liveConnections?.length ?? "s"}`} section={section} state={developer && sectionOf(developer) === section ? developer : undefined} keys={developer ? null : liveKeys} connections={developer ? null : liveConnections} keysApi={keysApi} viewer={viewer} onDisconnect={onDisconnect} check={mcpCheck} />
           : <div className="i-later"><h2>{s.label}</h2><p className="c-muted">{s.note}. Designed in a later milestone; this keeps its place in Settings.</p></div>}
       </div>
     </div>
   );
 }
 
-export function Integrations({ state }: { state?: SettingsReviewState }) {
+/** Signed in: an integration's detail (GET /integrations/:id), then its log, as the page reads them. */
+export type LoadDetail = (id: IntegrationId) => Promise<IntegrationDetail | null>;
+
+export function Integrations({ state, live: api, onChange, loadDetail, names, onSaveMapping, last }: { state?: SettingsReviewState; live?: Record<IntegrationId, Connection> | null;
+  /** Signed in: PUT Phoenix's mapping. */ onSaveMapping?: (id: IntegrationId, rows: MapRow[]) => Promise<boolean>;
+  /** Signed in: each integration's newest log row, for the list (null: nothing yet). */ last?: Partial<Record<IntegrationId, LastEvent | null>>;
+  /** Signed in: store a connect or a disconnect. The dialogs' in-between states stay on the screen. */ onChange?: (id: IntegrationId, status: "off" | "connected") => Promise<boolean> | void;
+  loadDetail?: LoadDetail;
+  /** Member names by id, for "Connected by" when it wasn't you. */ names?: Record<string, string> }) {
   const toast = useToast();
-  const seed = useMemo(() => settingsSeed(state), [state]);
+  const seed = useMemo<SettingsSeed>(() => (state || api === undefined ? settingsSeed(state)
+    : api ? { conn: api, tab: "overview" } : { conn: { cal: "off", phoenix: "off", autosend: "off" }, tab: "overview", load: "loading" }), [api, state]);
+  const app = useAppData();
+  // M14: the live detail page. Review states seed it (placeholders, times against the real clock); signed in it
+  // comes from loadDetail, and until that answers the page shows its skeleton, never sample content.
+  const [live] = useState(() => liveSeed(state, new Date()));
+  const [details, setDetails] = useState<Partial<Record<IntegrationId, IntegrationDetail>>>(() => (live ? { [live.open]: live.detail } : {}));
+  const signedIn = !!loadDetail && !state;
   const [load, setLoad] = useState(seed.load);
   const [conn, setConn] = useState(seed.conn);
-  const [open, setOpen] = useState<IntegrationId | undefined>(seed.open);
-  const [tab, setTab] = useState<Tab>(seed.tab);
+  const [open, setOpen] = useState<IntegrationId | undefined>(live?.open ?? seed.open);
+  const [tab, setTab] = useState<Tab>(live?.tab ?? seed.tab);
+  // Signed in: the open integration's detail, fetched once per visit (and again after a connect, disconnect or reconnect).
+  const [failed, setFailed] = useState<IntegrationId | undefined>();
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    if (!signedIn || !open || !loadDetail || details[open]) return;
+    let gone = false;
+    void loadDetail(open).then((d) => { if (gone) return; if (d) setDetails((m) => ({ ...m, [open]: d })); else setFailed(open); });
+    return () => { gone = true; };
+  }, [signedIn, open, loadDetail, details, retry]);
+  const forget = (id: IntegrationId) => { setFailed(undefined); setDetails((m) => { const n = { ...m }; delete n[id]; return n; }); };
+  const reconnect = async (id: IntegrationId) => {
+    if (await onChange?.(id, "connected") === false) { toast({ tone: "error", children: `Couldn’t reconnect ${integration(id).name}. Try again.` }); forget(id); return; }
+    set(id, "connected"); forget(id);
+    toast({ tone: "success", children: `${integration(id).name} reconnected` });
+  };
   const [dialog, setDialog] = useState<DialogKind | undefined>(seed.dialog);
   const set = (id: IntegrationId, c: Connection) => setConn((m) => ({ ...m, [id]: c }));
   const connect = (id: IntegrationId) => setDialog(id === "cal" ? "connect-cal" : id === "phoenix" ? "connect-erp" : "connect-autosend");
-  const done = (id: IntegrationId) => { set(id, "connected"); setDialog(undefined); toast({ tone: "success", children: `${integration(id).name} connected`, meta: id === "cal" ? "1 booking caught up" : id === "phoenix" ? "test deal delivered" : "2 journeys on" }); };
+  // Signed in, nothing has happened yet on a new connection: the toast says only that it's connected.
+  const done = (id: IntegrationId) => { set(id, "connected"); void onChange?.(id, "connected"); if (signedIn) forget(id); setDialog(undefined); toast({ tone: "success", children: `${integration(id).name} connected`, meta: signedIn ? undefined : id === "cal" ? "1 booking caught up" : id === "phoenix" ? "test deal delivered" : "2 journeys on" }); };
   const fix = (id: IntegrationId) => { if (conn[id] === "reauth") { set(id, "connecting"); setDialog("connecting"); } else if (id === "phoenix") setDialog("connect-erp"); };
 
   if (load === "loading") return (
@@ -97,22 +179,35 @@ export function Integrations({ state }: { state?: SettingsReviewState }) {
 
   return (
     <>
-      {open ? <IntegrationPage id={open} conn={conn[open]} tab={tab} setTab={setTab} onBack={() => { setOpen(undefined); setTab("overview"); }}
+      {open && signedIn && failed === open ? <div className="i-page i-page--center"><ErrorState title={`Couldn’t load ${integration(open).name}`} detail={`GET /api/v1/integrations/${open}`}
+          actions={<Button variant="primary" onClick={() => { setFailed(undefined); setRetry((n) => n + 1); }}><Icon name="refresh" />Try again</Button>}>
+          Nothing was disconnected. This is only the page failing to load.</ErrorState></div>
+        : open && (live || signedIn) ? <LiveIntegrationPage key={`${open}:${details[open] ? "ready" : "loading"}`} id={open} detail={details[open] ?? "loading"} tab={tab} setTab={setTab} local={!!live}
+          people={{ meId: app?.me.user.id, meName: app?.person.name, names }} onBack={() => { setOpen(undefined); setTab("overview"); }} onDisconnect={() => setDialog("disconnect")}
+          onReconnect={signedIn ? () => void reconnect(open) : undefined} onSaveMapping={signedIn && onSaveMapping ? (rows) => onSaveMapping(open, rows) : undefined} />
+        : open ? <IntegrationPage id={open} conn={conn[open]} tab={tab} setTab={setTab} onBack={() => { setOpen(undefined); setTab("overview"); }}
           onFix={() => fix(open)} onDisconnect={() => setDialog("disconnect")} mapErrors={seed.mapErrors} logOpen={seed.logOpen} />
-        : <Home conn={conn} onOpen={(id) => { setOpen(id); setTab("overview"); }} onConnect={connect} onFix={fix} />}
+        : <Home conn={conn} last={signedIn ? last ?? {} : undefined} onOpen={(id) => { setOpen(id); setTab("overview"); }} onConnect={connect} onFix={fix} />}
       <ConnectCal open={dialog === "connect-cal"} onClose={() => setDialog(undefined)} onContinue={() => { set("cal", "connecting"); setDialog("connecting"); }} />
       <Connecting open={dialog === "connecting"} onClose={() => { setDialog(undefined); set("cal", conn.cal === "connecting" ? "off" : conn.cal); }} onBack={() => done("cal")} />
       <ConnectErp open={dialog === "connect-erp" || dialog === "connect-erp-failed"} failed={dialog === "connect-erp-failed"} onClose={() => setDialog(undefined)} onConnect={() => done("phoenix")} />
       <ConnectAutoSend open={dialog === "connect-autosend"} onClose={() => setDialog(undefined)} onConnect={() => done("autosend")} />
       <Disconnect open={dialog === "disconnect"} id={open ?? "phoenix"} onClose={() => setDialog(undefined)}
-        onConfirm={() => { const id = open ?? "phoenix"; set(id, "off"); setDialog(undefined); setOpen(undefined); toast({ children: `${integration(id).name} disconnected`, meta: "nothing in it was deleted", action: { label: "Reconnect", onClick: () => connect(id) } }); }} />
+        onConfirm={() => { const id = open ?? "phoenix"; set(id, "off"); void onChange?.(id, "off"); if (signedIn) forget(id); setDialog(undefined); setOpen(undefined); toast({ children: `${integration(id).name} disconnected`, meta: "nothing in it was deleted", action: { label: "Reconnect", onClick: () => connect(id) } }); }} />
     </>
   );
 }
 
 /* ------------------------------------------------------------ the list */
-function Home({ conn, onOpen, onConnect, onFix }: { conn: Record<IntegrationId, Connection>; onOpen: (id: IntegrationId) => void; onConnect: (id: IntegrationId) => void; onFix: (id: IntegrationId) => void }) {
+function Home({ conn, last, onOpen, onConnect, onFix }: { conn: Record<IntegrationId, Connection>; last?: Partial<Record<IntegrationId, LastEvent | null>>; onOpen: (id: IntegrationId) => void; onConnect: (id: IntegrationId) => void; onFix: (id: IntegrationId) => void }) {
   const none = Object.values(conn).every((c) => c === "off");
+  const now = useNow();
+  // Signed in, the list reads the real last event (or nothing yet), and a problem line only says what's known.
+  const lastLine = (id: IntegrationId, sample: string) => {
+    if (!last) return <span className="c-mono i-row__last">Last: {sample}</span>;
+    const e = last[id];
+    return e ? <span className="c-mono i-row__last">Last: {e.event} · {agoLabel(new Date(e.at), now)}</span> : <span className="c-faint i-row__last">{LIVE_COPY.emptyTitle}</span>;
+  };
   return (
     <div className="i-page">
       <div className="i-head"><h2>Integrations</h2>
@@ -128,8 +223,8 @@ function Home({ conn, onOpen, onConnect, onFix }: { conn: Record<IntegrationId, 
               <div className="i-row__txt">
                 <span className="i-row__top"><span className="c-strong">{i.name}</span><span className="c-faint">{i.role}</span><Pill tone={h.tone}>{h.word}</Pill></span>
                 <span className="i-row__what">{i.what}</span>
-                {c !== "off" && c !== "connecting" && <span className="c-mono i-row__last">Last: {i.last}</span>}
-                {h.needsYou && p && <span className={cx("i-row__problem", `is-${h.tone}`)}><Icon name="alert" size={12} /><span><b>{p.title}</b> {p.body}</span></span>}
+                {c !== "off" && c !== "connecting" && lastLine(i.id, i.last)}
+                {h.needsYou && p && !last && <span className={cx("i-row__problem", `is-${h.tone}`)}><Icon name="alert" size={12} /><span><b>{p.title}</b> {p.body}</span></span>}
               </div>
               <div className="i-row__acts">
                 {c === "off" ? <Button variant={i.id === "cal" && none ? "primary" : "default"} onClick={() => onConnect(i.id)}>Connect</Button>

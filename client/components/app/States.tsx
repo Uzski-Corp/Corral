@@ -1,4 +1,5 @@
 import { isValidElement, type CSSProperties, type ReactNode } from "react";
+import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
 import { Icon, type IconName } from "./icons";
 import { cx } from "./primitives";
 
@@ -63,16 +64,51 @@ export function AppSkeleton({ frame = "viewport", label = "Loading Corral" }: { 
 
 export const Spinner = ({ size = 14 }: { size?: number }) => <span className="c-spin" style={{ width: size, height: size }} aria-hidden="true" />;
 
-/* Empty state: says what this place is for, then the one way to fill it.
-   art="range" drops a small crop of the Open Range image world into the UI (brand inside product). */
+/* Empty state (M13): one small Open Range mark, a 2–3 word title, one line, one action.
+   The mark is the only image a working screen carries: a crop of the range at its horizon (`mark="crop"`, the default)
+   or, where a photo would be loud (inside a pane, a dialog, a short card), the horizon as a hairline (`mark="line"`).
+   A single Phosphor glyph sits on the horizon and names the place. No illustrations (they were dropped in M13). */
 /** A list or block can't sit inside <p> (invalid HTML, and a hydration mismatch); it gets a div styled like the <p>. */
 const BLOCKS = new Set(["ul", "ol", "div", "dl", "table", "form", "details"]);
 const isBlock = (n: ReactNode) => isValidElement(n) && typeof n.type === "string" && BLOCKS.has(n.type);
 
-export function EmptyState({ icon, title, children, actions, art, compact }: { icon?: IconName; title: ReactNode; children?: ReactNode; actions?: ReactNode; art?: "range" | "grass"; compact?: boolean }) {
+export type EmptyMarkKind = "crop" | "line";
+/** The Open Range mark on its own: the horizon (photo crop or hairline) with one glyph resting on it. */
+export function EmptyMark({ glyph: G, kind = "crop", tone }: { glyph: PhosphorIcon; kind?: EmptyMarkKind; tone?: "error" }) {
   return (
-    <div className={cx("c-empty", compact && "c-empty--compact")}>
-      {art ? <span className={cx("c-empty__art", `c-empty__art--${art}`)} aria-hidden="true" /> : icon && <span className="c-empty__ic"><Icon name={icon} size={16} /></span>}
+    <span className={cx("c-empty__mark", `c-empty__mark--${kind}`, tone && `c-empty__mark--${tone}`)} aria-hidden="true">
+      <span className="c-empty__glyph"><G size={16} weight="regular" /></span>
+    </span>
+  );
+}
+
+export type EmptyStateProps = {
+  /** 2–3 words. Says what the place is, not what went wrong: “No segments yet”. */
+  title: ReactNode;
+  /** One short line: what fills it. */
+  children?: ReactNode;
+  /** One action (a primary, plus at most one quiet alternative). */
+  actions?: ReactNode;
+  /** M13: the Phosphor glyph on the Open Range mark. Prefer this. */
+  glyph?: PhosphorIcon;
+  /** M13: the photo crop (default) or the hairline horizon for panes and dialogs. */
+  mark?: EmptyMarkKind;
+  /** @deprecated M1 icon disc; kept for compact in-list states (no results, search). */
+  icon?: IconName;
+  /** @deprecated M1 art crop without a glyph; use `glyph` (maps to mark="crop"). */
+  art?: "range" | "grass";
+  compact?: boolean;
+  /** For tests and analytics. */
+  id?: string;
+};
+
+export function EmptyState({ glyph, mark, icon, title, children, actions, art, compact, id }: EmptyStateProps) {
+  const lead = glyph ? <EmptyMark glyph={glyph} kind={mark ?? (compact ? "line" : "crop")} />
+    : art ? <span className={cx("c-empty__art", `c-empty__art--${art}`)} aria-hidden="true" />
+    : icon ? <span className="c-empty__ic"><Icon name={icon} size={16} /></span> : null;
+  return (
+    <div className={cx("c-empty", compact && "c-empty--compact", glyph && "c-empty--m13")} data-empty={id}>
+      {lead}
       <div className="c-empty__txt"><p className="c-strong">{title}</p>{children && (isBlock(children) ? <div className="c-empty__more">{children}</div> : <p>{children}</p>)}</div>
       {actions && <div className="c-actions">{actions}</div>}
     </div>

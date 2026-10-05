@@ -104,17 +104,25 @@ export function lastUsedWords(iso: string | undefined, now: Date): string {
   if (ms < 2 * DAY && addDays(d, 1).getDate() === now.getDate()) return "Yesterday";
   return dayWords(d);
 }
-/** "in 5 days", "tomorrow", "today", or the day, for an expiry. */
+/**
+ * M13 (gap 4): an expiry is always measured from the key's own date against the real clock, and always relative:
+ * "Never expires", "Expires today", "Expires tomorrow", "Expires in 41 days", "Expired yesterday", "Expired 9 days ago".
+ * Pass the key's `expires`, or `expiresAt(created, ttlDays)` when the API only sends the created date and the lifetime.
+ */
 export function expiryWords(iso: string | null | undefined, now: Date): string {
   if (!iso) return "Never expires";
   const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "Never expires";
   const midnight = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
-  const days = d <= now ? -1 : Math.round((midnight(d) - midnight(now)) / DAY);
-  if (days < 0) return `Expired ${dayWords(d)}`;
+  const days = Math.round((midnight(d) - midnight(now)) / DAY);
+  if (d <= now) return days === 0 ? "Expired today" : days === -1 ? "Expired yesterday" : `Expired ${-days} days ago`;
   if (days === 0) return "Expires today";
   if (days === 1) return "Expires tomorrow";
-  if (days <= EXPIRING_DAYS) return `Expires in ${days} days`;
-  return `Expires ${dayWords(d)}`;
+  return `Expires in ${days} days`;
+}
+/** The expiry date from the key's real created date and its lifetime; null = never expires. */
+export function expiresAt(created: string, ttlDays: number | null): string | null {
+  return ttlDays === null ? null : addDays(new Date(created), ttlDays).toISOString();
 }
 
 /* ------------------------------------------------------------ create */

@@ -8,7 +8,10 @@
  *             any `?state=` review state, and component tests that don't provide one.
  */
 import { createContext, useContext, type ReactNode } from "react";
-import { displayName, kbApiFor, leadsApiFor, type KbApi, type LeadsApi, type Me } from "@/lib/api";
+import {
+  developersApiFor, discoveryApiFor, displayName, inboxApiFor, integrationsApiFor, kbApiFor, leadsApiFor, sequencesApiFor, workspaceApiFor,
+  type DevelopersApi, type DiscoveryApi, type InboxApi, type IntegrationsApi, type KbApi, type LeadsApi, type Me, type SequencesApi, type WorkspaceApi,
+} from "@/lib/api";
 import { getConfig, type ClientConfig } from "@/lib/config";
 import type { Person } from "@/lib/kb/map";
 
@@ -16,6 +19,13 @@ export type AppData = {
   kb: KbApi;
   /** Companies, people, segments and CSV import (ENG-81). */
   leads: LeadsApi;
+  inbox: InboxApi;
+  sequences: SequencesApi;
+  discovery: DiscoveryApi;
+  integrations: IntegrationsApi;
+  developers: DevelopersApi;
+  /** The workspace profile; Team reads and writes its pending invites. */
+  workspace: WorkspaceApi;
   me: Me;
   /** The signed-in person as the mappers name them ("Added by Wanjiru Mwangi"). */
   person: Person;
@@ -29,6 +39,17 @@ export function AppDataProvider({ value, children }: { value: AppData | null; ch
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
-export function appDataFor(me: Me, config: ClientConfig = getConfig(), apis: Partial<Pick<AppData, "kb" | "leads">> = {}): AppData {
-  return { kb: apis.kb ?? kbApiFor(config), leads: apis.leads ?? leadsApiFor(config), me, person: { id: me.user.id, name: displayName(me.user) } };
+export function appDataFor(me: Me, config: ClientConfig = getConfig(), apis: Partial<Pick<AppData, "kb" | "leads" | "inbox" | "sequences" | "discovery" | "integrations" | "developers" | "workspace">> = {}): AppData {
+  return {
+    kb: apis.kb ?? kbApiFor(config),
+    leads: apis.leads ?? leadsApiFor(config),
+    inbox: apis.inbox ?? inboxApiFor(config),
+    sequences: apis.sequences ?? sequencesApiFor(config),
+    discovery: apis.discovery ?? discoveryApiFor(config),
+    integrations: apis.integrations ?? integrationsApiFor(config),
+    developers: apis.developers ?? developersApiFor(config),
+    workspace: apis.workspace ?? workspaceApiFor(config),
+    me,
+    person: { id: me.user.id, name: displayName(me.user) },
+  };
 }

@@ -16,7 +16,7 @@ export default defineConfig({
       // Coverage gate for the code this change adds. Bau's design components are exercised by
       // the component tests too, but are reported separately (pnpm test:coverage:all).
       include: [
-        "lib/**/*.ts",
+        "lib/**/*.{ts,tsx}",
         "proxy.ts",
         "components/session/**/*.tsx",
         "components/app/useFocusTrap.ts",
@@ -25,10 +25,10 @@ export default defineConfig({
         "app/onboarding/layout.tsx",
         "app/sign-in/page.tsx",
         "app/onboarding/page.tsx",
-        "app/app/page.tsx",
+        "app/app/**/page.tsx",
       ],
       reporter: ["text", "text-summary", "json-summary", "html"],
-      thresholds: { lines: 90, statements: 90, functions: 90, branches: 90 },
+      thresholds: { lines: 99, statements: 98, functions: 98, branches: 96 },
     },
   },
 });

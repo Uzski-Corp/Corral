@@ -31,12 +31,12 @@ describe("useLeadProduct", () => {
     expect(renderHook(() => useLeadProduct(null)).result.current).toEqual({ productId: null, ready: false });
     resetKb({ products: [productRow("p2", "Gateway", "2026-09-30T08:00:00Z"), productRow("p1", "Sensors", "2026-09-01T08:00:00Z")] });
     const { result } = renderHook(() => useLeadProduct(kbApiFor(testConfig())));
-    await waitFor(() => expect(result.current).toEqual({ productId: "p1", ready: true }));
+    await waitFor(() => expect(result.current).toEqual({ productId: "p1", productName: "Sensors", ready: true }));
   });
   it("still loads the table when there's no product or no answer", async () => {
     server.use(http.get(`${API}/api/v1/products`, () => HttpResponse.json({ detail: "down" }, { status: 503 })));
     const { result } = renderHook(() => useLeadProduct(kbApiFor(testConfig())));
-    await waitFor(() => expect(result.current).toEqual({ productId: null, ready: true }));
+    await waitFor(() => expect(result.current).toEqual({ productId: null, productName: null, ready: true }));
   });
 });
 

@@ -55,11 +55,12 @@ describe("expiry and status", () => {
     expect(lastUsedWords("2026-09-29T16:20:00+03:00", NOW)).toBe("Yesterday");
     expect(lastUsedWords("2026-09-21T09:58:00+03:00", NOW)).toBe("Sep 21");
     expect(expiryWords(null, NOW)).toBe("Never expires");
-    expect(expiryWords("2026-09-21T10:00:00+03:00", NOW)).toBe("Expired Sep 21");
+    expect(expiryWords("2026-09-21T10:00:00+03:00", NOW)).toBe("Expired 9 days ago");
     expect(expiryWords("2026-09-30T18:00:00+03:00", NOW)).toBe("Expires today");
     expect(expiryWords("2026-10-01T10:00:00+03:00", NOW)).toBe("Expires tomorrow");
     expect(expiryWords("2026-10-04T10:00:00+03:00", NOW)).toBe("Expires in 4 days");
-    expect(expiryWords("2026-11-10T10:00:00+03:00", NOW)).toBe("Expires Nov 10");
+    expect(expiryWords("2026-11-10T10:00:00+03:00", NOW)).toBe("Expires in 41 days");
+    expect(expiryWords("2026-09-29T10:00:00+03:00", NOW)).toBe("Expired yesterday");
   });
   it("rotating keeps the old secret for the overlap", () => {
     const r = rotate(NOW);

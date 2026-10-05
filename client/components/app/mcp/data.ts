@@ -3,8 +3,18 @@ import { accessOf, PRESETS, type AccessMap, type ExpiryId, type KeyEnv, type Vie
 import type { Auth, ClientId } from "@/lib/mcp/tools";
 import type { McpReviewState } from "@/lib/mcp/state";
 
-/** The design's "now": Wed 30 Sep 2026, 09:45 EAT (the Unibox's morning). */
-export const NOW = new Date("2026-09-30T09:45:00+03:00");
+/** When the review fixtures below were written (Wed 30 Sep 2026, 09:45 EAT). M13: never rendered as "now";
+ *  `rebaseKey` moves a fixture's dates so they keep the same distance from the real clock (gap 4). */
+export const FIXTURES_WRITTEN = new Date("2026-09-30T09:45:00+03:00");
+/** @deprecated M13: measure against the real clock (`useNow()`), not a fixed sample date. Kept for old tests only. */
+export const NOW = FIXTURES_WRITTEN;
+const shiftIso = (iso: string | undefined, by: number) => (iso ? new Date(new Date(iso).getTime() + by).toISOString() : iso);
+/** A review key with its created / expires / last-used dates moved to the real clock. Live keys come from the API as they are. */
+export function rebaseKey(k: ApiKey, now: Date): ApiKey {
+  const by = now.getTime() - FIXTURES_WRITTEN.getTime();
+  return { ...k, created: shiftIso(k.created, by)!, expires: k.expires === null ? null : shiftIso(k.expires, by)!, lastUsed: shiftIso(k.lastUsed, by),
+    revoked: k.revoked, oldUntil: shiftIso(k.oldUntil, by), refused: k.refused && { ...k.refused, last: shiftIso(k.refused.last, by)! } };
+}
 
 export type ApiKey = {
   id: string; name: string; env: KeyEnv; last4: string; scopes: string[]; by: string; created: string;
@@ -32,7 +42,9 @@ export const ROTATED_SECRET = "crl_live_9GvT3kLq7ZpX2wNc5RbM8sHd1yJf4uEa";
 
 export type Health = "ok" | "scope" | "expired" | "limited";
 export type Connection = {
-  id: string; client: ClientId | "n8n" | "zapier"; name: string; device: string; who: string; auth: Auth; keyName?: string;
+  /** `device`: where it runs, when Corral knows (fixtures). M14: MCP has no clientInfo, so a new connection has none;
+   *  it reads by its name and `firstCallAt`, the oldest call the server has for it (ISO). */
+  id: string; client: ClientId | "n8n" | "zapier"; name: string; device?: string; firstCallAt?: string; who: string; auth: Auth; keyName?: string;
   preset: string; access: AccessMap; since: string; last: string; lastTool: string; calls7d: number; health: Health; problem?: string;
 };
 const R = PRESETS[0].access; const D = PRESETS[1].access;
@@ -77,7 +89,24 @@ export type DevDialog = "connect" | "waiting" | "connected" | "revoke-conn" | "c
 /** Who's looking. Tomás owns ColdTrace's workspace; Amara is a member (keys-member). */
 export const OWNER: Viewer = { name: "Tomás Ibarra", role: "owner" };
 export const MEMBER: Viewer = { name: "Amara Njoroge", role: "member" };
+/** M14 (Krak): what the server has for a new connection. MCP sends no clientInfo Corral keeps, so there's no host
+ *  version: only the connection's name and its oldest call (ISO). Never a sample name. */
+export type FirstCall = { name: string; oldestCallAt: string; tool?: string };
+/** A review fixture time moved to the real clock, the way rebaseKey moves a key's dates. */
+export const rebaseIso = (iso: string, now: Date) => new Date(new Date(iso).getTime() + now.getTime() - FIXTURES_WRITTEN.getTime()).toISOString();
+/** Signed in, what the Waiting dialog's "Check again" asks: a connection the list didn't have, with its first call. */
+export type FirstCallCheck = (known: string[]) => Promise<{ conn: Connection; first: FirstCall } | null>;
+const isTime = (v: unknown): v is string => typeof v === "string" && !Number.isNaN(Date.parse(v));
+/** The connection's name plus its oldest call. The list's `firstCallAt` is the server's own time for it; the calls
+ *  (newest first, the last 50) name the tool. No call yet means the host hasn't arrived. */
+export function firstCallFrom(conn: { name: string; firstCallAt?: unknown }, calls: { at?: unknown; tool?: unknown }[]): FirstCall | null {
+  const oldest = calls.at(-1);
+  const at = isTime(conn.firstCallAt) ? conn.firstCallAt : isTime(oldest?.at) ? oldest.at : undefined;
+  if (!at) return null;
+  return { name: conn.name, oldestCallAt: at, ...(typeof oldest?.tool === "string" ? { tool: oldest.tool } : {}) };
+}
 export type DevSeed = {
+  firstCall?: FirstCall;
   viewer?: Viewer;
   load?: "loading" | "error"; empty?: boolean; dialog?: DevDialog; client?: ClientId; auth?: Auth;
   open?: string; errors?: boolean; problems?: boolean; key?: string; consent?: boolean;
@@ -92,7 +121,7 @@ export function devSeed(s?: McpReviewState): DevSeed {
     case "mcp-connect-key": return { dialog: "connect", client: "vscode", auth: "key" };
     case "mcp-consent": return { consent: true };
     case "mcp-waiting": return { dialog: "waiting", client: "cursor", auth: "oauth" };
-    case "mcp-connected": return { dialog: "connected", client: "cursor", auth: "oauth" };
+    case "mcp-connected": return { dialog: "connected", client: "cursor", auth: "oauth", firstCall: { name: "Cursor", oldestCallAt: new Date(FIXTURES_WRITTEN.getTime() - 2 * 60_000).toISOString(), tool: "tools/list" } };
     case "mcp-activity": return { open: "cn_cursor" };
     case "mcp-error": return { problems: true };
     case "mcp-revoke": return { open: "cn_cursor", dialog: "revoke-conn" };

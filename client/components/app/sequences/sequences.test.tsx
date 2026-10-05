@@ -22,7 +22,7 @@ afterEach(() => vi.useRealTimers());
 describe("SequencesView · builder", () => {
   it("starts from nothing: what a sequence is, then a blank step or Corral's draft", async () => {
     render(<Host state="empty" />);
-    expect(screen.getByText("Write your first sequence")).toBeInTheDocument();
+    expect(screen.getByText("No sequences yet")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Start blank" }));
     expect(screen.getByRole("heading", { name: "Untitled sequence" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Step 1" })).toBeInTheDocument();
@@ -31,7 +31,7 @@ describe("SequencesView · builder", () => {
 
   it("drafts with Corral from the empty state", async () => {
     render(<Host state="empty" />);
-    await userEvent.click(screen.getByRole("button", { name: /Draft one with Corral/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Draft with Corral/ }));
     expect(screen.getByRole("region", { name: "Corral's draft" })).toBeInTheDocument();
   });
 
@@ -164,8 +164,33 @@ describe("SequencesView · launch, run, pause", () => {
     await user.click(screen.getByRole("button", { name: /Launch to 82/ }));
     expect(screen.getByRole("region", { name: "Launching" })).toHaveTextContent("Nothing has been sent yet");
     for (let i = 0; i < 3; i++) await act(async () => { vi.advanceTimersByTime(1200); });
-    expect(screen.getByText("Dairy cold rooms · first touch is running")).toBeInTheDocument();
+    // M13: checks → Sending (a mailbox is warm) → Live, never an endless "launching"
+    expect(screen.getAllByText("Sending").length).toBeGreaterThan(0);
+    for (let i = 0; i < 12 && !screen.queryByText("Dairy cold rooms · first touch is live"); i++) await act(async () => { vi.advanceTimersByTime(1200); });
+    expect(screen.getByText("Dairy cold rooms · first touch is live")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument();
+  });
+
+  it("M13: queued without a mailbox, sending, and failed each say where the launch is", () => {
+    const { unmount } = render(<Host state="queued" />);
+    expect(screen.getAllByText("Waiting for mailbox").length).toBeGreaterThan(0);
+    expect(screen.getByText("Connect a mailbox to start sending.")).toBeInTheDocument();
+    expect(screen.queryByText(/Launching/)).not.toBeInTheDocument();
+    unmount();
+    const r2 = render(<Host state="sending" />);
+    expect(screen.getByText("34 of 82 first emails sent.")).toBeInTheDocument();
+    r2.unmount();
+    render(<Host state="failed" />);
+    expect(screen.getAllByText("Failed").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+  });
+
+  it("M13: a new sequence is a real blank draft, with no sample copy", async () => {
+    render(<Host state="new" />);
+    expect(screen.getByPlaceholderText("Write your first step")).toHaveValue("");
+    const step = screen.getByRole("region", { name: "Step 1" });
+    expect(within(step).queryByText(/ColdTrace|Tomás|F&B/)).not.toBeInTheDocument();
+    expect(step.textContent ?? "").not.toMatch(/ColdTrace|Tomás|F&B/);
   });
 
   it("cancels a launch", async () => {

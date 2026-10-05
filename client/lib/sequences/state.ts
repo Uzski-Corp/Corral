@@ -16,9 +16,17 @@
  *   running      a live sequence: per-step numbers, what sends next
  *   paused       paused by you: what's held, Resume
  *   mailboxes    the mailbox pool: warm-up, health, daily caps, a disconnected mailbox, a bounce spike
+ * M13 (Krak's gaps 4–5)
+ *   new          a new sequence: a real blank draft, step 1 open with an empty subject and body
+ *   queued       launched with no mailbox connected: Waiting for mailbox, Connect mailbox (nothing sent)
+ *   queued-window launched, mailboxes ready, waiting for the send window: Queued
+ *   sending      the first batch going out: Sending, 34 of 82
+ *   live         sending on schedule: Live (the running sequence)
+ *   failed       sending stopped: what happened, nothing lost, Try again
  */
 export const SEQUENCE_REVIEW_STATES = [
   "empty", "loading", "error", "draft", "conditions", "editor", "copilot", "errors", "launch", "launching", "running", "paused", "mailboxes",
+  "new", "queued", "queued-window", "sending", "live", "failed",
 ] as const;
 export type SequenceReviewState = (typeof SEQUENCE_REVIEW_STATES)[number];
 

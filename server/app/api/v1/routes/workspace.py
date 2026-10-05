@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app.api.v1.workspace_schemas import (
-    InviteIn,
+    InviteOut,
     PictureOut,
     ProductBrief,
     SitePageOut,
@@ -27,7 +27,7 @@ from app.core.config import Settings
 from app.core.errors import ApiProblem
 from app.kb.service import DuplicateSource, KnowledgeBaseService
 from app.kb.web import FetchConfig, FetchFailure, SafeFetcher, UrlRejected
-from app.models.identity import Organization
+from app.models.identity import Membership, Organization, User
 from app.models.knowledge import Product
 from app.onboarding.logo import EXT, sniff_image
 from app.onboarding.site import read_public_site
@@ -66,17 +66,28 @@ def _pages(raw: object) -> list[SitePageOut]:
     return pages
 
 
-def _invites(raw: object) -> list[InviteIn]:
+def _when(raw: object) -> datetime | None:
+    if not isinstance(raw, str):
+        return None
+    try:
+        return datetime.fromisoformat(raw)
+    except ValueError:
+        return None
+
+
+def _invites(raw: object) -> list[InviteOut]:
     if not isinstance(raw, list):
         return []
-    invites: list[InviteIn] = []
+    invites: list[InviteOut] = []
     for item in raw:
         if not isinstance(item, dict) or not isinstance(item.get("email"), str):
             continue
         role = item.get("role")
         if role not in ("admin", "member", "viewer"):
             role = "member"
-        invites.append(InviteIn(email=item["email"], role=role))
+        invites.append(
+            InviteOut(email=item["email"], role=role, invited_at=_when(item.get("invited_at")))
+        )
     return invites
 
 
@@ -121,6 +132,25 @@ async def get_workspace(ctx: AuthContextDep, db: DbDep) -> WorkspaceOut:
     return await _out(db, ctx.org)
 
 
+@router.get("/members")
+async def list_members(ctx: AuthContextDep, db: DbDep) -> list[dict[str, str]]:
+    """People in this workspace. A new account has one row: the person who signed up."""
+    rows = (
+        await db.execute(
+            select(Membership, User)
+            .join(User, User.id == Membership.user_id)
+            .where(Membership.org_id == ctx.org.id)
+            .order_by(Membership.created_at)
+        )
+    ).all()
+    out = []
+    for membership, user in rows:
+        parts = [user.first_name or "", user.last_name or ""]
+        name = " ".join(part for part in parts if part).strip() or user.email
+        out.append({"id": str(user.id), "name": name, "email": user.email, "role": membership.role})
+    return out
+
+
 @router.patch("", dependencies=WRITE)
 async def update_workspace(ctx: AuthContextDep, db: DbDep, body: WorkspaceUpdate) -> WorkspaceOut:
     org = ctx.org
@@ -133,8 +163,21 @@ async def update_workspace(ctx: AuthContextDep, db: DbDep, body: WorkspaceUpdate
     if body.skipped is not None:
         org.skipped_steps = list(dict.fromkeys(body.skipped))
     if body.invites is not None:
+        # An invite already pending keeps the time it was first sent; a new one is stamped now.
+        sent = {
+            item["email"].lower(): item.get("invited_at")
+            for item in org.pending_invites or []
+            if isinstance(item, dict) and isinstance(item.get("email"), str)
+        }
+        stamp = datetime.now(UTC).isoformat()
         org.pending_invites = [
-            {"email": invite.email, "role": invite.role} for invite in body.invites if invite.email
+            {
+                "email": invite.email,
+                "role": invite.role,
+                "invited_at": sent.get(invite.email.lower()) or stamp,
+            }
+            for invite in body.invites
+            if invite.email
         ]
     if body.complete and org.onboarded_at is None:
         org.onboarded_at = datetime.now(UTC)
@@ -188,7 +231,7 @@ async def _put_logo(store: ObjectStore, *, key: str, body: bytes, content_type: 
 
 def _from_mail(url: str | None) -> bool:
     """A picture we stored lives under /avatars/. Anything else came from the mail account."""
-    return bool(url) and "/avatars/" not in url
+    return url is not None and url != "" and "/avatars/" not in url
 
 
 @router.post("/picture", dependencies=WRITE)

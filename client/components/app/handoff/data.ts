@@ -5,6 +5,7 @@ import { afterMeeting, beforeCall, type After, type DealState, type ErpStage, ty
 import type { HandoffReviewState } from "@/lib/handoff/state";
 import type { Connection, CorralField, ErpField, IntegrationId, LogRow, MapRow } from "@/lib/integrations/integrations";
 import type { SettingsReviewState } from "@/lib/integrations/state";
+import type { IntegrationAccount, IntegrationDetail, IntegrationLog } from "@/lib/integrations/live";
 import type { CopilotModel } from "../unibox/data";
 
 export const CAL_LINK = "cal.com/tomas/20min";
@@ -116,7 +117,7 @@ export const INTEGRATIONS: IntegrationModel[] = [
     account: [["Sends to", ERP_URL], ["Signing secret", "whsec_••••9f2c · HMAC-SHA256 · set Sep 14"], ["Phoenix sends back", "Stage changes, signed with the same secret"], ["Since", "Sep 14"]],
     last: "deal.create PX-2288 · Yesterday, 16:18" },
   { id: "autosend", name: "AutoSend", role: "Follow-up mail", tile: "As",
-    what: "Once someone replies or books, the mail that isn’t one person to one person (a reminder, a case study, onboarding) goes through AutoSend from mail.coldtrace.io, with an unsubscribe link. Cold email never does.",
+    what: "Once someone replies or books, the mail that isn’t one person to one person (a reminder, a case study, onboarding) goes through AutoSend from your sending domain, with an unsubscribe link. Cold email never does.",
     does: ["Booked: adds the guests to Before your call (one email, 24 hours before)", "Meeting ended: starts After your call (three emails over ten days)", "Cancelled, no-show or unsubscribed: nothing automatic; a person writes"],
     account: [["Project", "ColdTrace"], ["Sends as", `${AUTOSEND_SENDER} · verified`], ["Journeys", "Before your call · After your call"], ["Since", "Sep 16"]],
     last: "event meeting_booked · Yesterday, 16:18" },
@@ -167,6 +168,12 @@ export function settingsSeed(s?: SettingsReviewState): SettingsSeed {
     case "autosend": return { ...base, open: "autosend" };
     case "loading": return { ...base, load: "loading" };
     case "load-error": return { ...base, load: "error" };
+    // M13: Team and Billing pick their own section (sectionFor); the integrations seed stays at rest.
+    case "team": case "team-solo": case "team-invite": case "team-loading":
+    case "billing": case "billing-loading": return base;
+    // M14: the live detail page reads liveSeed(); the M8 list stays at rest behind it.
+    case "int-connected": case "int-quiet": case "int-quiet-cal": case "int-mapping": case "int-logs": case "int-logs-loading":
+    case "int-expired": case "int-reconnecting": return base;
   }
 }
 
@@ -244,3 +251,59 @@ export const GRACE_VALUES: Record<string, string | number> = {
 export const STAGE_MAP: [string, ErpStage, string][] = [
   ["Meeting booked", "Discovery", "new deal"], ["Meeting moved", "Discovery", "same deal, new time"], ["Meeting cancelled", "Lead", "kept open"], ["No-show", "Lead", "kept open"],
 ];
+
+/* ------------------------------------------------------------ M14: a connected integration from real data */
+/** Review placeholders for the live detail page: example.com addresses, booking and deal ids, never a person or company.
+ *  Times are minutes before the real clock, so "18 min ago" stays true whenever the review is opened. */
+type LogSeed = Omit<IntegrationLog, "at"> & { ago: number };
+const H = 60, D = 24 * H;
+const LIVE_LOGS: Record<IntegrationId, LogSeed[]> = {
+  cal: [
+    { id: "c1", ago: 18, dir: "in", event: "BOOKING_CREATED", result: "ok", detail: "bk_7Hq2Lw · signature checked" },
+    { id: "c2", ago: 2 * H + 5, dir: "in", event: "BOOKING_RESCHEDULED", result: "ok", detail: "bk_5Tn1Pa · new time saved" },
+    { id: "c3", ago: D + 40, dir: "in", event: "BOOKING_CREATED", result: "duplicate", detail: "bk_7Hq2Lw · already received" },
+    { id: "c4", ago: 2 * D + 3 * H, dir: "in", event: "BOOKING_CANCELLED", result: "ok", detail: "bk_2Wd8Ke · thread back in Needs you" },
+    { id: "c5", ago: 3 * D, dir: "in", event: "PING", result: "ok", detail: "Webhook check from Cal.com" },
+  ],
+  phoenix: [
+    { id: "p1", ago: 6, dir: "out", event: "deal.create", result: "failed", detail: "401 invalid_signature · not retried" },
+    { id: "p2", ago: 40, dir: "out", event: "deal.create", result: "retrying", detail: "503 · try 2 of 6" },
+    { id: "p3", ago: 3 * H, dir: "out", event: "deal.update", result: "ok", detail: "PX-2288 · next meeting moved" },
+    { id: "p4", ago: D + 2 * H, dir: "in", event: "stage.changed", result: "ok", detail: "PX-2241 → Won · sequences stopped" },
+    { id: "p5", ago: D + 5 * H, dir: "out", event: "deal.create", result: "ok", detail: "PX-2288 · opened at Discovery" },
+  ],
+  autosend: [],
+};
+const EXPIRED_CAL: LogSeed[] = [
+  { id: "x1", ago: 25, dir: "in", event: "BOOKING_CREATED", result: "failed", detail: "401 token_expired · kept, catches up on reconnect" },
+  ...LIVE_LOGS.cal.slice(1).map((r) => ({ ...r, ago: r.ago + 2 * H })),
+];
+const LIVE_ACCOUNT: Record<IntegrationId, IntegrationAccount> = {
+  cal: { name: "Your Cal.com account", email: "you@example.com" },
+  phoenix: { name: "erp.example.com" },
+  autosend: { name: "Your AutoSend project", email: "you@example.com" },
+};
+const LIVE_SINCE: Record<IntegrationId, number> = { cal: 19 * D, phoenix: 19 * D, autosend: 17 * D };
+const iso = (now: Date, ago: number) => new Date(now.getTime() - ago * 60_000).toISOString();
+
+export type LiveSeed = { open: IntegrationId; tab: SettingsSeed["tab"]; detail: IntegrationDetail };
+/** M14 review states → the live detail page. `connectedById: "me"` reads as the signed-in person. */
+export function liveSeed(s: SettingsReviewState | undefined, at: Date): LiveSeed | undefined {
+  // Whole minutes, so the server's render and the browser's agree on every time.
+  const now = new Date(Math.floor(at.getTime() / 60_000) * 60_000);
+  const d = (id: IntegrationId, logs: LogSeed[] | "loading", more: Partial<IntegrationDetail> = {}): IntegrationDetail => ({
+    id, account: LIVE_ACCOUNT[id], connectedAt: iso(now, LIVE_SINCE[id]), connectedById: "me",
+    logs: logs === "loading" ? "loading" : logs.map(({ ago, ...r }) => ({ ...r, at: iso(now, ago) })), ...more,
+  });
+  switch (s) {
+    case "int-connected": return { open: "cal", tab: "overview", detail: d("cal", LIVE_LOGS.cal) };
+    case "int-quiet": return { open: "autosend", tab: "overview", detail: d("autosend", []) };
+    case "int-quiet-cal": return { open: "cal", tab: "overview", detail: d("cal", []) };
+    case "int-mapping": return { open: "phoenix", tab: "mapping", detail: d("phoenix", [], { mapping: null }) };
+    case "int-logs": return { open: "phoenix", tab: "logs", detail: d("phoenix", LIVE_LOGS.phoenix, { mapping: null }) };
+    case "int-logs-loading": return { open: "phoenix", tab: "logs", detail: d("phoenix", "loading", { mapping: null }) };
+    case "int-expired": return { open: "cal", tab: "overview", detail: d("cal", EXPIRED_CAL, { problem: { kind: "token-expired", since: iso(now, 2 * H + 10), code: "401 token_expired" } }) };
+    case "int-reconnecting": return { open: "cal", tab: "overview", detail: d("cal", EXPIRED_CAL, { problem: { kind: "token-expired", since: iso(now, 2 * H + 10) }, reconnecting: true }) };
+    default: return undefined;
+  }
+}

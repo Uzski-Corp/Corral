@@ -95,3 +95,15 @@ def test_inconsistent_kb_settings_are_rejected(overrides: dict[str, object], mes
 def test_openai_embeddings_with_a_key_are_accepted() -> None:
     s = make_settings(kb_embedding_provider="openai", kb_embedding_api_key="sk-test")
     assert s.kb_embedding_api_key.get_secret_value() == "sk-test"
+
+
+def test_r2_public_base_url_must_be_http() -> None:
+    r2 = {
+        "r2_account_id": "acct",
+        "r2_access_key_id": "AK",
+        "r2_secret_access_key": "SK",
+        "r2_bucket": "b",
+    }
+    with pytest.raises(ValidationError, match="http"):
+        make_settings(**r2, r2_public_base_url="cdn.test")
+    assert make_settings(**r2, r2_public_base_url="https://cdn.test").r2_configured is True

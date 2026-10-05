@@ -22,7 +22,34 @@ export const LOGOUT_URL = "https://auth.workos.test/logout?session_id=s_1";
 export const GOOD_CODE = "123456";
 export const EXPIRED_CODE = "111111";
 
+const emptyActivity = [
+  http.get(`${API}/api/v1/inbox/summary`, () => HttpResponse.json({ needs_you: 0 })),
+  http.get(`${API}/api/v1/inbox`, () => HttpResponse.json([])),
+  http.patch(`${API}/api/v1/inbox/:id`, async ({ request }) => HttpResponse.json(await request.json())),
+  http.post(`${API}/api/v1/inbox/:id/send`, async ({ request }) => HttpResponse.json(await request.json())),
+  http.get(`${API}/api/v1/sequences`, () => HttpResponse.json([])),
+  http.post(`${API}/api/v1/sequences`, async ({ request }) => HttpResponse.json({ id: "new", ...(await request.json() as object) }, { status: 201 })),
+  http.patch(`${API}/api/v1/sequences/:id`, async ({ request }) => HttpResponse.json(await request.json())),
+  http.get(`${API}/api/v1/mailboxes`, () => HttpResponse.json({ mailboxes: [], sent: 0, cap: 0, attention: 0 })),
+  http.get(`${API}/api/v1/discovery/runs`, () => HttpResponse.json({ runs: [], credits: { month: 0, used: 0, left: 0 } })),
+  http.get(`${API}/api/v1/discovery/credits`, () => HttpResponse.json({ month: 0, used: 0, left: 0 })),
+  http.post(`${API}/api/v1/discovery/runs`, async ({ request }) => HttpResponse.json({ id: "run", status: "queued", ...(await request.json() as object) }, { status: 201 })),
+  http.get(`${API}/api/v1/integrations`, () => HttpResponse.json([])),
+  http.patch(`${API}/api/v1/integrations/:provider`, async ({ params, request }) => HttpResponse.json({ provider: params.provider, ...(await request.json() as object) })),
+  http.get(`${API}/api/v1/workspace/members`, () => HttpResponse.json([])),
+  http.get(`${API}/api/v1/workspace`, () => HttpResponse.json({
+    id: ME_BODY.organization.id, name: ME_BODY.organization.name, slug: ME_BODY.organization.slug,
+    timezone: null, team_size: null, logo_url: null, website: null, onboarded: true,
+    skipped: [], site_pages: [], site_highlights: [], invites: [], product: null,
+  })),
+  http.get(`${API}/api/v1/developers/keys`, () => HttpResponse.json([])),
+  http.post(`${API}/api/v1/developers/keys`, () => HttpResponse.json({ id: "key_new", secret: "crl_test_secret", last4: "cret" }, { status: 201 })),
+  http.get(`${API}/api/v1/developers/connections`, () => HttpResponse.json([])),
+  http.get(`${API}/api/v1/leads`, () => HttpResponse.json([])),
+];
+
 export const handlers = [
+  ...emptyActivity,
   http.get(`${API}/api/v1/auth/me`, () => HttpResponse.json(ME_BODY)),
   http.post(`${API}/api/v1/auth/refresh`, () => HttpResponse.json({ refreshed: true })),
   http.post(`${API}/api/v1/auth/logout`, () => HttpResponse.json({ logout_url: LOGOUT_URL })),

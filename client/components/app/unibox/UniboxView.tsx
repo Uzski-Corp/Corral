@@ -6,7 +6,8 @@ import type { Thread } from "../data";
 import { Button, Kbd } from "../primitives";
 import { Icon } from "../icons";
 import { Tabs } from "../Tabs";
-import { EmptyState, ErrorState, Skeleton, SkeletonThreads } from "../States";
+import { ErrorState, Skeleton, SkeletonThreads } from "../States";
+import { UniboxEmpty } from "../Empties";
 import { useToast } from "../Toaster";
 import { ContextRail, ReadingPane, ThreadList } from "../Unibox";
 import { UNDO_SECONDS, canSend, type DraftKind, type SendKind } from "@/lib/unibox/draft";
@@ -42,11 +43,13 @@ export type UniboxViewProps = {
   /** Review state (outside production): /app?state=… */
   state?: UniboxReviewState;
   onArchive: (id: string) => void;
+  /** Persist a sent reply. The undo window still runs locally; the message is stored when it sends. */
+  onSend?: (id: string, text: string) => void;
   /** Unibox keys (J K ↵ Esc E H 1–6 T R ⌘↵ ⌘Z ?). Off while another dialog or the palette is open. */
   hotkeys?: boolean;
 };
 
-export function UniboxView({ threads, setThreads, active, setActive, tab, setTab, pane, setPane, state, onArchive, hotkeys = true }: UniboxViewProps) {
+export function UniboxView({ threads, setThreads, active, setActive, tab, setTab, pane, setPane, state, onArchive, onSend, hotkeys = true }: UniboxViewProps) {
   const toast = useToast();
   const seed = useMemo(() => seedFor(state), [state]);
   // M8: Grace's meeting, as the live app has it (booked) or as a handoff review state has it.
@@ -96,7 +99,9 @@ export function UniboxView({ threads, setThreads, active, setActive, tab, setTab
     const id = Object.keys(sends).find((k) => sends[k] === "sending");
     if (!id) return;
     const h = setTimeout(() => {
-      setSent((m) => ({ ...m, [id]: { text: textOf(id), at: "Just now" } })); setSend(id, "sent");
+      const text = textOf(id);
+      setSent((m) => ({ ...m, [id]: { text, at: "Just now" } })); setSend(id, "sent");
+      onSend?.(id, text);
       toast({ tone: "success", icon: "send", children: `Sent to ${threads.find((x) => x.id === id)?.name.split(" ")[0]}`, meta: "sequence stays stopped" });
     }, 900);
     return () => clearTimeout(h);
@@ -202,10 +207,7 @@ export function UniboxView({ threads, setThreads, active, setActive, tab, setTab
 
   const handledN = threads.filter((x) => x.handled).length;
   const empty = !tabList.length ? (
-    tab === "snoozed" ? <EmptyState art="range" title="Nothing snoozed">Press <span className="c-kbd">H</span> on a thread to hide it until a date. It comes back to the top of Needs you on that morning.</EmptyState>
-    : tab === "meetings" ? <EmptyState art="range" title="No meetings booked yet">When someone books through your Cal.com link, the thread moves here and the sequence stops.</EmptyState>
-    : <EmptyState art="range" title="Nothing needs you" actions={handledN ? <Button onClick={() => setTab("all")}>See what Corral handled</Button> : undefined}>
-        Every reply is answered or waiting on the other side. {handledN ? `Corral handled ${handledN} on its own (out of office, unsubscribes, bounces); they’re in All.` : ""} New replies land here first.</EmptyState>
+    <div className="c-view c-view--center"><UniboxEmpty tab={tab} onHandled={handledN ? () => setTab("all") : undefined} /></div>
   ) : null;
 
   const a: DraftActions | undefined = !t ? undefined : {

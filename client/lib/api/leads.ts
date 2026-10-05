@@ -57,6 +57,7 @@ export type ApiPerson = {
   phone: string | null; linkedinUrl: string | null; emailStatus: EmailCode; isPrimary: boolean; unsubscribedAt: string | null;
   createdAt: string; updatedAt: string;
 };
+export type ApiContact = ApiPerson & { companyName: string | null };
 export type ApiCompany = {
   id: string; name: string; domain: string | null; country: string | null; size: SizeCode | null; industry: string | null; notes: string | null;
   source: SourceCode; replyStatus: ReplyCode; replyStatusSetBy: "corral" | "user"; lastActivityAt: string | null; importId: string | null;
@@ -85,6 +86,7 @@ const readPerson = (r: Reader): ApiPerson => ({
   phone: r.optStr("phone"), linkedinUrl: r.optStr("linkedin_url"), emailStatus: r.oneOf("email_status", EMAIL_CODES), isPrimary: r.bool("is_primary"),
   unsubscribedAt: r.optStr("unsubscribed_at"), createdAt: r.str("created_at"), updatedAt: r.str("updated_at"),
 });
+const readContact = (r: Reader): ApiContact => ({ ...readPerson(r), companyName: r.optStr("company_name") });
 const readCompany = (r: Reader): ApiCompany => ({
   id: r.str("id"), name: r.str("name"), domain: r.optStr("domain"), country: r.optStr("country"), size: r.optOneOf("size", SIZE_CODES),
   industry: r.optStr("industry"), notes: r.optStr("notes"), source: r.oneOf("source", SOURCE_CODES), replyStatus: r.oneOf("reply_status", REPLY_CODES),
@@ -121,6 +123,7 @@ export const decodeEnrollPlan = recordDecoder("enroll_plan", (r): EnrollPlan => 
   matched: r.num("matched"), willEnroll: r.num("will_enroll"), skipped: r.list("skipped", readSkip), sendsPerDay: r.num("sends_per_day"), days: r.num("days"),
 }));
 export const decodePerson = recordDecoder("lead", readPerson);
+export const decodeContacts = listDecoder("leads", readContact);
 export const decodeSegments = listDecoder("segments", readSegment);
 export const decodeSegment = recordDecoder("segment", (r): ApiSegmentDetail => ({ ...readSegment(r), rules: r.list("rules", readRule), pinned: r.num("pinned"), count: r.num("count") }));
 export const decodePreview = recordDecoder("preview", (r): SegmentPreview => ({ count: r.num("count"), peek: r.list("peek", readCompany) }));
@@ -146,6 +149,7 @@ export const LEADS_PATHS = {
   merge: (c: string) => `${companies}/${id(c)}/merge`,
   bulk: `${companies}/bulk`,
   enrollPlan: `${companies}/enroll-plan`,
+  leads: "/api/v1/leads",
   lead: (l: string) => `/api/v1/leads/${id(l)}`,
   unsubscribe: (l: string) => `/api/v1/leads/${id(l)}/unsubscribe`,
   segments,
@@ -183,6 +187,7 @@ export type LeadsApi = {
   merge(keepId: string, duplicateId: string): Promise<Result<ApiCompanyDetail, ApiError>>;
   bulk(action: BulkAction, selection: ApiSelection, o?: { confirm?: boolean }): Promise<Result<BulkResult, ApiError>>;
   enrollPlan(selection: ApiSelection, signal?: AbortSignal): Promise<Result<EnrollPlan, ApiError>>;
+  people(signal?: AbortSignal): Promise<Result<ApiContact[], ApiError>>;
   updatePerson(leadId: string, patch: { email_status?: EmailCode }): Promise<Result<ApiPerson, ApiError>>;
   unsubscribe(leadId: string): Promise<Result<ApiPerson, ApiError>>;
   segments(signal?: AbortSignal): Promise<Result<ApiSegment[], ApiError>>;
@@ -216,6 +221,7 @@ export function createLeadsApi(client: ApiClient): LeadsApi {
     merge: (keep, dup) => client.request(LEADS_PATHS.merge(keep), { method: "POST", body: { duplicate_id: dup }, decode: decodeCompany }),
     bulk: (action, selection, o = {}) => client.request(LEADS_PATHS.bulk, { method: "POST", body: { ...action, selection, confirm: !!o.confirm }, decode: decodeBulk }),
     enrollPlan: (selection, signal) => client.request(LEADS_PATHS.enrollPlan, { method: "POST", body: { selection }, decode: decodeEnrollPlan, signal }),
+    people: (signal) => client.request(LEADS_PATHS.leads, { query: { limit: String(MAX_SEGMENTS) }, decode: decodeContacts, signal }),
     updatePerson: (l, patch) => client.request(LEADS_PATHS.lead(l), { method: "PATCH", body: patch, decode: decodePerson }),
     unsubscribe: (l) => client.request(LEADS_PATHS.unsubscribe(l), { method: "POST", decode: decodePerson }),
     segments: (signal) => client.request(LEADS_PATHS.segments, { decode: decodeSegments, query: { limit: String(MAX_SEGMENTS) }, signal }),

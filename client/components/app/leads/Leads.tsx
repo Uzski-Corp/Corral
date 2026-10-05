@@ -58,7 +58,7 @@ export function importSeed(s?: LeadsReviewState): ImportSeed | undefined {
 }
 
 /** Signed in against the API (ENG-81): the lead CRM endpoints, whose fit to show, and the saved segments. */
-export type LeadsLive = { api: LeadsApi; product: { productId: string | null; ready: boolean }; segments: LiveSegments };
+export type LeadsLive = { api: LeadsApi; product: { productId: string | null; productName?: string | null; ready: boolean }; segments: LiveSegments };
 
 export function LeadsView({ view, state, segment, importOpen, onImportOpenChange, builderOpen, onBuilderOpenChange, onEnroll, onFind, reviewSample = true, enrollAllSignal = 0, live: liveIn }: {
   view: "companies" | "segments"; state?: LeadsReviewState; segment?: string;
@@ -310,7 +310,7 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
               {loosenHint(lv ? data : rows.filter((l) => seg || inTab(l, tab)), rules, match) ?? "Try fewer filters, or switch the tab to All."}
             </EmptyState>
           ) : (
-            <SegmentTable leads={shown} label={seg ? `Segment: ${seg}` : `Companies: ${TABS.find((t) => t.id === tab)!.label}`} selected={sel.all ? new Set(shown.map((l) => l.id)) : sel.ids}
+            <SegmentTable fitLabel={live ? (live.product.productName ? `Fit · ${live.product.productName}` : "Fit") : undefined} leads={shown} label={seg ? `Segment: ${seg}` : `Companies: ${TABS.find((t) => t.id === tab)!.label}`} selected={sel.all ? new Set(shown.map((l) => l.id)) : sel.ids}
               onToggle={toggle} onToggleAll={toggleAll} allChecked={sel.all || allOnPage ? true : sel.ids.size ? "mixed" : false}
               sort={sort} onSort={(k) => setSort(nextSort(sort, k))} onOpen={setOpen} active={open} fitOf={lv ? (l) => { const st = lv.fitOf(l.id); return st ? barOf(st, true) : { value: l.fit }; } : (l) => (fits[l.id] ? barOf(fits[l.id], true) : { value: l.fit })} />
           )}

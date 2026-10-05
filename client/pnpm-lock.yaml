@@ -166,6 +166,9 @@ importers:
 
   .:
     dependencies:
+      '@phosphor-icons/react':
+        specifier: ^2.1.10
+        version: 2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       next:
         specifier: 16.3.6
         version: 16.3.6(@babel/core@7.29.7(supports-color@7.2.0))(@playwright/test@1.63.0)(@types/node@22.20.4)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -768,6 +771,13 @@ packages:
 
   '@oxc-project/types@0.151.0':
     resolution: {integrity: sha512-J1yXrIlNDZVzE3ada310xeAw7nH8yCAyLPuUIsjKatFPmfn5bS1oW+cM+QsGOtVWd5nhSpbwZWx/rue+r5Z+PA==}
+
+  '@phosphor-icons/react@2.1.10':
+    resolution: {integrity: sha512-vt8Tvq8GLjheAZZYa+YG/pW7HDbov8El/MANW8pOAz4eGxrwhnbfrQZq0Cp4q8zBEu8NIhHdnr+r8thnfRSNYA==}
+    engines: {node: '>=10'}
+    peerDependencies:
+      react: '>= 16.8'
+      react-dom: '>= 16.8'
 
   '@playwright/test@1.63.0':
     resolution: {integrity: sha512-oxMK4vllB9RK5NQ2l1pq1IfOf2AvnEuj/vYGDj0H2nMtmtZpKtCwt/l00GEO6xjGfpBNAvjovvYdCm50dRQkpQ==}
@@ -3505,6 +3515,11 @@ snapshots:
   '@open-draft/until@2.1.0': {}
 
   '@oxc-project/types@0.151.0': {}
+
+  '@phosphor-icons/react@2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+    dependencies:
+      react: 19.2.8
+      react-dom: 19.2.8(react@19.2.8)
 
   '@playwright/test@1.63.0':
     dependencies:

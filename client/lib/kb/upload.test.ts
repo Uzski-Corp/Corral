@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FAILURE, SERVER_FAILURES, SKIP_REASONS, triedLabel, recoveryOf, skippedPages, MAX_FILE_BYTES, STAGES, checkFile, checkUrl, extOf, formatBytes, overallPercent, queueSummary, stageLabel, takeDrop } from "./upload";
+import { FAILURE, SERVER_FAILURES, SKIP_REASONS, triedLabel, recoveryOf, skippedPages, MAX_FILE_BYTES, STAGES, checkFile, checkUrl, extOf, formatBytes, overallPercent, queueSummary, siteHint, stageLabel, takeDrop } from "./upload";
 
 describe("extOf", () => {
   it("reads the last extension, lower-cased, ignoring folders and dotfiles", () => {
@@ -48,6 +48,16 @@ describe("takeDrop", () => {
     const r = takeDrop(Array.from({ length: 23 }, (_, i) => i));
     expect(r.accepted).toHaveLength(20);
     expect(r.overflow).toBe(3);
+  });
+});
+
+describe("siteHint", () => {
+  it("uses the signed-in site, without the scheme or www", () => {
+    expect(siteHint("https://www.thamani.co.ke/")).toBe("thamani.co.ke");
+    expect(siteHint("https://thamani.co.ke/pricing")).toBe("thamani.co.ke/pricing");
+    expect(siteHint("thamani.co.ke")).toBe("thamani.co.ke");
+    expect(siteHint(null)).toBeUndefined();
+    expect(siteHint("not a url")).toBeUndefined();
   });
 });
 

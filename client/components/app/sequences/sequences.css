@@ -276,3 +276,25 @@
 .c-pool__warn { color: var(--color-caution-600); font-weight: 500; }
 @media (prefers-reduced-motion: reduce) { .c-pool--btn { transition: none; } }
 }
+
+@layer components {
+/* M13 launch states (queued / waiting for mailbox / sending / failed): one tag, one line, one action, the track. */
+.q-launch { display: flex; flex-direction: column; gap: 12px; padding: 14px 16px; border-radius: var(--radius-card); background: var(--color-canvas); box-shadow: 0 0 0 1px var(--color-border-subtle); }
+.q-launch__top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-height: 32px; }
+.q-launch__line { flex: 1; min-width: 180px; font-size: var(--text-label); line-height: 18px; color: var(--color-text); }
+.q-launch__act { margin-left: auto; }
+.q-launch__detail { font-size: var(--text-meta); color: var(--color-text-quaternary); }
+.q-launch__meter { display: block; height: 3px; border-radius: 2px; background: var(--color-fit-off); overflow: hidden; }
+.q-launch__meter > span { display: block; height: 100%; background: var(--color-action); transition: width .4s var(--ease-snap); }
+.q-track { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; gap: 0; font-size: var(--text-meta); color: var(--color-text-quaternary); }
+.q-track li { display: inline-flex; align-items: center; gap: 6px; }
+.q-track li + li::before { content: ""; width: 28px; height: 1px; margin: 0 10px; background: var(--color-border); }
+.q-track__dot { width: 6px; height: 6px; border-radius: 50%; box-shadow: inset 0 0 0 1.25px var(--color-border-control); }
+.q-track li.is-done { color: var(--color-text-tertiary); }
+.q-track li.is-done .q-track__dot { background: var(--color-text-tertiary); box-shadow: none; }
+.q-track li.is-now { color: var(--color-text); }
+.q-track li.is-now .q-track__dot { background: var(--color-action); box-shadow: none; }
+.q-track li.is-bad { color: var(--color-negative-600); }
+.q-track li.is-bad .q-track__dot { background: var(--color-negative-600); box-shadow: none; }
+@media (prefers-reduced-motion: reduce) { .q-launch__meter > span { transition: none; } }
+}

@@ -35,6 +35,7 @@
  *   meeting-booked | meeting-rescheduled | meeting-cancelled | meeting-no-show | deal-error | deal-duplicate | nurture-off
  *                    (M8) Nyota Beverages open on its meeting and handoffs; same names as in the Unibox (lib/handoff/state.ts)
  * /app/segments?state=
+ *   empty            (M13) no segments yet: Create segment, or From an import
  *   builder          edit the segment's rules with the live count
  *   builder-empty    rules that match nothing
  *   builder-error    an unfinished rule and a bad value
@@ -48,7 +49,7 @@ export const LEADS_REVIEW_STATES = [
   "fit", "fit-scoring", "fit-none", "fit-low", "fit-changed", "fit-override", "fit-disagree", "fit-error",
   ...HANDOFF_REVIEW_STATES,
 ] as const;
-export const SEGMENT_REVIEW_STATES = ["builder", "builder-empty", "builder-error", "loading", "error", "selected", "detail"] as const;
+export const SEGMENT_REVIEW_STATES = ["empty", "builder", "builder-empty", "builder-error", "loading", "error", "selected", "detail"] as const;
 export type LeadsReviewState = (typeof LEADS_REVIEW_STATES)[number] | (typeof SEGMENT_REVIEW_STATES)[number];
 
 export function leadsReviewState(view: string | undefined, state: string | undefined, reviewStates: boolean): LeadsReviewState | undefined {

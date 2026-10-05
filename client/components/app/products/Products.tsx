@@ -39,12 +39,12 @@ export function ProductsView({ adding, onAddingChange, onOpen, onChanged }: {
   const [nameErr, setNameErr] = useState<string | undefined>();
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (!adding) return;
-    setName("");
-    setPitch("");
-    setNameErr(undefined);
-  }, [adding]);
+  // Opening the form starts it blank (state adjusted during render, not in an effect).
+  const [wasAdding, setWasAdding] = useState(adding);
+  if (adding !== wasAdding) {
+    setWasAdding(adding);
+    if (adding) { setName(""); setPitch(""); setNameErr(undefined); }
+  }
 
   useEffect(() => {
     if (!data) return;

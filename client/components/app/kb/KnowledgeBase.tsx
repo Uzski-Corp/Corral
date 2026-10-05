@@ -1,6 +1,8 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import type { AppData } from "@/components/session/AppData";
+import { workspaceApiFor } from "@/lib/api";
+import { siteHint } from "@/lib/kb/upload";
 import type { KbReviewState } from "@/lib/kb/state";
 import { Icon } from "../icons";
 import { Dialog } from "../Overlays";
@@ -123,13 +125,27 @@ export function KnowledgeBase(props: KbProps) {
   return props.live && !props.state ? <LiveKnowledgeBase {...props} live={props.live} /> : <SampleKnowledgeBase {...props} />;
 }
 
+/** The signed-in workspace's site, for the add-page placeholder. Empty until /workspace answers. */
+function useSiteHint(): string | undefined {
+  const [hint, setHint] = useState<string | undefined>();
+  useEffect(() => {
+    const c = new AbortController();
+    void workspaceApiFor().get(c.signal).then((r) => {
+      if (!c.signal.aborted && r.ok) setHint(siteHint(r.value.website));
+    });
+    return () => c.abort();
+  }, []);
+  return hint;
+}
+
 function LiveKnowledgeBase({ live, ...props }: KbProps & { live: NonNullable<KbProps["live"]> }) {
   const m = useLiveKb({ api: live.data.kb, products: live.products, me: live.data.person });
+  const site = useSiteHint();
   const p = live.products;
   const workspace = live.data.me.organization.name;
   const model: KbModel = { ...m, errorDetail: m.errorDetail ?? "", productName: p.selected?.name ?? (p.firstName.trim() || workspace), drafts: false,
     firstProduct: p.selected ? undefined : { name: p.firstName, workspace, setName: p.setFirstName } };
-  return <KbView {...props} m={model} isLive />;
+  return <KbView {...props} m={model} isLive site={site} />;
 }
 
 /** Bau's sample knowledge base, with the simulated pipeline and review states (unchanged from M2/M10b). */
@@ -192,7 +208,7 @@ function SampleKnowledgeBase(props: KbProps) {
   return <KbView {...props} m={m} />;
 }
 
-function KbView({ state, addOpen, onAddOpenChange, contained, m, isLive: live }: Omit<KbProps, "live"> & { m: KbModel; isLive?: boolean }) {
+function KbView({ state, addOpen, onAddOpenChange, contained, m, isLive: live, site }: Omit<KbProps, "live"> & { m: KbModel; isLive?: boolean; site?: string }) {
   const { phase, sources, knowledge, setKnowledge, q, existing } = m;
   const sourceStates: KbReviewState[] = ["sources", "source", "partial", "failed", ...INJECTED, ...SEARCH_STATES, "tray", "dragging"];
   // Live: nothing is drafted yet (the API has no knowledge drafting), so open on what's real.
@@ -259,7 +275,7 @@ function KbView({ state, addOpen, onAddOpenChange, contained, m, isLive: live }:
           </ErrorState>
         </div>
       )}
-      {empty && <FirstRun product={product} firstProduct={m.firstProduct} onFiles={(f) => { q.addFiles(f, existing); onAddOpenChange(true); }} onUrl={(h, p, w) => { q.addUrl(h, p, w); onAddOpenChange(true); }} />}
+      {empty && <FirstRun product={product} site={site} firstProduct={m.firstProduct} onFiles={(f) => { q.addFiles(f, existing); onAddOpenChange(true); }} onUrl={(h, p, w) => { q.addUrl(h, p, w); onAddOpenChange(true); }} />}
 
       {phase === "ready" && !empty && tab === "knowledge" && (
         <div className="c-view__scroll">
@@ -288,7 +304,7 @@ function KbView({ state, addOpen, onAddOpenChange, contained, m, isLive: live }:
           <div className="k-dropover__card"><Icon name="upload" size={18} /><b>Drop to add to {product}</b><span>PDF, DOCX or Markdown · up to 25 MB each</span></div>
         </div>
       )}
-      <UploadDialog open={addOpen} onClose={closeAdd} q={q} product={product} existing={existing} inline={contained}
+      <UploadDialog open={addOpen} onClose={closeAdd} q={q} product={product} site={site} existing={existing} inline={contained}
         onReplace={m.replaceFromQueue} replacing={replacing} firstProduct={m.firstProduct} />
       {!addOpen && (state === "tray" || q.busy || q.items.some((i) => i.state === "error")) && <UploadTray q={q} onOpen={() => onAddOpenChange(true)} inline={contained} />}
       <Dialog open={!!rem} onClose={() => setRemoving(undefined)} tone="danger" title={`Remove ${rem?.name ?? ""}?`}
@@ -302,7 +318,7 @@ function KbView({ state, addOpen, onAddOpenChange, contained, m, isLive: live }:
 }
 
 /* First run: the page is the upload. No wizard, no modal: the drop zone is the empty state. */
-function FirstRun({ product, firstProduct, onFiles, onUrl }: { product: string; firstProduct?: FirstProduct; onFiles: (f: File[]) => void; onUrl: (host: string, path: string, whole: boolean) => void }) {
+function FirstRun({ product, site, firstProduct, onFiles, onUrl }: { product: string; site?: string; firstProduct?: FirstProduct; onFiles: (f: File[]) => void; onUrl: (host: string, path: string, whole: boolean) => void }) {
   return (
     <div className="c-view__scroll">
       <div className="k-first">
@@ -312,7 +328,7 @@ function FirstRun({ product, firstProduct, onFiles, onUrl }: { product: string; 
           <p className="k-lede">Add the documents your best rep would read before a first call. Corral reads them, splits them into passages, and cites them back to where they came from when it writes.</p>
           {firstProduct && <FirstProductField fp={firstProduct} />}
           <DropZone onFiles={onFiles} />
-          <UrlAdder onAdd={onUrl} />
+          <UrlAdder onAdd={onUrl} placeholder={site} />
         </div>
         <aside className="k-first__side" aria-label="What to add">
           <span className="k-index__label">Good first sources</span>

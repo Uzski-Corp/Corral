@@ -3,13 +3,27 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { resetConfigCache } from "@/lib/config";
 import SignInPage from "@/app/sign-in/page";
 import OnboardingPage from "@/app/onboarding/page";
-import AppPage from "@/app/app/[[...slug]]/page";
 import AppLayout from "@/app/app/layout";
+import UniboxPage from "@/app/app/page";
+import CompaniesPage from "@/app/app/companies/page";
+import DiscoveryPage from "@/app/app/discovery/page";
+import SequencesPage from "@/app/app/sequences/page";
+import KnowledgePage from "@/app/app/knowledge/page";
+import SettingsPage from "@/app/app/settings/page";
 import OnboardingLayout from "@/app/onboarding/layout";
 
 const params = (q: Record<string, string | string[]>) => ({ params: Promise.resolve({}), searchParams: Promise.resolve(q) });
-const app = (slug: string[] | undefined, q: Record<string, string | string[]> = {}) =>
-  AppPage({ params: Promise.resolve({ slug }), searchParams: Promise.resolve(q) } as never);
+const search = (q: Record<string, string | string[]>) => ({ searchParams: Promise.resolve(q) });
+const app = (slug: string[] | undefined, q: Record<string, string | string[]> = {}) => {
+  const props = search(q);
+  if (!slug?.length) return UniboxPage(props);
+  if (slug[0] === "companies") return CompaniesPage(props);
+  if (slug[0] === "discovery") return DiscoveryPage(props);
+  if (slug[0] === "sequences") return SequencesPage(props);
+  if (slug[0] === "knowledge") return KnowledgePage(props);
+  if (slug[0] === "settings") return SettingsPage(props);
+  throw new Error(`unmapped app slug ${slug.join("/")}`);
+};
 
 afterEach(() => { vi.unstubAllEnvs(); resetConfigCache(); });
 
@@ -69,7 +83,7 @@ describe("/onboarding and /app pages keep their review params", () => {
     resetConfigCache();
     const page = await app(["discovery"], { state: "empty" });
     render(AppLayout({ children: page, params: Promise.resolve({}) } as never));
-    expect(await screen.findByText("Find companies that fit ColdTrace Sensors")).toBeInTheDocument();
+    expect(await screen.findByText("Find your market")).toBeInTheDocument();
   });
 
   it("opens a sequences review state (M6)", async () => {
@@ -77,7 +91,7 @@ describe("/onboarding and /app pages keep their review params", () => {
     resetConfigCache();
     const page = await app(["sequences"], { state: "empty" });
     render(AppLayout({ children: page, params: Promise.resolve({}) } as never));
-    expect(await screen.findByText("Write your first sequence")).toBeInTheDocument();
+    expect(await screen.findByText("No sequences yet")).toBeInTheDocument();
   });
 
   it("opens a unibox review state (M7)", async () => {

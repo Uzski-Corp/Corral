@@ -49,9 +49,9 @@ describe("API keys", () => {
     expect(within(rows[0]).getByText("crl_live_…7Qa2")).toBeInTheDocument();
     expect(within(rows[0]).getByText("12 min ago")).toBeInTheDocument();
     expect(within(rows[1]).getByText("in 4 days")).toBeInTheDocument();
-    expect(within(rows[2]).getByText("Expired")).toBeInTheDocument();
+    expect(within(rows[2]).getByText(/^Expired/)).toBeInTheDocument();
     expect(within(rows[3]).getByText("Never used")).toBeInTheDocument();
-    expect(screen.getByText(/Zapier \(old\) expired Sep 21 and is still being called/)).toBeInTheDocument();
+    expect(screen.getByText(/Zapier \(old\) expired \d+ days ago and is still being called/)).toBeInTheDocument();
     expect(screen.getByText(/Metabase reporting expires in 4 days/)).toBeInTheDocument();
     expect(screen.getByText(/never the key/)).toBeInTheDocument();
   });
@@ -98,9 +98,9 @@ describe("API keys", () => {
     expect(within(dialog()).getByText(/1,204 calls this week/)).toBeInTheDocument();
     await userEvent.click(within(dialog()).getByRole("button", { name: "Rotate key" }));
     expect(within(dialog()).getByText("New secret for n8n lead sync")).toBeInTheDocument();
-    expect(within(dialog()).getByText(/works until 09:45 tomorrow/)).toBeInTheDocument();
+    expect(within(dialog()).getByText(/works until \d\d:\d\d tomorrow/)).toBeInTheDocument();
     await userEvent.click(within(dialog()).getByRole("button", { name: "Done, I’ve stored it" }));
-    expect(screen.getByText(/Old secret until 09:45 tomorrow/)).toBeInTheDocument();
+    expect(screen.getByText(/Old secret until \d\d:\d\d tomorrow/)).toBeInTheDocument();
   });
 
   it("rotating with Stops now leaves no overlap", async () => {
@@ -194,13 +194,24 @@ describe("MCP connections", () => {
     expect(within(d).getByLabelText("Config").textContent).toContain('"url": "https://mcp.corral.app/mcp"');
     await userEvent.click(within(d).getByRole("button", { name: "Copy the config" }));
     await userEvent.click(within(d).getByRole("button", { name: "I’ve added it" }));
-    expect(within(dialog()).getByText("Waiting for Cursor")).toBeInTheDocument();
+    // M13: no first call reported yet, so it says so and can't pretend to connect
+    expect(within(dialog()).getByText("Waiting for a host")).toBeInTheDocument();
+    expect(within(dialog()).getByText("No hosts connected")).toBeInTheDocument();
+    expect(within(dialog()).getByRole("button", { name: "Check again" })).toBeDisabled();
     await userEvent.click(within(dialog()).getByRole("button", { name: "Back to the config" }));
-    await userEvent.click(within(dialog()).getByRole("button", { name: "I’ve added it" }));
-    await userEvent.click(within(dialog()).getByRole("button", { name: "Check again" }));
+    expect(within(dialog()).getByRole("button", { name: "I’ve added it" })).toBeInTheDocument();
+  });
+
+  it("connected: names the host from its first call, then lists it", async () => {
+    show("mcp-connected");
     expect(within(dialog()).getByText(`Cursor sees ${nRead} tools.`)).toBeInTheDocument();
+    expect(within(dialog()).queryByText(/coldtrace/i)).not.toBeInTheDocument();
+    // M14: no clientInfo, so no host version: the connection's name and its oldest call
+    expect(within(dialog()).getByText(/^Read only · first call Today, \d\d:\d\d\.$/)).toBeInTheDocument();
+    expect(within(dialog()).queryByText(/1\.7\.2/)).not.toBeInTheDocument();
     await userEvent.click(within(dialog()).getByRole("button", { name: "Done" }));
     expect(screen.getByText("Cursor connected")).toBeInTheDocument();
+    expect(screen.getByText(/^First call today, \d\d:\d\d$/)).toBeInTheDocument();
     expect(within(screen.getByRole("list", { name: "Connected clients" })).getAllByRole("listitem")).toHaveLength(CONNECTIONS.length + 1);
   });
 
@@ -223,11 +234,11 @@ describe("MCP connections", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("empty: the client picker opens Connect on that client", async () => {
+  it("empty: No hosts connected, one action opens Connect", async () => {
     show("mcp-empty");
-    expect(screen.getByText("Nothing connected yet")).toBeInTheDocument();
-    await userEvent.click(within(screen.getByRole("list", { name: "Clients" })).getByRole("button", { name: /VS Code/ }));
-    expect(within(dialog()).getByRole("radio", { name: "VS Code" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByText("No hosts connected")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Connect a client" }));
+    expect(within(dialog()).getByRole("radio", { name: "Cursor" })).toHaveAttribute("aria-checked", "true");
   });
 
   it("errors: a missing scope and an expired key, each saying what happened", async () => {

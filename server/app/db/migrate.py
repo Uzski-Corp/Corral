@@ -69,8 +69,8 @@ async def recorded_revisions(url: str) -> list[str] | None:
             if await conn.scalar(text("SELECT to_regclass('public.alembic_version')")) is None:
                 return None
             result = await conn.execute(text("SELECT version_num FROM alembic_version"))
-            rows = result.scalars().all()
-            return list(rows)
+            rows: list[str] = list(result.scalars().all())
+            return rows
     finally:
         await engine.dispose()
 

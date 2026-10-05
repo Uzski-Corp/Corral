@@ -16,7 +16,7 @@ export function Dialog({ open, onClose, title, description, children, footer, wi
   const id = useId();
   const box = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
-  close.current = onClose;
+  useEffect(() => { close.current = onClose; });
   useFocusTrap(box, open && !inline);
   useEffect(() => {
     if (!open || inline) return;

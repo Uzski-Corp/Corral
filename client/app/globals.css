@@ -10,6 +10,7 @@
 @import "../components/app/unibox/unibox.css";
 @import "../components/app/handoff/handoff.css";
 @import "../components/app/mcp/mcp.css";
+@import "../components/app/settings/settings.css";
 
 /* ============================================================
    Corral — base layer: Open Range app tokens (Tailwind v4).
