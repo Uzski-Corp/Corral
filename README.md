@@ -1,4 +1,6 @@
 # Corral
+<img width="2560" height="1600" alt="image" src="https://github.com/user-attachments/assets/d919ceb5-641d-45f8-890a-4c4dee79dc59" />
+
 
 > **AI-native B2B lead intelligence and full-funnel outbound acceleration platform.**
 > Replaces brittle single-purpose scrapers and domain-burning blast tools with grounded product knowledge, deterministic deep crawl, waterfall enrichment, and mailbox-protected sequences.
