@@ -11,7 +11,7 @@ export function People() {
   return (
     <section id="people" className="or-people">
       <div className="or-wrap">
-        <div className="or-people__head"><span className="or-kicker">The other end of the row</span><h2 className="or-h2">People answer when you’ve read their site.</h2></div>
+        <div className="or-people__head"><span className="or-kicker">What comes back</span><h2 className="or-h2">People answer when the agent has read their site.</h2></div>
         <div className="or-people__grid">
           <figure className="or-lead">
             <div className="or-lead__img"><Image className="or-bg" src="/corral/or/p-wanjiru.jpg" alt="Wanjiru Mwangi (sample person)" fill sizes="(max-width: 1080px) 100vw, 50vw" /></div>

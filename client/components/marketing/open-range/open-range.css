@@ -21,6 +21,7 @@
 .or-hero { position: relative; overflow: hidden; background: var(--mk-sky); }
 .or-hero__grid { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr); gap: 40px; align-items: start; padding-top: 72px; }
 .or-hero h1 { font-size: var(--mk-text-display-xl); line-height: 0.98; letter-spacing: var(--mk-tracking-display); }
+.or-hero .or-kicker { color: #2E2E2E; }
 .or-hero__copy p { margin-top: 24px; font-size: 18px; line-height: 1.5; letter-spacing: -0.012em; color: #2E2E2E; max-width: 29em; }
 .or-hero__ctas { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 30px; }
 .or-hero__plate { position: relative; z-index: 1; margin-top: 64px; height: 480px; padding-left: max(var(--mk-gutter), calc((100vw - var(--mk-container)) / 2 + var(--mk-gutter))); }

@@ -16,8 +16,8 @@ export function PricingFooter() {
       <div className="or-dusk__shade" />
       <div className="or-wrap or-pricing">
         <div className="or-pricing__head">
-          <div><span className="or-kicker">Pricing</span><h2 className="or-h2">Priced by how much of the field you read.</h2></div>
-          <p className="or-lede">Every plan includes the Unibox copilot, Cal.com booking, receipts on every score and the MCP server. Pay monthly, cancel whenever.</p>
+          <div><span className="or-kicker">Pricing</span><h2 className="or-h2">Priced by how many companies the agent reads.</h2></div>
+          <p className="or-lede">Every plan includes the Unibox, Cal.com booking, the reason on every score, and the MCP server. Pay monthly and cancel whenever.</p>
         </div>
         <div className="or-plans c-app">
           {PLANS.map((p) => (

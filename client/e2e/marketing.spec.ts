@@ -20,7 +20,7 @@ test.describe("/ is the Open Range landing (ENG-87)", () => {
     expect(res?.status()).toBe(200);
     expect(res?.request().redirectedFrom()).toBeNull();
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByRole("heading", { level: 1, name: /The right fifty/ })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /An agent finds/ })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Main" }).first().getByRole("link", { name: "Sign in" })).toBeVisible();
   });
 
@@ -70,7 +70,7 @@ test.describe("marketing site", () => {
 
   test("the landings keep their absolute titles; / is Open Range, its only address", async ({ page }) => {
     await page.goto("/");
-    await expect(page).toHaveTitle("Corral · The right fifty, already read.");
+    await expect(page).toHaveTitle("Corral · An agent finds your next leads.");
     expect(await page.locator('link[rel="canonical"]').getAttribute("href")).toMatch(/^https?:\/\/[^/]+\/?$/);
     // /open-range was removed (ENG-87): the 404, not a copy or a redirect.
     expect((await page.goto("/open-range"))?.status()).toBe(404);
