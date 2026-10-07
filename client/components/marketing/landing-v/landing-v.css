@@ -115,7 +115,7 @@
 .lv-chat__bar { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 16px; border-bottom: 1px solid rgb(255 255 255 / .07); font-size: 13px; }
 .lv-chat__dots { display: inline-flex; gap: 6px; } .lv-chat__dots i { width: 10px; height: 10px; border-radius: 50%; background: rgb(255 255 255 / .16); }
 .lv-chat__title { font-weight: 500; }
-.lv-chat__via { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; color: rgb(255 255 255 / .55); font-size: 12px; }
+.lv-chat__via { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; color: rgb(255 255 255 / .6); font-size: 12px; }
 .lv-chat__via img { width: 14px; height: 14px; border-radius: 3px; background: #fff; padding: 1.5px; }
 .lv-chat__body { padding: 18px 18px 6px; }
 .lv-chat__you { margin-left: auto !important; max-width: 86%; padding: 10px 13px; border-radius: 12px 12px 4px 12px; background: rgb(255 255 255 / .09); font-size: 14px; line-height: 20px; }
@@ -124,7 +124,7 @@
 .lv-chat__tool { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 11.5px; color: #9DB8F5; }
 .lv-chat__out { color: rgb(255 255 255 / .62); }
 .lv-chat__answer { margin-top: 16px !important; font-size: 14px; line-height: 21px; color: #F2F2F2; }
-.lv-chat .lv-run__cap { padding: 12px 18px 14px; color: rgb(255 255 255 / .4); }
+.lv-chat .lv-run__cap { padding: 12px 18px 14px; color: rgb(255 255 255 / .6); }
 
 /* ---------- hero 1 · Statement */
 .lv-h1-top { padding-top: clamp(64px, 8vw, 112px); }
