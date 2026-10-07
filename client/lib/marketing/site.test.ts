@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { CHANGELOG, CLAIMS, CTA, FOOTER, HOME, NAV, PUBLIC_ROUTES, ROUTES, SITE_URL, homeOf, isConfirmed, sitemapRoutes } from "./site";
 import { COMPARE, FAQ, PLANS, priceWords } from "./plans";
 import { SHARE_CARDS } from "./share";
@@ -83,5 +83,18 @@ describe("share images", () => {
     expect(SHARE_CARDS.map((c) => c.dir)).toEqual(["app", "app/fenceline", "app/pricing", "app/security", "app/mcp", "app/changelog"]);
     for (const c of SHARE_CARDS) { expect(c.alt.length).toBeGreaterThan(40); expect(c.alt.endsWith(".")).toBe(true); }
     expect(homeOf("fenceline")).toBe(ROUTES.fenceline);
+  });
+});
+
+describe("SITE_URL", () => {
+  afterEach(() => { vi.unstubAllEnvs(); vi.resetModules(); });
+  const load = async () => (await import("./site")).SITE_URL;
+  it("defaults to the live deploy, not a placeholder domain", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "");
+    expect(await load()).toBe("https://corral.uzskicorp.agency");
+  });
+  it("takes NEXT_PUBLIC_SITE_URL at build time, trimmed and without a trailing slash", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", " https://corral.so/ ");
+    expect(await load()).toBe("https://corral.so");
   });
 });

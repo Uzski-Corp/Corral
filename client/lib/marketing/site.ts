@@ -2,7 +2,9 @@
  * The marketing site (M10, ENG-60 → build ENG-87): routes, navigation, the footer, the changelog, and the
  * things that must be confirmed before launch (Oct 7, 2026). Plain data so pages, tests and the sitemap agree.
  */
-export const SITE_URL = "https://corral.app"; // placeholder host, see HANDOFF §18 open questions
+/** The public origin every absolute URL is built from (metadataBase, og:image, canonical, robots, sitemap).
+    Set NEXT_PUBLIC_SITE_URL at build time when the production domain changes; the default is the live deploy. */
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://corral.uzskicorp.agency").replace(/\/+$/, "");
 export const LAUNCH = "2026-10-07";
 
 /** Every public marketing route. The sitemap, the nav, the footer and the tests read this. */
