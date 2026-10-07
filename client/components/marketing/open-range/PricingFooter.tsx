@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { Mark } from "@/components/app/icons";
 import { PLANS, priceWords } from "@/lib/marketing/plans";
 import { CTA, CTA_SIGNED_IN, FOOTER, ROUTES, SAMPLE_NOTE, claim } from "@/lib/marketing/site";
@@ -12,7 +11,10 @@ export function PricingFooter() {
   const prices = claim("prices")!;
   return (
     <section id="pricing" className="or-dusk">
-      <Image className="or-bg" src="/corral/or/dusk.jpg" alt="" fill sizes="100vw" />
+      {/* Vector horizon (Bau, Oct 7): sharp at every width and density, replaces the stretched dusk.jpg. The inline
+          fill matches what next/image `fill` applied, since .or-bg only sets object-fit. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="or-bg" src="/corral/footer-horizon.svg" alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />
       <div className="or-dusk__shade" />
       <div className="or-wrap or-pricing">
         <div className="or-pricing__head">
