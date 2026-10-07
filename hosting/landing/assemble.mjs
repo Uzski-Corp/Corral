@@ -38,6 +38,13 @@ for (const [from, to] of pages) {
 
 await writeFile(path.join(dist, "robots.txt"), await readFile(path.join(appDir, "robots.txt.body")));
 await writeFile(path.join(dist, "sitemap.xml"), await readFile(path.join(appDir, "sitemap.xml.body")));
+// The web app manifest (client/app/manifest.ts). Workers assets pick the content type from the extension; _headers
+// pins application/manifest+json so it never depends on that mapping.
+await writeFile(path.join(dist, "manifest.webmanifest"), await readFile(path.join(appDir, "manifest.webmanifest.body")));
+await writeFile(
+  path.join(dist, "_headers"),
+  ["/manifest.webmanifest", "  Content-Type: application/manifest+json", ""].join("\n"),
+);
 await writeFile(
   path.join(dist, "_redirects"),
   ["/terms /legal/terms 301", "/privacy /legal/privacy 301", ""].join("\n"),
