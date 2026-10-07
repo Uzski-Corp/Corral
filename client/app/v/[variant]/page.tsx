@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { openGraphFor } from "@/lib/marketing/seo";
+import { ROUTES } from "@/lib/marketing/site";
 import { LandingVariant } from "@/components/marketing/landing-v/Variant";
 import { DESCRIPTION, HEROES, VARIANT_IDS, type VariantId } from "@/components/marketing/landing-v/copy";
 
@@ -13,7 +15,7 @@ export const dynamicParams = false;
 export async function generateMetadata({ params }: PageProps<"/v/[variant]">): Promise<Metadata> {
   const { variant } = await params;
   if (!isVariant(variant)) return {};
-  return { title: { absolute: HEROES[variant].title }, description: DESCRIPTION, robots: { index: false, follow: false }, alternates: { canonical: "/" } };
+  return { title: { absolute: HEROES[variant].title }, description: DESCRIPTION, robots: { index: false, follow: false }, alternates: { canonical: "/" }, openGraph: openGraphFor(ROUTES.home) };
 }
 
 export default async function Page({ params }: PageProps<"/v/[variant]">) {

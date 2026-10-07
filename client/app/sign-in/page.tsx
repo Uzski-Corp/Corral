@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { SignInScreen } from "@/components/session/SignInScreen";
 import { signInView } from "@/lib/auth/signInState";
 import { getConfig } from "@/lib/config";
+import { openGraphFor } from "@/lib/marketing/seo";
+import { ROUTES } from "@/lib/marketing/site";
 
-export const metadata: Metadata = { title: "Sign in" };
+export const metadata: Metadata = { title: "Sign in", openGraph: openGraphFor(ROUTES.signIn) };
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
