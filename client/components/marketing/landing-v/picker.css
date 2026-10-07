@@ -46,6 +46,11 @@
   .proto-picker[data-ready] .proto-picker-highlight { transition: none; }
 }
 
+/* Before hydration (and with JS off) the sliding highlight has no measured width, so the active item carries the same
+   fill itself; once data-ready is set the measured highlight takes over in the same spot. (Krak, Oct 7: not in PICKER.md.) */
+.proto-picker:not([data-ready]) .proto-picker-item[data-active] { background: rgba(255, 255, 255, 0.12); }
+.proto-picker:not([data-ready]) .proto-picker-highlight { visibility: hidden; }
+
 .proto-picker-item {
   position: relative; /* sits above the highlight */
   display: flex;
