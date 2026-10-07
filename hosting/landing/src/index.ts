@@ -1,18 +1,13 @@
-interface Env {
-  ASSETS: Fetcher;
-}
+import { localImagePath } from "./image";
+import { WAITLIST_PATH, handleWaitlist, type WaitlistEnv } from "./waitlist";
 
-/** Next/Image URLs from the static build. The file itself already lives in the asset bundle. */
-function localImagePath(request: Request): string | null {
-  const url = new URL(request.url);
-  if (url.pathname !== "/_next/image") return null;
-  const raw = url.searchParams.get("url");
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.includes("\\") || raw.includes("..")) return null;
-  return raw;
+export interface Env extends WaitlistEnv {
+  ASSETS: Fetcher;
 }
 
 export default {
   async fetch(request, env): Promise<Response> {
+    if (new URL(request.url).pathname === WAITLIST_PATH) return handleWaitlist(request, env);
     const path = localImagePath(request);
     if (!path) return env.ASSETS.fetch(request);
     const assetUrl = new URL(path, request.url);
