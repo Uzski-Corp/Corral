@@ -1,0 +1,64 @@
+/* The inner marketing pages in the home page's language (AgentSitePage). Layers on site.css under .sn--agent:
+   v4 type, product moments on grain plates, lists as raised cards on a grey tray. Guide: docs/design/SITE-GUIDE.md. */
+.sn--agent {
+  --sv-raise: 0 0 0 1px rgb(0 0 0 / .04), 0 1px 2px rgb(0 0 0 / .04), 0 4px 12px rgb(0 0 0 / .05);
+  --sv-plate-sea: #254344 url("/corral/gradients/01-sea-glass.webp") center / cover no-repeat;
+  --sv-plate-ink: #132A45 url("/corral/gradients/02-blue-ink.webp") center / cover no-repeat;
+  --sv-plate-amber: #352B2C url("/corral/gradients/03-warm-amber.webp") center / cover no-repeat;
+  --sv-plate-forest: #142F29 url("/corral/gradients/04-forest.webp") center / cover no-repeat;
+}
+.sn--agent main > :last-child { padding-bottom: 0; }
+.sn--agent > .lv-nav { width: 100%; box-sizing: border-box; }
+.sn--agent .lv-nav__links a[aria-current="page"] { opacity: 1; }
+
+/* ---------- head */
+.sn--agent .sn-head { padding-top: clamp(72px, 8vw, 120px); padding-bottom: clamp(48px, 5vw, 80px); }
+.sn--agent .sn-h1 { font-size: clamp(44px, 5.6vw, 76px); line-height: .99; letter-spacing: -0.045em; text-wrap: balance; }
+.sn--agent .sn-h2 { font-size: clamp(28px, 3vw, 40px); line-height: 1.06; letter-spacing: -0.035em; text-wrap: balance; }
+.sn--agent .sn-lede { margin-top: 24px !important; font-size: clamp(17px, 1.4vw, 19px); color: var(--lv-copy); text-wrap: pretty; }
+.sn--agent .sn-body, .sn--agent .sn-faq p { color: var(--lv-copy); }
+
+/* ---------- trays: a grey ground, each item a raised white card */
+.sn--agent .sn-rules, .sn--agent .sn-ledger {
+  display: grid; gap: 8px; padding: 8px; border: 0; border-radius: 12px; background: var(--lv-art-neutral);
+}
+.sn--agent .sn-rules li, .sn--agent .sn-ledger li {
+  padding: 16px; border: 0; border-radius: 10px; background: var(--lv-art-panel); box-shadow: var(--sv-raise);
+}
+
+/* ---------- plans: three short cards; the middle one carries the accent */
+.sn--agent .sn-head--center { grid-template-columns: minmax(0, 1fr); justify-items: center; text-align: center; }
+.sn--agent .sn-head--center .sn-lede { margin-inline: auto; }
+.sv-plans { list-style: none; margin: 0 auto; padding: 0; max-width: 984px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+.sv-plan { display: flex; flex-direction: column; padding: 24px; border-radius: 12px; background: var(--lv-art-panel); box-shadow: var(--sv-raise); }
+.sv-plan h2 { display: flex; align-items: center; gap: 8px; font-size: 20px; line-height: 1.2; letter-spacing: -0.02em; }
+.sv-plan__pick { padding: 4px 8px; border-radius: 999px; background: var(--lv-art-field); color: var(--lv-blue-1); font: 500 12px/1 var(--font-sans); letter-spacing: 0; }
+.sv-plan__line { margin-top: 8px !important; min-height: 2.9em; font-size: 14px; line-height: 1.45; color: var(--lv-muted); }
+.sv-plan__price { display: flex; align-items: baseline; gap: 8px; margin-top: 32px !important; font-size: 14px; color: var(--lv-muted); }
+.sv-plan__n { font: 500 44px/1 var(--mk-font-display); letter-spacing: -0.04em; color: var(--lv-ink); }
+.sv-plan.is-primary .sv-plan__n { color: var(--lv-blue-1); }
+.sv-plan__inc { flex: 1; list-style: none; margin: 24px 0 0; padding: 0; display: grid; align-content: start; gap: 12px; font-size: 14px; line-height: 1.4; color: var(--lv-copy); }
+.sv-plan__inc li { display: flex; align-items: baseline; gap: 12px; }
+.sv-plan__inc li::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 1px; background: var(--lv-ink); transform: translateY(-2px); }
+.sv-plan__cta { margin-top: 32px; display: flex; align-items: center; justify-content: center; height: 44px; border-radius: 8px; background: var(--lv-ink); color: #fff; font: 500 14px/1 var(--font-sans); text-decoration: none; transition: transform 150ms var(--lv-ease); }
+.sv-plan__cta:active { transform: scale(.98); }
+.sv-plan.is-primary .sv-plan__cta { background: var(--sv-plate-ink); }
+.sv-plans__note { margin-top: 24px !important; text-align: center; font-size: 13px; color: var(--lv-muted); }
+.sn--agent .sn-compare thead th { top: 0; }
+
+/* ---------- plates: product moments sit on a grain gradient */
+.sn--agent .pf, .sn--agent .sn-piece, .sn--agent .sn-receipts { padding: clamp(16px, 3vw, 40px); border-radius: 16px; background: var(--sv-plate-sea); }
+.sn--agent .sn-entry .pf { background: var(--sv-plate-ink); }
+.sn--agent .sn-piece { background: var(--sv-plate-amber); }
+.sn--agent .sn-receipts { max-width: 640px; background: var(--sv-plate-ink); }
+.sn--agent .sn-receipts > * { border-radius: 10px; background: var(--lv-art-panel); box-shadow: var(--sv-raise); }
+.sn--agent .pf__cap, .sn--agent .sn-piece .sn-cap { color: rgb(255 255 255 / .8); }
+.sn--agent .pf__win, .sn--agent .sn-piece .pp-card { box-shadow: 0 0 0 1px rgb(0 0 0 / .06), 0 24px 60px -16px rgb(0 0 0 / .4); }
+.sn--agent .pp-clients { padding: clamp(16px, 3vw, 32px); border-radius: 16px; background: var(--sv-plate-forest); }
+.sn--agent .pp-clients .pp-steps { padding: 16px; border-radius: 12px; background: var(--lv-art-panel); box-shadow: var(--sv-raise); }
+
+@media (max-width: 720px) {
+  .sv-plans { grid-template-columns: minmax(0, 1fr); max-width: 440px; }
+  .sv-plan__line { min-height: 0; }
+  .sn--agent .sn-h1 { font-size: clamp(38px, 10.6vw, 48px); line-height: 1.02; letter-spacing: -0.04em; }
+}

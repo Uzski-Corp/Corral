@@ -15,36 +15,21 @@ async function meta(page: import("@playwright/test").Page, attr: "name" | "prope
   return (await tag.count()) ? tag.first().getAttribute("content") : null;
 }
 
-test.describe("/ is the Open Range landing (ENG-87)", () => {
+test.describe("/ is the Agent landing (promoted from /v/4)", () => {
   test("signed out, / serves the landing with no redirect", async ({ page }) => {
     const res = await page.goto("/");
     expect(res?.status()).toBe(200);
     expect(res?.request().redirectedFrom()).toBeNull();
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByRole("heading", { level: 1, name: /An agent finds/ })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Put an AI agent on lead generation." })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Main" }).first().getByRole("link", { name: "Sign in" })).toBeVisible();
   });
 
-  test("the hero's first frame is the app skeleton, and the live screen mounts after load", async ({ page, request }) => {
+  test("the waitlist forms on / sign up as home, with no variant picker", async ({ request }) => {
     const html = await (await request.get("/")).text();
-    expect(html).toContain('class="or-hero__plate"');
-    expect(html).toMatch(/class="c-shellbox c-appskel" role="status" aria-label="Loading Companies for ColdTrace Sensors/);
-    await page.goto("/");
-    const hero = page.locator(".or-hero__plate");
-    await expect(hero.locator(".pf__app .c-app").first()).toBeVisible({ timeout: 15_000 });
-    await expect(hero.getByRole("status", { name: /^Loading Companies/ })).toHaveCount(0);
-    await expect(hero.getByRole("img", { name: /Corral screen: Companies for ColdTrace Sensors/ })).toBeVisible();
-  });
-
-  test("with reduced motion, nothing in the hero animates, before or after it mounts", async ({ browser }) => {
-    const ctx = await browser.newContext({ reducedMotion: "reduce" });
-    const page = await ctx.newPage();
-    const running = () => page.evaluate(() => document.getAnimations().filter((a) => a.playState === "running" && (a.effect as KeyframeEffect | null)?.target instanceof Element && ((a.effect as KeyframeEffect).target as Element).closest(".or-hero")).length);
-    await page.goto("/", { waitUntil: "domcontentloaded" });
-    expect(await running()).toBe(0);
-    await expect(page.locator(".or-hero__plate .pf__app .c-app").first()).toBeVisible({ timeout: 15_000 });
-    expect(await running()).toBe(0);
-    await ctx.close();
+    expect(html.match(/name="source" value="home"/g)).toHaveLength(2);
+    expect(html).not.toMatch(/name="source" value="v\d"/);
+    expect(html).not.toContain("proto-picker");
   });
 
   test("the design index moved to /styleguide/landings, out of search", async ({ page, request }) => {
@@ -69,9 +54,9 @@ test.describe("marketing site", () => {
     }
   });
 
-  test("the landings keep their absolute titles; / is Open Range, its only address", async ({ page }) => {
+  test("the landings keep their absolute titles; / is the Agent landing", async ({ page }) => {
     await page.goto("/");
-    await expect(page).toHaveTitle("Corral · An agent finds your next leads.");
+    await expect(page).toHaveTitle("Corral · Put an AI agent on lead generation");
     expect(await page.locator('link[rel="canonical"]').getAttribute("href")).toMatch(/^https?:\/\/[^/]+\/?$/);
     // /open-range was removed (ENG-87): the 404, not a copy or a redirect.
     expect((await page.goto("/open-range"))?.status()).toBe(404);
@@ -121,6 +106,14 @@ test.describe("marketing site", () => {
     expect(body).toMatch(/<loc>https?:\/\/[^<]+\/<\/loc>/); // "/" is home
     for (const p of SHARED) expect(body).toContain(`${p}</loc>`);
     for (const p of ["/sign-in", "/open-range", "/fenceline", "/styleguide", ...LEGAL]) expect(body).not.toContain(`${p}</loc>`);
+  });
+
+  test("the shared pages send every call to action to the waitlist, tagged site", async ({ page }) => {
+    for (const path of SHARED) {
+      await page.goto(path);
+      await expect(page.locator("#join form input[name=source]")).toHaveValue("site");
+      for (const l of await page.getByRole("link", { name: "Join the waitlist" }).all()) await expect(l).toHaveAttribute("href", "#join");
+    }
   });
 
   test("the site nav reaches every shared page", async ({ page }) => {

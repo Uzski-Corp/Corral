@@ -2,9 +2,10 @@
    (lib/mcp/tools.ts) and the in-app docs show (Settings → Developers → Docs). */
 import { RATE, ROTATE_OVERLAP_HOURS, DEFAULT_EXPIRY } from "@/lib/mcp/keys";
 import { AREA_TITLE, ERRORS, MCP_URL, TOOLS, byArea, keyMayCall } from "@/lib/mcp/tools";
-import { CTA, CTA_SIGNED_IN, ROUTES, claim } from "@/lib/marketing/site";
-import { VisitorLink } from "./VisitorLink";
-import { Section, SitePage, ToConfirm } from "./Chrome";
+import { ROUTES, claim } from "@/lib/marketing/site";
+import { WAITLIST } from "@/components/marketing/landing-v/copy";
+import { AgentSitePage } from "@/components/marketing/landing-v/SitePage";
+import { Section, ToConfirm } from "./Chrome";
 import { KeyAccessPiece, McpClientsPiece } from "./Pieces";
 
 const KIND = { read: "Read", write: "Write", send: "Sends email" } as const;
@@ -12,7 +13,7 @@ const KIND = { read: "Read", write: "Write", send: "Sends email" } as const;
 export function McpPage() {
   const host = claim("host")!;
   return (
-    <SitePage current={ROUTES.mcp} kicker="MCP server" title={<>Corral, from the tools<br />you already work in.</>}
+    <AgentSitePage current={ROUTES.mcp} kicker="MCP server" title={<>Corral, from the tools<br />you already work in.</>}
       lede="Cursor, Claude and any client that speaks MCP can look up a lead, read the Unibox and draft a reply the way you would: cited from your knowledge base, checked against Never say, and waiting for you before anything goes out."
       aside={<dl className="sn-facts">
         <div><dt>Server</dt><dd className="c-mono">{MCP_URL}</dd></div>
@@ -76,8 +77,8 @@ export function McpPage() {
           <div><dt>Sends</dt><dd>{RATE.sendsPerHour} an hour, never past a mailbox’s daily cap</dd></div>
           <div><dt>Log</dt><dd>Every call, 90 days</dd></div>
         </dl>
-        <p className="sn-body sn-mt"><VisitorLink className="c-btn c-btn--primary c-btn--lg" href={CTA.start} signedInHref={CTA_SIGNED_IN.mcpConnect}>Sign in and connect</VisitorLink></p>
+        <p className="sn-body sn-mt"><a className="c-btn c-btn--ink c-btn--lg" href="#join">{WAITLIST.cta}</a></p>
       </Section>
-    </SitePage>
+    </AgentSitePage>
   );
 }

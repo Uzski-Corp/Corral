@@ -71,7 +71,17 @@ export function topScopes(scopes: readonly string[]): string[] {
 export const scopeCount = (a: AccessMap) => scopesOf(a).length;
 
 /** A client's mark: two letters on a tile (no third-party logos in the product). */
-export const Mark = ({ label, tone }: { label: string; tone?: string }) => <span className={cx("m-mark", tone && `is-${tone}`)} aria-hidden="true">{label}</span>;
+/** Client logos from svgl.app (public/corral/logos); a client without one keeps its two letters. */
+const LOGO: Record<string, string> = {
+  cursor: "/corral/logos/cursor.svg", claude: "/corral/logos/claude.svg", "claude-code": "/corral/logos/claude.svg",
+  vscode: "/corral/logos/vscode.svg", n8n: "/corral/logos/n8n.svg",
+};
+export const Mark = ({ label, tone }: { label: string; tone?: string }) => {
+  const logo = tone ? LOGO[tone] : undefined;
+  // eslint-disable-next-line @next/next/no-img-element
+  if (logo) return <span className="m-mark is-logo" aria-hidden="true"><img src={logo} alt="" width={18} height={18} /></span>;
+  return <span className={cx("m-mark", tone && `is-${tone}`)} aria-hidden="true">{label}</span>;
+};
 
 /** A small status word with a dot. */
 export const Status = ({ tone, children }: { tone: "ok" | "caution" | "bad" | "off" | "live"; children: ReactNode }) =>

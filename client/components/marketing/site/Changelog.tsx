@@ -1,7 +1,7 @@
 /* /changelog (M10). One entry per release, dated in the margin; the launch entry carries a real screen. */
 import { CHANGELOG, ROUTES } from "@/lib/marketing/site";
 import Link from "next/link";
-import { SitePage } from "./Chrome";
+import { AgentSitePage } from "@/components/marketing/landing-v/SitePage";
 import { ProductFrame } from "./ProductFrame";
 import { Screen } from "./Screen";
 
@@ -10,7 +10,7 @@ export const longDate = (iso: string) => { const [y, m, d] = iso.split("-").map(
 
 export function ChangelogPage() {
   return (
-    <SitePage current={ROUTES.changelog} kicker="Changelog" title="What’s new in Corral." lede="What changed, when, and where to find it. Entries land here with every release.">
+    <AgentSitePage current={ROUTES.changelog} kicker="Changelog" title="What’s new in Corral." lede="What changed, when, and where to find it. Entries land here with every release.">
       {CHANGELOG.map((c, i) => (
         <article key={c.version} className="sn-wrap sn-entry" aria-labelledby={`v-${c.version}`}>
           <div className="sn-entry__margin"><time dateTime={c.date}>{longDate(c.date)}</time><span className="c-mono">v{c.version}</span></div>
@@ -27,6 +27,6 @@ export function ChangelogPage() {
           </div>
         </article>
       ))}
-    </SitePage>
+    </AgentSitePage>
   );
 }

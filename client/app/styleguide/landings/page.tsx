@@ -5,7 +5,7 @@ import { FitBar } from "@/components/app/primitives";
 import { Mark } from "@/components/app/icons";
 
 const ROUTES = [
-  { href: "/", name: "Open Range", idea: "Your whole market as one clear field. Daylight open land, a white quiet product floating over it.", img: "/corral/or/range-wide.jpg", fit: 94 },
+  { href: "/", name: "Agent", idea: "Centred, led by your own AI agent calling Corral over MCP. The home page, promoted from /v/4.", img: "/corral/gradients/01-sea-glass.webp", fit: 94 },
   { href: "/fenceline", name: "Fenceline", idea: "Gather the few who fit. Engraved open land in ink on paper; the same product, framed like a book plate.", img: "/corral/en/land-plate.jpg", fit: 91 },
 ];
 

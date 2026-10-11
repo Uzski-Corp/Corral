@@ -3,11 +3,16 @@
    not part of the design: it is styled by picker.css, never by the landing tokens. Each variant is its own route
    (/v/1–/v/4, the static build needs real pages), so switching navigates instead of using ?v=; the swap is instant.
    Keys: 1–4 and ←/→ switch, R replays the entrance. Delete this file and picker.css when a variant is promoted. */
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import "./picker.css";
 
+const captureSubscribe = () => () => {};
+const captureSnapshot = () => new URLSearchParams(window.location.search).get("capture") === "1";
+const captureServerSnapshot = () => false;
+
 export function Picker({ names, current }: { names: string[]; current: number }) {
+  const capture = useSyncExternalStore(captureSubscribe, captureSnapshot, captureServerSnapshot);
   const router = useRouter();
   const nav = useRef<HTMLElement>(null);
   const hl = useRef<HTMLSpanElement>(null);
@@ -24,10 +29,11 @@ export function Picker({ names, current }: { names: string[]; current: number })
     move();
     window.addEventListener("resize", move);
     return () => window.removeEventListener("resize", move);
-  }, [current]);
+  }, [capture, current]);
   useEffect(() => { const id = requestAnimationFrame(() => requestAnimationFrame(() => setReady(true))); return () => cancelAnimationFrame(id); }, []);
 
   useEffect(() => {
+    if (capture) return;
     const go = (i: number) => { if (i >= 0 && i < names.length && i !== current) router.push(`/v/${i + 1}`, { scroll: false }); };
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
@@ -41,7 +47,9 @@ export function Picker({ names, current }: { names: string[]; current: number })
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [current, names.length, router]);
+  }, [capture, current, names.length, router]);
+
+  if (capture) return null;
 
   return (
     <nav ref={nav} className="proto-picker" aria-label="Prototype variants" data-ready={ready ? "" : undefined}>

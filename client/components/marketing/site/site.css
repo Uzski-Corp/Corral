@@ -200,6 +200,8 @@ main > :last-child:not(.proto-picker) { padding-bottom: clamp(96px, 10vw, 144px)
 .pp-hand { width: 420px; max-width: 100%; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
 .pp-mcp { padding: 0; overflow: hidden; }
 .pp-clients { margin-top: 28px; display: flex; flex-direction: column; gap: 16px; }
+.pp-tab { display: inline-flex; align-items: center; gap: 6px; }
+.pp-tab img { display: block; flex: none; }
 .pp-clients__body { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 32px; align-items: start; }
 .pp-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; font-size: 15px; line-height: 1.5; color: var(--mk-copy); }
 .pp-steps li { display: grid; grid-template-columns: 28px minmax(0, 1fr); }
