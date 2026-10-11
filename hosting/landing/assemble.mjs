@@ -13,15 +13,8 @@ const pages = [
   ["security.html", "security.html"],
   ["mcp.html", "mcp.html"],
   ["changelog.html", "changelog.html"],
-  ["fenceline.html", "fenceline.html"],
   ["legal/terms.html", "legal/terms.html"],
   ["legal/privacy.html", "legal/privacy.html"],
-  ["legal/dpa.html", "legal/dpa.html"],
-  // Landing directions (Bau, Oct 7): static, noindex, picked from at /v/1–/v/4.
-  ["v/1.html", "v/1.html"],
-  ["v/2.html", "v/2.html"],
-  ["v/3.html", "v/3.html"],
-  ["v/4.html", "v/4.html"],
   ["_not-found.html", "404.html"],
 ];
 

@@ -51,7 +51,7 @@ export default defineConfig({
       // exec: next start replaces the shell, so it gets Playwright's SIGTERM on teardown.
       command: `./node_modules/.bin/next build && exec ./node_modules/.bin/next start -p ${WEB_PORT}`,
       url: `${WEB}/sign-in`,
-      env: { NEXT_PUBLIC_API_URL: API, NEXT_TELEMETRY_DISABLED: "1" },
+      env: { NEXT_PUBLIC_API_URL: API, NEXT_TELEMETRY_DISABLED: "1", CORRAL_APP: "1" },
       timeout: 300_000,
       reuseExistingServer: !process.env.CI,
       gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },

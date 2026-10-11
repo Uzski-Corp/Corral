@@ -52,7 +52,7 @@ describe("sitemap (ENG-87)", () => {
     expect(sitemapRoutes()).toEqual(["/", "/pricing", "/security", "/mcp", "/changelog"]);
   });
   it("adds the legal pages once counsel's text is confirmed", () => {
-    expect(sitemapRoutes(true)).toEqual(["/", "/pricing", "/security", "/mcp", "/changelog", "/legal/terms", "/legal/privacy", "/legal/dpa"]);
+    expect(sitemapRoutes(true)).toEqual(["/", "/pricing", "/security", "/mcp", "/changelog", "/legal/terms", "/legal/privacy"]);
   });
   it("has no /open-range: / is the only address of the Open Range landing", () => {
     expect(PUBLIC_ROUTES).not.toContain("/open-range");

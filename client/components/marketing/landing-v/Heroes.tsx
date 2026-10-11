@@ -5,7 +5,7 @@ import type { CSSProperties } from "react";
 import type { WaitlistSource } from "@/lib/marketing/waitlist";
 import { HEROES, KICKER, AGENT_LOGOS, type VariantId } from "./copy";
 import { Nav } from "./Sections";
-import { AgentChat, AgentRun, BlueGround, School } from "./Visuals";
+import { AgentRun, BlueGround, HeroAgent, School } from "./Visuals";
 import { WaitlistForm } from "./WaitlistForm";
 
 const d = (ms: number) => ({ "--d": `${ms}ms` }) as CSSProperties;
@@ -68,7 +68,7 @@ function Blue() {
   );
 }
 
-/** 4 · Agent: centred, and the first picture is your own agent calling Corral. */
+/** 4 · Agent: centred, and the first picture is one run, read at a glance. */
 function Agent({ source }: { source?: WaitlistSource }) {
   return (
     <header className="lv-hero lv-hero--4">
@@ -84,10 +84,7 @@ function Agent({ source }: { source?: WaitlistSource }) {
       </div>
       <div className="lv-h4-stage lv-in" style={d(380)}>
         <div className="lv-h4-sky" aria-hidden="true"><School className="lv-h4-school" /></div>
-        <div className="lv-wrap lv-h4-pair">
-          <AgentChat className="lv-h4-chat" />
-          <AgentRun className="lv-h4-run" />
-        </div>
+        <div className="lv-wrap lv-h4-solo"><HeroAgent /></div>
       </div>
     </header>
   );

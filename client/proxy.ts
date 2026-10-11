@@ -5,6 +5,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { legacyAppRedirect } from "@/lib/appPath";
 import { getConfig } from "@/lib/config";
+import { isOpenPath } from "@/lib/marketing/site";
 import { decide } from "@/lib/auth/gate";
 import { ONBOARDED_COOKIE, RETURN_TO_COOKIE } from "@/lib/auth/cookies";
 
@@ -17,6 +18,9 @@ function canonical(to: string, base: string): string {
 export function proxy(request: NextRequest) {
   const config = getConfig();
   const { pathname, search } = request.nextUrl;
+  // The app ships later: until CORRAL_APP=1, only the pages the landing links to exist. The review build keeps it.
+  const appOn = process.env.CORRAL_APP === "1" || config.mode === "review";
+  if (!appOn && !isOpenPath(pathname)) return NextResponse.rewrite(new URL("/_closed", request.url));
   const here = legacyAppRedirect(pathname, search);
   const path = here ? new URL(here, request.url) : request.nextUrl;
   const decision = decide({
@@ -36,8 +40,9 @@ export function proxy(request: NextRequest) {
   return NextResponse.next();
 }
 
-/** "/" is the public home page (the Open Range landing, ENG-87) and is never gated: it's matched only so the
-    API's post-login callback, which always lands on FRONTEND_URL "/", can be finished (lib/auth/gate.ts). */
+/** Every page address: the app switch needs to see them all. Next's own files, /api and files with an extension
+    (public/ assets, robots.txt, sitemap.xml) never reach it. "/" is never gated by auth: it's matched for the API's
+    post-login callback, which always lands on FRONTEND_URL "/" (lib/auth/gate.ts). */
 export const config = {
-  matcher: ["/", "/app/:path*", "/onboarding/:path*"],
+  matcher: ["/((?!_next/|api/|.*\\..*).*)"],
 };

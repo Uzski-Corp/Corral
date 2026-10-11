@@ -60,11 +60,33 @@ describe("WaitlistForm without script (server HTML)", () => {
 });
 
 describe("WaitlistForm with script", () => {
-  it("shows invalid without calling the network, and clears it on the next keystroke", async () => {
+  it("keeps the button full colour until typing, then dims it and only focuses the field until the address is valid", async () => {
     const hit = vi.fn();
     server.use(http.post(endpoint(), () => { hit(); return HttpResponse.json({}); }));
     const { container } = render(<WaitlistForm source="v1" />);
-    const user = await submit("nope");
+    const user = userEvent.setup();
+    const button = screen.getByRole("button", { name: WAITLIST.cta });
+    const field = screen.getByRole("textbox", { name: WAITLIST.label });
+    expect(button).not.toHaveAttribute("data-dim");
+    await user.click(button);
+    expect(field).toHaveFocus();
+    expect(container.firstChild).toHaveAttribute("data-state", "idle");
+    await user.type(field, "ada@");
+    expect(button).toHaveAttribute("data-dim");
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    await user.click(button);
+    expect(container.firstChild).toHaveAttribute("data-state", "idle");
+    await user.type(field, "b.co");
+    expect(button).not.toHaveAttribute("data-dim");
+    expect(hit).not.toHaveBeenCalled();
+  });
+
+  it("shows invalid on Enter without calling the network, and clears it on the next keystroke", async () => {
+    const hit = vi.fn();
+    server.use(http.post(endpoint(), () => { hit(); return HttpResponse.json({}); }));
+    const { container } = render(<WaitlistForm source="v1" />);
+    const user = userEvent.setup();
+    await user.type(screen.getByRole("textbox", { name: WAITLIST.label }), "nope{Enter}");
     expect(screen.getByText(WAITLIST.invalid)).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: WAITLIST.label })).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByRole("textbox", { name: WAITLIST.label })).toHaveFocus();

@@ -33,7 +33,7 @@ for (const { name, viewport } of WIDTHS) {
     test("the 404 page has no axe violations", async ({ page }) => {
       const res = await page.goto("/no-such-page");
       expect(res?.status()).toBe(404);
-      await expect(page.getByRole("heading", { level: 1, name: "Nothing here fits." })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: "This page swam off." })).toBeVisible();
       expect(await audit(page)).toEqual([]);
     });
   });

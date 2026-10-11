@@ -5,7 +5,7 @@
 import Link from "next/link";
 import { LEGAL_UPDATED, PRIVACY, TERMS, type LegalSection } from "@/lib/marketing/legal";
 import { ROUTES } from "@/lib/marketing/site";
-import { SitePage } from "./Chrome";
+import { AgentSitePage } from "@/components/marketing/landing-v/SitePage";
 
 export type LegalDoc = "terms" | "privacy" | "dpa";
 export const LEGAL: Record<LegalDoc, { title: string; kicker: string; lede: string; outline: [string, string][]; text?: LegalSection[] }> = {
@@ -25,9 +25,9 @@ export const LEGAL: Record<LegalDoc, { title: string; kicker: string; lede: stri
 
 export function LegalPage({ doc }: { doc: LegalDoc }) {
   const d = LEGAL[doc];
-  const others = (Object.keys(LEGAL) as LegalDoc[]).filter((k) => k !== doc);
+  const others = (["terms", "privacy"] as const).filter((k) => k !== doc);
   return (
-    <SitePage current={ROUTES[doc]} kicker={d.kicker} title={d.title} lede={d.lede}>
+    <AgentSitePage current={ROUTES[doc]} kicker={d.kicker} title={d.title} lede={d.lede}>
       <div className="sn-wrap sn-legal">
         {d.text
           ? <p className="sn-draft" role="note"><b>Draft for review.</b> Items marked TODO are still being confirmed; this page isn’t indexed until they are.</p>
@@ -37,6 +37,6 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
           : <ol className="sn-outline">{d.outline.map(([h, t]) => <li key={h}><h2>{h}</h2><p>{t}</p></li>)}</ol>}
         <p className="sn-small">Also: {others.map((o, i) => <span key={o}>{i > 0 && " · "}<Link className="sn-link" href={ROUTES[o]}>{LEGAL[o].title}</Link></span>)}. Questions: <a className="sn-link" href="mailto:legal@corral.app">legal@corral.app</a>.</p>
       </div>
-    </SitePage>
+    </AgentSitePage>
   );
 }

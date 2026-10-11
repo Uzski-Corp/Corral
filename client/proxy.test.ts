@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { NextRequest } from "next/server";
 import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetConfigCache } from "@/lib/config";
 import { config, proxy } from "./proxy";
 
@@ -14,12 +14,34 @@ const req = (path: string, cookies: Record<string, string> = {}) => {
 afterEach(() => { vi.unstubAllEnvs(); resetConfigCache(); });
 
 describe("proxy matcher", () => {
-  it.each([["/", true], ["/app", true], ["/app/anything", true], ["/onboarding", true], ["/sign-in", false], ["/styleguide", false], ["/_next/static/x.js", false], ["/corral/or/range-wide.jpg", false]])("%s -> %s", (url, want) => {
+  it.each([["/", true], ["/app", true], ["/app/anything", true], ["/onboarding", true], ["/sign-in", true], ["/styleguide", true], ["/pricing", true], ["/_next/static/x.js", false], ["/api/waitlist", false], ["/corral/or/range-wide.jpg", false], ["/robots.txt", false]])("%s -> %s", (url, want) => {
     expect(unstable_doesMiddlewareMatch({ config, url })).toBe(want);
   });
 });
 
-describe("proxy", () => {
+describe("proxy with the app off (CORRAL_APP unset)", () => {
+  const closed = (res: Response) => res.headers.get("x-middleware-rewrite");
+
+  it.each(["/app", "/app/companies", "/sign-in", "/onboarding", "/styleguide", "/fenceline", "/v/4", "/legal/dpa", "/nope"])("%s is the 404", (path) => {
+    expect(closed(proxy(req(path, { wos_session: "sealed", corral_onboarded: "1" })))).toBe("http://localhost:3000/_closed");
+  });
+
+  it.each(["/", "/pricing", "/security", "/mcp", "/changelog", "/legal/terms", "/legal/privacy", "/terms", "/privacy", "/pricing/"])("%s opens", (path) => {
+    const res = proxy(req(path));
+    expect(closed(res)).toBeNull();
+    expect(res.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it("keeps the app in the design-review build", () => {
+    vi.stubEnv("NEXT_PUBLIC_DESIGN_REVIEW", "1");
+    resetConfigCache();
+    expect(closed(proxy(req("/app")))).toBeNull();
+  });
+});
+
+describe("proxy with the app on", () => {
+  beforeEach(() => vi.stubEnv("CORRAL_APP", "1"));
+
   it("redirects a signed-out /app visit to sign-in with the return path", () => {
     const res = proxy(req("/app/companies"));
     expect(res.status).toBe(307);

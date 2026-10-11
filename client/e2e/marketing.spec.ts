@@ -22,7 +22,8 @@ test.describe("/ is the Agent landing (promoted from /v/4)", () => {
     expect(res?.request().redirectedFrom()).toBeNull();
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByRole("heading", { level: 1, name: "Put an AI agent on lead generation." })).toBeVisible();
-    await expect(page.getByRole("navigation", { name: "Main" }).first().getByRole("link", { name: "Sign in" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Main" }).first().getByRole("link", { name: "Sign in" })).toHaveCount(0);
+    await expect(page.locator(".lv-foot").getByRole("link", { name: "Sign in" })).toHaveCount(0);
   });
 
   test("the waitlist forms on / sign up as home, with no variant picker", async ({ request }) => {
@@ -60,7 +61,7 @@ test.describe("marketing site", () => {
     expect(await page.locator('link[rel="canonical"]').getAttribute("href")).toMatch(/^https?:\/\/[^/]+\/?$/);
     // /open-range was removed (ENG-87): the 404, not a copy or a redirect.
     expect((await page.goto("/open-range"))?.status()).toBe(404);
-    await expect(page.getByRole("heading", { level: 1, name: "Nothing here fits." })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "This page swam off." })).toBeVisible();
     await page.goto("/fenceline");
     await expect(page).toHaveTitle("Corral · Gather the few who fit.");
     // Open Range is home (ENG-87): Fenceline stays live, out of search (HANDOFF §18).

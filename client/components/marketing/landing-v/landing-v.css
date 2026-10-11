@@ -28,8 +28,8 @@
 .lv-nav { position: relative; z-index: 3; height: 36px; margin-top: 28px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .lv-logo { display: inline-flex; align-items: center; gap: 9px; color: inherit; text-decoration: none; font: 600 19px/1 var(--mk-font-display); letter-spacing: -0.02em; }
 .lv-nav__links { display: flex; gap: 30px; }
-.lv-nav__links a, .lv-nav__signin { font: 500 14px/1 var(--font-sans); letter-spacing: -0.01em; color: inherit; text-decoration: none; opacity: .82; transition: opacity 150ms ease; }
-.lv-nav__links a:hover, .lv-nav__signin:hover { opacity: 1; }
+.lv-nav__links a { font: 500 14px/1 var(--font-sans); letter-spacing: -0.01em; color: inherit; text-decoration: none; opacity: .82; transition: opacity 150ms ease; }
+.lv-nav__links a:hover { opacity: 1; }
 .lv-nav__end { display: flex; align-items: center; gap: 20px; }
 .lv-nav__cta { display: inline-flex; align-items: center; height: 34px; padding: 0 14px; border-radius: 9px; background: var(--lv-ink); color: #fff; font: 500 14px/1 var(--font-sans); letter-spacing: -0.01em; text-decoration: none; transition: transform 140ms var(--lv-ease); }
 .lv-nav__cta:active { transform: scale(.97); }
@@ -45,10 +45,12 @@
 .wl[data-state="invalid"] .wl__form { box-shadow: inset 0 0 0 1px var(--color-negative-600), 0 0 0 4px rgb(190 18 60 / .14); }
 .wl__input { flex: 1; min-width: 0; height: 44px; padding: 0 12px; border: 0; background: transparent; font: 400 16px/1 var(--font-sans); letter-spacing: -0.01em; color: var(--lv-ink); outline: none; }
 .wl__input::placeholder { color: #8E8E8E; }
-.wl__btn { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 18px; border: 0; border-radius: 10px; background: var(--color-action); color: #fff; font: 500 15px/1 var(--font-sans); letter-spacing: -0.01em; cursor: pointer; box-shadow: inset 0 0 0 1px rgb(0 0 0 / .10), inset 0 1px 0 rgb(255 255 255 / .16); transition: transform 140ms var(--lv-ease), background-color 150ms ease; }
+.wl__btn { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 18px; border: 0; border-radius: 10px; background: var(--color-action); color: #fff; font: 500 15px/1 var(--font-sans); letter-spacing: -0.01em; cursor: pointer; box-shadow: inset 0 0 0 1px rgb(0 0 0 / .10), inset 0 1px 0 rgb(255 255 255 / .16); transition: transform 140ms var(--lv-ease), background-color 150ms ease, opacity 200ms ease; }
 .wl__btn:hover { background: var(--color-action-hover); }
 .wl__btn:active { transform: scale(.97); }
 .wl__btn[aria-disabled] { cursor: progress; }
+.wl .wl__btn[data-dim], .wl .wl__btn[data-dim]:active { opacity: .4; cursor: not-allowed; transform: none; }
+.wl .wl__btn[data-dim]:hover .wl__arrow { transform: none; }
 .wl__btn:focus-visible { outline: 2px solid var(--color-action); outline-offset: 2px; }
 @media (hover: hover) { .wl__arrow { transition: transform 150ms var(--lv-ease); } .wl__btn:hover .wl__arrow { transform: translateX(2px); } }
 @keyframes wl-spin { to { transform: rotate(360deg); } }
@@ -225,9 +227,9 @@
 .lv-final .wl { margin-top: 32px; }
 .lv-foot { margin-top: clamp(200px, 22vw, 300px); padding-bottom: 36px; display: flex; align-items: center; gap: 20px 36px; flex-wrap: wrap; color: rgb(255 255 255 / .9); }
 .lv-foot__links { display: flex; flex-wrap: wrap; gap: 8px 24px; }
-.lv-foot__links a { font-size: 14px; color: rgb(255 255 255 / .66); text-decoration: none; transition: color 150ms ease; }
-.lv-foot__links a:hover { color: #fff; }
-.lv-foot__c { margin-left: auto; font-size: 13px; color: rgb(255 255 255 / .5); }
+.lv-foot__links a { font-size: 14px; font-weight: 500; color: #fff; text-decoration: none; text-underline-offset: 3px; text-shadow: 0 1px 2px rgb(0 0 0 / .45), 0 0 12px rgb(0 0 0 / .35); }
+.lv-foot__links a:hover { text-decoration: underline; }
+.lv-foot__c { margin-left: auto; font-size: 13px; color: rgb(255 255 255 / .9); text-shadow: 0 1px 2px rgb(0 0 0 / .45), 0 0 12px rgb(0 0 0 / .35); }
 
 /* ---------- responsive */
 @media (max-width: 1080px) {
@@ -241,7 +243,6 @@
 }
 @media (max-width: 720px) {
   .lv-nav { margin-top: 18px; }
-  .lv-nav__signin { display: none; }
   .lv-nav__cta { height: 32px; padding: 0 12px; font-size: 13px; }
   .lv-hero--3 .lv-school { display: none; }
   .lv-school { width: 130px; top: auto; bottom: 6%; right: 6%; }
@@ -438,3 +439,57 @@
 .lv[data-variant="4"] #how .lv-mini--02 { background: #132A45 url("/corral/gradients/02-blue-ink.webp") center / cover no-repeat; }
 .lv[data-variant="4"] #how .lv-mini--03 { background: #352B2C url("/corral/gradients/03-warm-amber.webp") center / cover no-repeat; }
 .lv[data-variant="4"] #how .lv-mini--04 { background: #142F29 url("/corral/gradients/04-forest.webp") center / cover no-repeat; }
+
+/* V4 hero: one card, one ask, four steps; a glyph or a face per step, a few words each. */
+.lv-h4-solo { position: relative; display: flex; justify-content: center; }
+.lv-hc { margin: 0; width: 100%; max-width: 520px; border-radius: 16px; overflow: hidden; background: var(--lv-art-neutral); color: var(--lv-ink); text-align: left; box-shadow: 0 30px 80px rgb(16 32 84 / .28), 0 0 0 .5px rgb(0 0 0 / .08); }
+.lv-hc__bar { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px; background: #141414; color: #fff; font: 500 13px/1 var(--font-sans); }
+.lv-hc__agent { display: inline-flex; align-items: center; gap: 8px; }
+.lv-hc__body { display: grid; gap: 8px; padding: 12px; }
+.lv-hc__ask { justify-self: end; max-width: 88%; margin: 0 0 4px !important; padding: 10px 14px; border-radius: 12px 12px 4px 12px; background: #fff; box-shadow: 0 0 0 1px rgb(0 0 0 / .04), 0 1px 2px rgb(0 0 0 / .04); font-size: 14px; line-height: 20px; color: var(--lv-ink); }
+.lv-hc__rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.lv-hc__rows li { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 16px 0 12px; border-radius: 10px; background: #fff; box-shadow: 0 0 0 1px rgb(0 0 0 / .04), 0 1px 2px rgb(0 0 0 / .04), 0 4px 12px rgb(0 0 0 / .05); font-size: 14px; animation: lv-row 420ms var(--lv-ease) both; animation-delay: calc(700ms + var(--i) * 260ms); }
+.lv-hc__rows b { flex: none; font-weight: 500; }
+.lv-hc__rows em { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 400 12px/1.2 var(--font-mono); font-style: normal; color: var(--lv-muted); }
+.lv-hc__ic { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; overflow: hidden; background: var(--lv-art-neutral); color: var(--lv-ink); }
+.lv-hc__ic.is-ok { border-radius: 50%; background: var(--color-positive-600); color: #fff; }
+.lv-hc__ic.is-photo { border-radius: 50%; }
+.lv-hc__ic.is-logo img { width: 18px; height: 18px; display: block; }
+.lv-hc__ic.is-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lv-hc__score { margin-left: auto; font: 600 18px/1 var(--mk-font-display); letter-spacing: -0.02em; color: var(--color-positive-600); }
+.lv-hc__tag { margin-left: auto; padding: 4px 8px; border-radius: 999px; background: var(--color-positive-50); color: var(--color-positive-600); font: 500 12px/1 var(--font-sans); }
+@media (max-width: 420px) { .lv-hc__rows em { display: none; } }
+@media (prefers-reduced-motion: reduce) { .lv-hc__rows li { animation: none; } }
+
+/* Phones: the email field stands alone, tall and outlined, so it reads as the place to tap and type. */
+@media (max-width: 720px) {
+  .wl .wl__form, .wl .wl__form:focus-within { flex-direction: column; align-items: stretch; gap: 8px; padding: 0; background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .wl .wl__input { flex: none; width: 100%; box-sizing: border-box; height: 52px; padding: 0 16px; border-radius: 12px; background: #fff; box-shadow: inset 0 0 0 1.5px rgb(0 0 0 / .18), 0 1px 2px rgb(0 0 0 / .04); font-size: 17px; transition: box-shadow 150ms ease; }
+  .wl .wl__input:focus { box-shadow: inset 0 0 0 1.5px var(--color-action), 0 0 0 4px var(--color-action-ring); }
+  .wl[data-state="invalid"] .wl__form { box-shadow: none; }
+  .wl[data-state="invalid"] .wl__input { box-shadow: inset 0 0 0 1.5px var(--color-negative-600), 0 0 0 4px rgb(190 18 60 / .14); }
+  .wl--blue .wl__input, .wl--dark .wl__input { color: var(--lv-ink); }
+  .wl--blue .wl__input::placeholder, .wl--dark .wl__input::placeholder { color: #8E8E8E; }
+  .wl .wl__btn { flex: none; height: 52px; border-radius: 12px; font-size: 16px; }
+  .wl--blue .wl__btn, .wl--dark .wl__btn { background: #141414; color: #fff; }
+  .wl--blue .wl__btn:hover, .wl--dark .wl__btn:hover { background: #2A2A2A; }
+}
+
+/* 404: the hero's agent card on the footer's reef, filling the screen under the nav. */
+.lv-404 {
+  display: flex; flex-direction: column; min-height: calc(100svh - 80px); color: #fff;
+  background:
+    linear-gradient(180deg, rgb(11 15 28 / .45) 0%, rgb(11 15 28 / .1) 45%, rgb(11 15 28 / .1) 60%, rgb(11 15 28 / .72) 100%),
+    #83B5D7 url("/corral/hero-sunlit-reef.png") center bottom / cover no-repeat;
+}
+.lv-404 main { flex: 1; display: flex; }
+.lv-404__in { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding-block: 96px 120px; }
+.lv-404__k { margin: 0 0 24px; font: 500 clamp(20px, 2.4vw, 28px)/1 var(--font-mono); letter-spacing: .12em; text-shadow: 0 1px 2px rgb(0 0 0 / .4), 0 0 16px rgb(0 0 0 / .25); }
+.lv-404__h { margin: 0; font: 600 clamp(56px, 10vw, 136px)/.98 var(--mk-font-display); letter-spacing: -0.045em; text-shadow: 0 2px 32px rgb(0 0 0 / .3); }
+.lv-404__p { max-width: 24em; margin: 24px 0 40px; font-size: clamp(18px, 2vw, 22px); line-height: 1.45; color: rgb(255 255 255 / .94); text-shadow: 0 1px 2px rgb(0 0 0 / .4), 0 0 16px rgb(0 0 0 / .3); }
+.lv-404__btn { display: inline-flex; align-items: center; gap: 8px; height: 56px; padding: 0 28px; border-radius: 14px; background: #fff; color: var(--lv-ink); font: 500 17px/1 var(--font-sans); letter-spacing: -0.01em; text-decoration: none; box-shadow: 0 12px 32px rgb(11 15 28 / .28); transition: transform 200ms var(--lv-ease), box-shadow 200ms ease; }
+.lv-404__btn:hover { transform: translateY(-1px); box-shadow: 0 16px 40px rgb(11 15 28 / .34); }
+.lv-404__btn:active { transform: scale(.97); }
+.lv-404__btn:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.lv-404 .lv-foot { margin-top: 0; }
+@media (prefers-reduced-motion: reduce) { .lv-404__btn { transition: none; } .lv-404__btn:hover { transform: none; } }
