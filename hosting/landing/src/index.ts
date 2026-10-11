@@ -6,8 +6,8 @@ export interface Env extends WaitlistEnv {
 }
 
 export default {
-  async fetch(request, env): Promise<Response> {
-    if (new URL(request.url).pathname === WAITLIST_PATH) return handleWaitlist(request, env);
+  async fetch(request, env, ctx): Promise<Response> {
+    if (new URL(request.url).pathname === WAITLIST_PATH) return handleWaitlist(request, env, ctx);
     const path = localImagePath(request);
     if (!path) return env.ASSETS.fetch(request);
     const assetUrl = new URL(path, request.url);
