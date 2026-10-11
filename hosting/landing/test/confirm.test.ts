@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AUTOSEND_SEND_URL, CONFIRM_FROM, CONFIRM_REPLY_TO, CONFIRM_SUBJECT, sendConfirmation } from "../src/confirm";
+import { AUTOSEND_SEND_URL, CONFIRM_FROM, CONFIRM_REPLY_TO, CONFIRM_TEMPLATE_ID, sendConfirmation } from "../src/confirm";
 import { handleWaitlist } from "../src/waitlist";
 import { makeEnv, postForm, postJson } from "./helpers";
 
@@ -17,7 +17,7 @@ function makeCtx() {
 }
 
 describe("sendConfirmation", () => {
-  it("posts one email to AutoSend from Corral, replies to corral@, with HTML and text", async () => {
+  it("posts one email to AutoSend from Corral, replies to corral@, using the AutoSend template", async () => {
     const fetcher = ok();
     expect(await sendConfirmation({ AUTOSEND_API_KEY: "as_key" }, "wanjiru@kilima.co.ke", fetcher)).toBe(true);
     expect(fetcher).toHaveBeenCalledTimes(1);
@@ -29,9 +29,8 @@ describe("sendConfirmation", () => {
     expect(sent.to).toEqual({ email: "wanjiru@kilima.co.ke" });
     expect(sent.from).toEqual(CONFIRM_FROM);
     expect(sent.replyTo).toEqual({ email: CONFIRM_REPLY_TO });
-    expect(sent.subject).toBe(CONFIRM_SUBJECT);
-    expect(sent.html).toContain("You’re on the list.");
-    expect(sent.text).toContain("You’re on the list.");
+    expect(sent.templateId).toBe(CONFIRM_TEMPLATE_ID);
+    expect(sent).not.toHaveProperty("html");
   });
 
   it("does nothing without an API key", async () => {
