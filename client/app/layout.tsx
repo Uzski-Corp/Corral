@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Inter_Tight, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SITE_URL } from "@/lib/marketing/site";
+import { SHARE_IMAGE, THEME, twitterFor } from "@/lib/marketing/seo";
 
 /* Fonts (M10c, PR #72 findings). Every face is one variable file on the latin subset: a variable font carries all
    the weights we use (400–700) in one request, so there are no weights to trim, and static weights would add files.
@@ -32,27 +33,17 @@ export const metadata: Metadata = {
     ],
     apple: [{ url: "/apple-icon.png", sizes: "180x180" }],
   },
-  openGraph: {
-    siteName: "Corral",
-    type: "website",
-    locale: "en",
-    images: [{
-      url: "/assets/corral-og.png",
-      width: 1200,
-      height: 630,
-      alt: "Corral. Leads, Tailored. Client acquisition, for the agentic era.",
-      type: "image/png",
-    }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    images: [{
-      url: "/assets/corral-og.png",
-      width: 1200,
-      height: 630,
-      alt: "Corral. Leads, Tailored. Client acquisition, for the agentic era.",
-    }],
-  },
+  // Each public page replaces this with openGraphFor(its route), which adds og:url (lib/marketing/seo.ts).
+  openGraph: { siteName: "Corral", type: "website", locale: "en", images: [{ ...SHARE_IMAGE, type: "image/png" }] },
+  twitter: twitterFor(),
+};
+
+/** theme-color per colour scheme (lib/marketing/seo.ts THEME has the reasoning). */
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: THEME.light },
+    { media: "(prefers-color-scheme: dark)", color: THEME.dark },
+  ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

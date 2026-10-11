@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { Mark } from "@/components/app/icons";
 import { PLANS, priceWords } from "@/lib/marketing/plans";
 import { CTA, CTA_SIGNED_IN, FOOTER, ROUTES, SAMPLE_NOTE, claim } from "@/lib/marketing/site";
@@ -12,12 +11,15 @@ export function PricingFooter() {
   const prices = claim("prices")!;
   return (
     <section id="pricing" className="or-dusk">
-      <Image className="or-bg" src="/corral/or/dusk.jpg" alt="" fill sizes="100vw" />
+      {/* Vector horizon (Bau, Oct 7): sharp at every width and density, replaces the stretched dusk.jpg. The inline
+          fill matches what next/image `fill` applied, since .or-bg only sets object-fit. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="or-bg" src="/corral/footer-horizon.svg" alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />
       <div className="or-dusk__shade" />
       <div className="or-wrap or-pricing">
         <div className="or-pricing__head">
-          <div><span className="or-kicker">Pricing</span><h2 className="or-h2">Priced by how much of the field you read.</h2></div>
-          <p className="or-lede">Every plan includes the Unibox copilot, Cal.com booking, receipts on every score and the MCP server. Pay monthly, cancel whenever.</p>
+          <div><span className="or-kicker">Pricing</span><h2 className="or-h2">Priced by how many companies the agent reads.</h2></div>
+          <p className="or-lede">Every plan includes the Unibox, Cal.com booking, the reason on every score, and the MCP server. Pay monthly and cancel whenever.</p>
         </div>
         <div className="or-plans c-app">
           {PLANS.map((p) => (

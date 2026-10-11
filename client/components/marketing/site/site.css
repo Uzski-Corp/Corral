@@ -58,7 +58,9 @@
 .sn-sec__n { display: block; font: 400 12px/1 var(--font-mono); color: var(--mk-copy-muted); margin-bottom: 18px; }
 .sn-sec__margin .sn-h2 { max-width: 12em; }
 .sn-sec__body { min-width: 0; }
-main > :last-child { padding-bottom: clamp(96px, 10vw, 144px); }
+/* Global on purpose (this sheet ships on every marketing page), but never on the /v/* prototype picker: it renders as
+   main's last child and is position: fixed, so this padding turned the 36px pill into a ~176px blob (Oct 7). */
+main > :last-child:not(.proto-picker) { padding-bottom: clamp(96px, 10vw, 144px); }
 
 /* ---------- to confirm */
 .sn-confirm { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 6px; background: var(--color-caution-50); box-shadow: inset 0 0 0 1px var(--color-caution-200); color: var(--color-caution-600); font: 500 12px/1 var(--font-sans); white-space: nowrap; }

@@ -23,9 +23,10 @@ export function OpenRangeHero() {
       <OpenRangeNav />
       <div className="or-wrap or-hero__grid">
         <div className="or-hero__copy">
-          <h1>The right fifty,<br />already read.</h1>
-          <p>Corral reads every company’s website against what you actually sell, scores the fit, and puts a real person at the end of every row.</p>
-          <div className="or-hero__ctas"><VisitorLink className="c-btn c-btn--primary c-btn--lg" href={CTA.start} signedInHref={CTA_SIGNED_IN.start}>Add your first product</VisitorLink><a className="c-btn c-btn--lg or-glass" href="#product">See a scored segment</a></div>
+          <span className="or-kicker">Agentic lead generation</span>
+          <h1>Let our agent find<br />you tailored leads.</h1>
+          <p>You tell Corral what you sell. It reads each company’s site, scores the fit, and drafts the email to the person who decides.</p>
+          <div className="or-hero__ctas"><VisitorLink className="c-btn c-btn--primary c-btn--lg" href={CTA.start} signedInHref={CTA_SIGNED_IN.start}>Add your first product</VisitorLink><a className="c-btn c-btn--lg or-glass" href="#product">See a company it scored</a></div>
         </div>
       </div>
       <div className="or-hero__plate">

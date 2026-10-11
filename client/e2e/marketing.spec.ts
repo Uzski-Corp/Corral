@@ -2,7 +2,8 @@ import { expect, test } from "@playwright/test";
 
 /**
  * The M10 marketing site's contract in the production build (ENG-60): titles, canonicals, share images,
- * noindex on the legal stubs and the 404, robots.txt, sitemap.xml and the shared site navigation.
+ * noindex on the legal stubs and the 404, robots.txt, sitemap.xml, the shared site navigation, and (Oct 7) og:url,
+ * JSON-LD, theme-color and the web app manifest.
  */
 const SHARED = ["/pricing", "/security", "/mcp", "/changelog"] as const;
 const OG = ["/", "/fenceline", ...SHARED] as const;
@@ -20,7 +21,7 @@ test.describe("/ is the Open Range landing (ENG-87)", () => {
     expect(res?.status()).toBe(200);
     expect(res?.request().redirectedFrom()).toBeNull();
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByRole("heading", { level: 1, name: /The right fifty/ })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /An agent finds/ })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Main" }).first().getByRole("link", { name: "Sign in" })).toBeVisible();
   });
 
@@ -70,7 +71,7 @@ test.describe("marketing site", () => {
 
   test("the landings keep their absolute titles; / is Open Range, its only address", async ({ page }) => {
     await page.goto("/");
-    await expect(page).toHaveTitle("Corral · The right fifty, already read.");
+    await expect(page).toHaveTitle("Corral · An agent finds your next leads.");
     expect(await page.locator('link[rel="canonical"]').getAttribute("href")).toMatch(/^https?:\/\/[^/]+\/?$/);
     // /open-range was removed (ENG-87): the 404, not a copy or a redirect.
     expect((await page.goto("/open-range"))?.status()).toBe(404);
@@ -128,6 +129,61 @@ test.describe("marketing site", () => {
       await page.getByRole("navigation", { name: "Main", exact: true }).getByRole("link", { name: label, exact: true }).click();
       await expect(page).toHaveURL(new RegExp(`${path}$`));
       await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
+    }
+  });
+});
+
+/* The Oct 7 SEO pass: og:url, JSON-LD, theme-color and the web app manifest, as the production build serves them. */
+test.describe("search and share metadata", () => {
+  test("every public page's og:url is its own address (the canonical); /v/* share home's", async ({ page }) => {
+    for (const path of [...OG, ...LEGAL, "/sign-in"]) {
+      await page.goto(path);
+      const url = await meta(page, "property", "og:url");
+      expect(url, path).toMatch(/^https?:\/\//);
+      expect(new URL(url!).pathname, path).toBe(path);
+      const link = page.locator('link[rel="canonical"]');
+      if (await link.count()) expect(url, path).toBe((await link.getAttribute("href"))!.replace(/\/$/, ""));
+    }
+    for (const v of ["1", "2", "3", "4"]) {
+      await page.goto(`/v/${v}`);
+      expect(new URL((await meta(page, "property", "og:url"))!).pathname).toBe("/");
+      expect(await meta(page, "name", "robots")).toMatch(/noindex/);
+    }
+  });
+
+  test("the twitter card has no invented handle", async ({ page }) => {
+    await page.goto("/");
+    expect(await meta(page, "name", "twitter:site")).toBeNull();
+    expect(await meta(page, "name", "twitter:creator")).toBeNull();
+  });
+
+  test("/ and /pricing carry JSON-LD that parses, with no ratings or reviews", async ({ request }) => {
+    const ld = async (path: string) => {
+      const html = await (await request.get(path)).text();
+      const blocks = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => JSON.parse(m[1]));
+      expect(blocks, path).toHaveLength(1);
+      expect(JSON.stringify(blocks)).not.toMatch(/"(aggregateRating|review|reviews)"/);
+      return blocks[0]["@graph"].map((t: { "@type": string }) => t["@type"]);
+    };
+    expect(await ld("/")).toEqual(["Organization", "WebSite", "SoftwareApplication"]);
+    expect(await ld("/pricing")).toEqual(["FAQPage"]);
+  });
+
+  test("theme-color follows the colour scheme, and the manifest and its icons are served", async ({ page, request }) => {
+    await page.goto("/pricing");
+    const colours = await page.locator('meta[name="theme-color"]').evaluateAll((els) => els.map((e) => [e.getAttribute("media"), e.getAttribute("content")]));
+    expect(colours).toEqual([["(prefers-color-scheme: light)", "#F9F9FA"], ["(prefers-color-scheme: dark)", "#1C1C1C"]]);
+    const href = await page.locator('link[rel="manifest"]').getAttribute("href");
+    expect(href).toBe("/manifest.webmanifest");
+    const res = await request.get(href!);
+    expect(res.status()).toBe(200);
+    expect(res.headers()["content-type"]).toMatch(/^application\/(manifest\+)?json/);
+    const manifest = await res.json();
+    expect(manifest).toMatchObject({ name: "Corral", short_name: "Corral", start_url: "/", display: "standalone", theme_color: "#F9F9FA" });
+    for (const icon of manifest.icons) {
+      const img = await request.get(icon.src);
+      expect(img.status(), icon.src).toBe(200);
+      expect(img.headers()["content-type"], icon.src).toBe("image/png");
     }
   });
 });
