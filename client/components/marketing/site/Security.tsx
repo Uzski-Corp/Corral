@@ -4,7 +4,8 @@ import Link from "next/link";
 import { RATE, ROTATE_OVERLAP_HOURS, DEFAULT_EXPIRY, KEY_SEND_REFUSED } from "@/lib/mcp/keys";
 import { UNDO_SECONDS } from "@/lib/unibox/draft";
 import { ROUTES, claim } from "@/lib/marketing/site";
-import { Section, SitePage, ToConfirm } from "./Chrome";
+import { AgentSitePage } from "@/components/marketing/landing-v/SitePage";
+import { Section, ToConfirm } from "./Chrome";
 import { ProductFrame } from "./ProductFrame";
 import { KeyAccessPiece } from "./Pieces";
 import { Screen } from "./Screen";
@@ -16,7 +17,7 @@ const Pending = ({ id, children }: { id: string; children: React.ReactNode }) =>
 
 export function SecurityPage() {
   return (
-    <SitePage current={ROUTES.security} kicker="Security" title={<>What Corral can touch,<br />and what it can’t.</>}
+    <AgentSitePage current={ROUTES.security} kicker="Security" title={<>What Corral can touch,<br />and what it can’t.</>}
       lede="Corral writes as you, from your mailboxes, to people who decide. So the rules that matter are about what it may do without you. Here they are, and where each one lives in the product.">
 
       <Section n="01" id="sending" title="Nothing replies without you.">
@@ -63,6 +64,6 @@ export function SecurityPage() {
       <Section n="05" id="report" title="Tell us.">
         <p className="sn-body">Found something? Write to <a className="sn-link" href="mailto:security@corral.app">security@corral.app</a>. Tell us how to credit you, if you’d like. Terms, privacy and the data processing agreement are under <Link className="sn-link" href={ROUTES.terms}>Legal</Link>.</p>
       </Section>
-    </SitePage>
+    </AgentSitePage>
   );
 }

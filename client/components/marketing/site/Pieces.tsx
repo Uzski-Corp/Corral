@@ -49,6 +49,14 @@ export function KeyAccessPiece() {
   return <Card className="pp-access"><AccessPicker holder="key" value={PRESETS[1].access} /></Card>;
 }
 
+/** Client logos from svgl.app (public/corral/logos). "Other clients" has none. */
+const CLIENT_LOGO: Partial<Record<ClientId, string>> = { cursor: "/corral/logos/cursor.svg", "claude-code": "/corral/logos/claude.svg", claude: "/corral/logos/claude.svg", vscode: "/corral/logos/vscode.svg" };
+function ClientTab({ id, name }: { id: ClientId; name: string }) {
+  const logo = CLIENT_LOGO[id];
+  // eslint-disable-next-line @next/next/no-img-element
+  return <span className="pp-tab">{logo && <img src={logo} alt="" width={14} height={14} />}{name}</span>;
+}
+
 /** M9: connect a client, the same steps and config Settings → MCP gives you. */
 export function McpClientsPiece() {
   const [cl, setCl] = useState<ClientId>("cursor");
@@ -57,7 +65,7 @@ export function McpClientsPiece() {
   return (
     <ToastProvider>
       <div className="c-app pp-clients">
-        <Tabs variant="pill" label="Client" value={cl} onChange={(v) => setCl(v as ClientId)} tabs={CLIENTS.map((x) => ({ id: x.id, label: x.name }))} />
+        <Tabs variant="pill" label="Client" value={cl} onChange={(v) => setCl(v as ClientId)} tabs={CLIENTS.map((x) => ({ id: x.id, label: <ClientTab id={x.id} name={x.name} /> }))} />
         <div className="pp-clients__body">
           <ol className="pp-steps">{stepsFor(cl, auth).map((s, i) => <li key={i}><span className="pp-steps__n">{i + 1}</span><span>{s}</span></li>)}</ol>
           <CopyBlock label={c.lang === "shell" ? "Command" : c.lang === "steps" ? "Connector" : "Config"} where={c.where} text={configFor(cl, auth)} what={c.lang === "shell" ? "the command" : "the config"} />

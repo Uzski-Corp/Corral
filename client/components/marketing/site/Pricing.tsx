@@ -1,33 +1,32 @@
-/* /pricing (M10). Three plans as columns of a ledger, not cards; the comparison grouped the way the product is. */
+/* /pricing (M10). Three short plan cards, then what a read is, the comparison grouped the way the product is, and the FAQ. */
 import Link from "next/link";
 import { Receipt, Receipts } from "@/components/app/primitives";
 import { COMPARE, FAQ, PLANS, priceWords, type Cell } from "@/lib/marketing/plans";
-import { CTA, CTA_SIGNED_IN, ROUTES, claim } from "@/lib/marketing/site";
-import { VisitorLink } from "@/components/marketing/site/VisitorLink";
-import { Section, SitePage, ToConfirm } from "./Chrome";
+import { ROUTES, claim } from "@/lib/marketing/site";
+import { WAITLIST } from "@/components/marketing/landing-v/copy";
+import { AgentSitePage } from "@/components/marketing/landing-v/SitePage";
+import { Section, ToConfirm } from "./Chrome";
 
 const cell = (c: Cell) => (c === true ? <span className="sn-yes">Included</span> : c === false ? <span className="sn-no" aria-label="Not included">—</span> : c);
 
 export function PricingPage() {
   const prices = claim("prices")!;
   return (
-    <SitePage current={ROUTES.pricing} kicker="Pricing" title={<>Pay for the ground<br />you cover.</>}
-      lede="Every plan reads, scores, writes and sorts. The difference is how many products and how much of the market. Monthly, and you can leave whenever."
-      aside={<p className="sn-note">Prices in US dollars, billed monthly. Scoring over MCP costs one credit, the same as in the app.{!prices.confirmed && <> <ToConfirm who={prices.owner} /></>}</p>}>
+    <AgentSitePage center current={ROUTES.pricing} kicker="Pricing" title="Pay for the ground you cover."
+      lede="Every plan reads, scores, writes and sorts. Billed monthly, leave whenever.">
       <div className="sn-wrap">
-        <ol className="sn-plans" aria-label="Plans">
+        <ol className="sv-plans" aria-label="Plans">
           {PLANS.map((p) => (
-            <li key={p.id} className={`sn-plan${p.primary ? " is-primary" : ""}`}>
-              <div className="sn-plan__name"><h2>{p.name}</h2><em>{p.tag}</em>{p.primary && <span className="sn-plan__pick">Most teams</span>}</div>
-              <p className="sn-plan__line">{p.line}</p>
-              <p className="sn-plan__price"><span className="sn-num">{priceWords(p)}</span>{p.price !== null && <span>a month</span>}</p>
-              <div className="sn-plan__meter" aria-hidden="true" style={{ ["--m" as string]: p.meter }}><i /></div>
-              <p className="sn-plan__reads">{p.reads ? `${p.reads.toLocaleString("en")} companies read a month` : "25,000 and up, priced with you"}</p>
-              <VisitorLink className={`c-btn c-btn--lg ${p.primary ? "c-btn--primary" : "sn-btn-line"}`} href={p.price === null ? CTA.walkthrough : CTA.start} signedInHref={p.price === null ? CTA.walkthrough : CTA_SIGNED_IN.start}>{p.cta}</VisitorLink>
+            <li key={p.id} className={`sv-plan${p.primary ? " is-primary" : ""}`}>
+              <h2>{p.name}{p.primary && <span className="sv-plan__pick">Most teams</span>}</h2>
+              <p className="sv-plan__line">{p.line}</p>
+              <p className="sv-plan__price"><span className="sv-plan__n">{priceWords(p)}</span>{p.price !== null && <span>a month</span>}</p>
+              <ul className="sv-plan__inc">{p.includes.map((i) => <li key={i}>{i}</li>)}</ul>
+              <a className="sv-plan__cta" href="#join">{WAITLIST.cta}</a>
             </li>
           ))}
         </ol>
-        <p className="sn-small">Prices in US dollars, billed monthly. Every plan includes the Unibox copilot, Cal.com booking, receipts on every score and the MCP server.</p>
+        <p className="sv-plans__note">Prices in US dollars. Every plan includes the MCP server.{!prices.confirmed && <> <ToConfirm who={prices.owner} /></>}</p>
       </div>
 
       <Section n="01" id="reads" title="What you’re paying for is reading.">
@@ -63,6 +62,6 @@ export function PricingPage() {
         </div>
         <p className="sn-body sn-mt">Security questions have <Link className="sn-link" href={ROUTES.security}>their own page</Link>. Developers: the <Link className="sn-link" href={ROUTES.mcp}>MCP server</Link> is on every plan.</p>
       </Section>
-    </SitePage>
+    </AgentSitePage>
   );
 }

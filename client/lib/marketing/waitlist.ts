@@ -15,7 +15,7 @@
      an address containing "taken" or one already sent this session → exists; "fail" → error; else joined.
    Turn the mock off with NEXT_PUBLIC_WAITLIST_MOCK=0; force it on a build with NEXT_PUBLIC_WAITLIST_MOCK=1. */
 
-export type WaitlistSource = "v1" | "v2" | "v3" | "v4" | "home";
+export type WaitlistSource = "v1" | "v2" | "v3" | "v4" | "home" | "site";
 export type WaitlistResult = "joined" | "exists" | "invalid" | "error";
 export const WAITLIST_ENDPOINT = "/api/waitlist";
 export const WAITLIST_FRAGMENTS: Record<WaitlistResult, string> = {

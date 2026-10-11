@@ -64,6 +64,13 @@ export const STEPS: { n: string; title: string; body: string }[] = [
   { n: "04", title: "It handles the replies", body: "Replies come back sorted with a draft ready. A yes books the meeting on your calendar." },
 ];
 
+export const VISUAL_STEPS = [
+  { n: "01", title: "Teach it your product", body: "Add your site or deck. Corral learns who needs it." },
+  { n: "02", title: "Find the right companies", body: "Each company gets a fit score backed by its own site." },
+  { n: "03", title: "Reach the decision-maker", body: "A checked email. A first message with a reason to talk." },
+  { n: "04", title: "Turn replies into meetings", body: "Replies sorted, drafts ready, meetings on your calendar." },
+];
+
 export const SECTIONS = {
   how: { kicker: "How it works", title: "From what you sell to a booked meeting." },
   proof: {

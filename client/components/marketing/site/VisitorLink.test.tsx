@@ -3,9 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { forgetVisitor, rememberVisitor } from "@/lib/marketing/visitor";
 import { CTA, CTA_SIGNED_IN } from "@/lib/marketing/site";
 import { VisitorLink } from "./VisitorLink";
-import { OpenRangeHero } from "@/components/marketing/open-range/Hero";
 import { FencelineHero } from "@/components/marketing/fenceline/Hero";
-import { McpPage } from "./Mcp";
 
 afterEach(() => forgetVisitor());
 
@@ -20,20 +18,14 @@ describe("VisitorLink (M10c signed-in CTAs)", () => {
     expect(link("Go").className).toBe("x");
   });
 
-  it("follows the corral_visitor hint on the heroes and /mcp", () => {
+  it("follows the corral_visitor hint on the Fenceline hero", () => {
     rememberVisitor({ name: "Wanjiru Mwangi", avatarUrl: null });
-    const a = render(<OpenRangeHero />);
-    expect(link("Add your first product").getAttribute("href")).toBe("/app");
-    a.unmount();
-    const b = render(<FencelineHero />);
+    render(<FencelineHero />);
     expect(link("Start with one product").getAttribute("href")).toBe("/app");
-    b.unmount();
-    render(<McpPage />);
-    expect(link("Sign in and connect").getAttribute("href")).toBe("/app/settings/mcp");
   });
 
   it("keeps sign-in for a signed-out visitor", () => {
-    render(<McpPage />);
-    expect(link("Sign in and connect").getAttribute("href")).toBe(CTA.start);
+    render(<FencelineHero />);
+    expect(link("Start with one product").getAttribute("href")).toBe(CTA.start);
   });
 });

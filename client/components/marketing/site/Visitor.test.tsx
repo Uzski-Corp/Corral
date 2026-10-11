@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { SiteNav, SiteFooter } from "./Chrome";
-import { AuthLink, FencelineNavAccount, OpenRangeNavAccount, VisitorAvatar } from "./Visitor";
+import { AuthLink, FencelineNavAccount, VisitorAvatar } from "./Visitor";
 import { forgetVisitor, rememberVisitor, SAMPLE_VISITORS } from "@/lib/marketing/visitor";
 
 afterEach(() => forgetVisitor());
@@ -32,16 +32,14 @@ describe("marketing nav, signed in or out (M10c)", () => {
   });
   it("reads the hint cookie on a page (no pin)", () => {
     rememberVisitor({ name: "Grace Wambui", avatarUrl: null });
-    render(<><OpenRangeNavAccount /><FencelineNavAccount /><AuthLink hideSignedIn /><SiteFooter /></>);
-    expect(screen.getAllByRole("img", { name: "Signed in as Grace Wambui" })).toHaveLength(2);
-    expect(screen.getAllByRole("link", { name: "Open app" })).toHaveLength(3);
+    render(<><FencelineNavAccount /><AuthLink hideSignedIn /><SiteFooter /></>);
+    expect(screen.getAllByRole("img", { name: "Signed in as Grace Wambui" })).toHaveLength(1);
+    expect(screen.getAllByRole("link", { name: "Open app" })).toHaveLength(2);
     expect(screen.queryByRole("link", { name: "Sign in" })).toBeNull();
-    expect(screen.queryByRole("link", { name: "Book a walkthrough" })).toBeNull();
   });
   it("without the hint, each landing keeps its signed-out nav", () => {
-    render(<><OpenRangeNavAccount /><FencelineNavAccount /><AuthLink hideSignedIn /></>);
-    expect(screen.getByRole("link", { name: "Book a walkthrough" })).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "Sign in" })).toHaveLength(2);
+    render(<><FencelineNavAccount /><AuthLink hideSignedIn /></>);
+    expect(screen.getAllByRole("link", { name: "Sign in" })).toHaveLength(1);
     expect(screen.queryByRole("img")).toBeNull();
   });
 });

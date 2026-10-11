@@ -3,11 +3,15 @@
  * Prices and limits are placeholders until confirmed (lib/marketing/site.ts CLAIMS "prices").
  */
 export type PlanId = "field" | "range" | "territory";
-export type Plan = { id: PlanId; name: string; tag: string; price: number | null; line: string; cta: string; primary?: boolean; reads: number | null; meter: number };
+/** `includes`: the four lines a plan card shows; the full comparison is COMPARE. */
+export type Plan = { id: PlanId; name: string; tag: string; price: number | null; line: string; cta: string; primary?: boolean; reads: number | null; meter: number; includes: string[] };
 export const PLANS: Plan[] = [
-  { id: "field", name: "Field", tag: "for one", price: 49, line: "One product, one founder doing their own outbound.", cta: "Start with one product", reads: 1000, meter: 0.12 },
-  { id: "range", name: "Range", tag: "for a team", price: 149, line: "A small team working a real territory.", cta: "Start a 14-day trial", primary: true, reads: 5000, meter: 0.5 },
-  { id: "territory", name: "Territory", tag: "for many", price: null, line: "Several products, several markets, one Unibox.", cta: "Book a walkthrough", reads: null, meter: 0.95 },
+  { id: "field", name: "Field", tag: "for one", price: 49, line: "One product, one founder doing their own outbound.", cta: "Start with one product", reads: 1000, meter: 0.12,
+    includes: ["1 product", "1,000 companies read a month", "2 mailboxes", "Unibox drafts and Cal.com"] },
+  { id: "range", name: "Range", tag: "for a team", price: 149, line: "A small team working a real territory.", cta: "Start a 14-day trial", primary: true, reads: 5000, meter: 0.5,
+    includes: ["3 products", "5,000 companies read a month", "10 mailboxes, 5 teammates", "AutoSend nurture"] },
+  { id: "territory", name: "Territory", tag: "for many", price: null, line: "Several products, several markets, one Unibox.", cta: "Book a walkthrough", reads: null, meter: 0.95,
+    includes: ["Unlimited products", "25,000+ companies read a month", "Your own mailboxes", "Phoenix ERP and SSO"] },
 ];
 export const priceWords = (p: Plan) => (p.price === null ? "Let’s talk" : `$${p.price}`);
 

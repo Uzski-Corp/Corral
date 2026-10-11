@@ -2,6 +2,7 @@
    Inspiration: warp.dev/oz (type first, product on a tinted band) and milkstraw.ai (the product floating on a photo
    plate). Neither is copied; the grounds are Corral's own: the blue grounds, the Open Range land, the dusk. */
 import type { CSSProperties } from "react";
+import type { WaitlistSource } from "@/lib/marketing/waitlist";
 import { HEROES, KICKER, AGENT_LOGOS, type VariantId } from "./copy";
 import { Nav } from "./Sections";
 import { AgentChat, AgentRun, BlueGround, School } from "./Visuals";
@@ -9,7 +10,7 @@ import { WaitlistForm } from "./WaitlistForm";
 
 const d = (ms: number) => ({ "--d": `${ms}ms` }) as CSSProperties;
 
-function Copy({ v, tone = "light", align = "start" }: { v: VariantId; tone?: "light" | "blue"; align?: "start" | "center" }) {
+function Copy({ v, source = `v${v}`, tone = "light", align = "start" }: { v: VariantId; source?: WaitlistSource; tone?: "light" | "blue"; align?: "start" | "center" }) {
   const h = HEROES[v];
   return (
     <div className={`lv-copy lv-copy--${align}`}>
@@ -17,7 +18,7 @@ function Copy({ v, tone = "light", align = "start" }: { v: VariantId; tone?: "li
       <h1 className="lv-h1 lv-in" style={d(60)}>{h.headline}</h1>
       <p className="lv-sub lv-in" style={d(140)}>{h.sub}</p>
       <div className="lv-in" style={d(220)}>
-        <WaitlistForm id="join" source={`v${v}`} tone={tone} align={align} fragments />
+        <WaitlistForm id="join" source={source} tone={tone} align={align} fragments />
       </div>
     </div>
   );
@@ -68,12 +69,12 @@ function Blue() {
 }
 
 /** 4 · Agent: centred, and the first picture is your own agent calling Corral. */
-function Agent() {
+function Agent({ source }: { source?: WaitlistSource }) {
   return (
     <header className="lv-hero lv-hero--4">
       <Nav />
       <div className="lv-wrap lv-h4-top">
-        <Copy v="4" align="center" />
+        <Copy v="4" source={source} align="center" />
         <ul className="lv-h4-clients lv-in" style={d(300)} aria-label="Works from">
           {AGENT_LOGOS.slice(0, 4).map((l) => (
             // eslint-disable-next-line @next/next/no-img-element
@@ -92,9 +93,9 @@ function Agent() {
   );
 }
 
-export function Hero({ v }: { v: VariantId }) {
+export function Hero({ v, source }: { v: VariantId; source?: WaitlistSource }) {
   if (v === "1") return <Statement />;
   if (v === "2") return <Plate />;
   if (v === "3") return <Blue />;
-  return <Agent />;
+  return <Agent source={source} />;
 }

@@ -6,15 +6,17 @@ import { FitPiece } from "@/components/marketing/site/Pieces";
 import { ROUTES } from "@/lib/marketing/site";
 import { CLIENTS } from "@/lib/mcp/tools";
 import type { WaitlistSource } from "@/lib/marketing/waitlist";
-import { AGENT_LOGOS, FAQ, NAV_LINKS, SECTIONS, STEPS, TOOL_LOGOS, WAITLIST, type Logo } from "./copy";
+import { AGENT_LOGOS, FAQ, NAV_LINKS, SECTIONS, STEPS, VISUAL_STEPS, TOOL_LOGOS, WAITLIST, type Logo } from "./copy";
 import { AgentChat, BlueGround, Horizon } from "./Visuals";
+import { ScoreIllustration, WorkflowIllustration } from "./Illustrations";
 import { WaitlistForm } from "./WaitlistForm";
 
-export function Nav({ tone = "light" }: { tone?: "light" | "blue" }) {
+/** `links` defaults to the landing's in-page anchors; the inner pages pass the site routes and their own `current`. */
+export function Nav({ tone = "light", links = NAV_LINKS, current }: { tone?: "light" | "blue"; links?: { label: string; href: string }[]; current?: string }) {
   return (
     <nav className={`lv-nav lv-wrap lv-nav--${tone}`} aria-label="Main">
       <Link className="lv-logo" href={ROUTES.home}><Mark size={22} /><span>Corral</span></Link>
-      <div className="lv-nav__links">{NAV_LINKS.map((l) => <a key={l.href} href={l.href}>{l.label}</a>)}</div>
+      <div className="lv-nav__links">{links.map((l) => <Link key={l.href} href={l.href} aria-current={current === l.href ? "page" : undefined}>{l.label}</Link>)}</div>
       <div className="lv-nav__end">
         <Link className="lv-nav__signin" href={ROUTES.signIn}>Sign in</Link>
         <a className="lv-nav__cta" href="#join">{WAITLIST.cta}</a>
@@ -41,14 +43,15 @@ export function WorksWith() {
   );
 }
 
-export function How() {
+export function How({ illustrated = false }: { illustrated?: boolean }) {
   return (
     <section id="how" className="lv-how lv-wrap" aria-labelledby="lv-how-h">
       <span className="lv-kicker">{SECTIONS.how.kicker}</span>
       <h2 id="lv-how-h" className="lv-h2">{SECTIONS.how.title}</h2>
       <ol className="lv-steps">
-        {STEPS.map((s) => (
+        {(illustrated ? VISUAL_STEPS : STEPS).map((s) => (
           <li key={s.n} className="lv-step">
+            {illustrated && <WorkflowIllustration step={s.n} />}
             <span className="lv-step__n">{s.n}</span>
             <h3>{s.title}</h3>
             <p>{s.body}</p>
@@ -59,16 +62,16 @@ export function How() {
   );
 }
 
-export function Proof() {
+export function Proof({ illustrated = false }: { illustrated?: boolean }) {
   return (
     <section className="lv-proof lv-wrap" aria-labelledby="lv-proof-h">
       <div className="lv-proof__copy">
         <span className="lv-kicker">{SECTIONS.proof.kicker}</span>
         <h2 id="lv-proof-h" className="lv-h2">{SECTIONS.proof.title}</h2>
-        <p className="lv-lede">{SECTIONS.proof.body}</p>
+        <p className="lv-lede">{illustrated ? "A reason for every point. A source for every check. Only companies scoring 80 or above enter your outreach." : SECTIONS.proof.body}</p>
       </div>
       <BlueGround className="lv-proof__plate">
-        <div className="lv-proof__piece"><FitPiece /></div>
+        {illustrated ? <ScoreIllustration /> : <div className="lv-proof__piece"><FitPiece /></div>}
       </BlueGround>
     </section>
   );
@@ -103,7 +106,7 @@ export function Agents({ picture = "chat" }: { picture?: "chat" | "clients" }) {
         <p className="lv-lede">{SECTIONS.agents.body}</p>
         <p><Link className="lv-textlink" href={ROUTES.mcp}>How the MCP server works</Link></p>
       </div>
-      {picture === "chat" ? <AgentChat className="lv-agents__chat" /> : <ClientList />}
+      {picture === "chat" ? <AgentChat className="lv-agents__chat" /> : <div className="lv-client-stage"><ClientList /></div>}
     </section>
   );
 }
@@ -134,14 +137,14 @@ export function Faq() {
   );
 }
 
-export function FinalAndFooter({ source }: { source: WaitlistSource }) {
+export function FinalAndFooter({ source, formId }: { source: WaitlistSource; formId?: string }) {
   return (
     <section className="lv-dusk" aria-labelledby="lv-final-h">
       <Horizon className="lv-dusk__art" />
       <div className="lv-final lv-wrap">
         <h2 id="lv-final-h">{SECTIONS.final.title}</h2>
         <p>{SECTIONS.final.body}</p>
-        <WaitlistForm source={source} tone="dark" align="center" note={false} />
+        <WaitlistForm id={formId} fragments={Boolean(formId)} source={source} tone="dark" align="center" note={false} />
       </div>
       <footer className="lv-foot lv-wrap">
         <Link className="lv-logo" href={ROUTES.home}><Mark size={20} /><span>Corral</span></Link>

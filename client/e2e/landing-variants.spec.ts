@@ -4,8 +4,7 @@ import { audit, WIDTHS } from "./axe";
 /**
  * Bau's landing directions (Oct 7) in the production build: /v/1–/v/4 are static, out of search, carry the hero's
  * waitlist form (a real POST to the Worker's /api/waitlist with JS off), and pass axe at both design widths.
- * The live / now draws its pricing and footer band with the vector horizon instead of dusk.jpg. The prototype picker
- * stays a compact pill, with or without script.
+ * The prototype picker stays a compact pill, with or without script.
  */
 const VARIANTS = ["1", "2", "3", "4"] as const;
 
@@ -87,17 +86,4 @@ test.describe("/v/1–/v/4", () => {
       }
     });
   }
-});
-
-test("/ draws the pricing and footer band with the vector horizon", async ({ page, request }) => {
-  await page.goto("/");
-  const bg = page.locator("#pricing > img.or-bg");
-  await expect(bg).toHaveAttribute("src", "/corral/footer-horizon.svg");
-  const box = await bg.boundingBox();
-  const band = await page.locator("#pricing").boundingBox();
-  expect(box?.width).toBeCloseTo(band!.width, 0);
-  expect(box?.height).toBeCloseTo(band!.height, 0);
-  const svg = await request.get("/corral/footer-horizon.svg");
-  expect(svg.status()).toBe(200);
-  expect(svg.headers()["content-type"]).toContain("image/svg+xml");
 });

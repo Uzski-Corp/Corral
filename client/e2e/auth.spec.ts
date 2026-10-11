@@ -35,7 +35,7 @@ test.describe("route protection", () => {
     await expect(page).toHaveURL(`${WEB}/app`);
     await page.goto("/");
     await expect(page).toHaveURL(`${WEB}/`);
-    await expect(page.getByRole("heading", { level: 1, name: /An agent finds/ })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /Put an AI agent on lead generation/ })).toBeVisible();
     await page.goto("/app");
     await expect(page.getByRole("button", { name: "Account" })).toContainText("Wanjiru Mwangi");
   });

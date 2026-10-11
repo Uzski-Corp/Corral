@@ -64,13 +64,6 @@ export function SiteNavAccount({ visitor }: Pin) {
   );
 }
 
-/** Open Range (/) nav, over the photograph. */
-export function OpenRangeNavAccount({ visitor }: Pin) {
-  const v = useVisitor(visitor);
-  if (!v) return <div className="or-nav__cta"><Link href={ROUTES.signIn} className="or-nav__signin">Sign in</Link><a className="c-btn c-btn--ink c-btn--lg" href={CTA.walkthrough}>Book a walkthrough</a></div>;
-  return <div className="or-nav__cta is-signed-in"><VisitorAvatar visitor={v} tone="photo" /><Link className="c-btn c-btn--ink c-btn--lg" href={APP_HREF}>Open app</Link></div>;
-}
-
 /** Fenceline (/fenceline) nav: Sign in is a text link there; signed in, it's the picture and an "Open app" button. */
 export function FencelineNavAccount({ visitor }: Pin) {
   const v = useVisitor(visitor);
