@@ -1,7 +1,7 @@
 /* POST /api/waitlist: the landing pages' waitlist capture.
    The contract is Bau's (client/lib/marketing/waitlist.ts and the landing-v HANDOFF):
 
-   JSON  { email, source: "v1" | "v2" | "v3" | "v4" | "home" }
+   JSON  { email, source: "v1" | "v2" | "v3" | "v4" | "home" | "site" }
      201 { status: "joined" }   new address
      200 { status: "exists" }   already on the list
      422 { error: "invalid_email" }
@@ -22,7 +22,7 @@ export interface WaitlistEnv {
 export const WAITLIST_PATH = "/api/waitlist";
 export const MAX_BODY_BYTES = 2048;
 export const RATE_LIMIT = { max: 5, windowMs: 10 * 60 * 1000 } as const;
-export const SOURCES = ["v1", "v2", "v3", "v4", "home"] as const;
+export const SOURCES = ["v1", "v2", "v3", "v4", "home", "site"] as const;
 export type Source = (typeof SOURCES)[number] | "unknown";
 export type Outcome = "joined" | "exists" | "invalid" | "error";
 
