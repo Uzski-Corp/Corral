@@ -76,7 +76,7 @@
 .wl--blue[data-state="invalid"] .wl__form, .wl--dark[data-state="invalid"] .wl__form { box-shadow: inset 0 0 0 1px #FFB4BF, 0 0 0 4px rgb(255 180 191 / .2); }
 .wl--blue .wl__done, .wl--dark .wl__done { background: rgb(255 255 255 / .14); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .26); color: #fff; }
 .wl--blue .wl__done-t, .wl--dark .wl__done > svg { flex: none; margin-top: 1px; }
-.wl__done-t { color: #fff; }
+.wl--blue .wl__done-t, .wl--dark .wl__done-t { color: #fff; }  /* was unscoped: white on white under tone="light" */
 .wl--blue .wl__done-b, .wl--dark .wl__done-b { color: rgb(255 255 255 / .78); }
 
 /* ---------- the blue ground */

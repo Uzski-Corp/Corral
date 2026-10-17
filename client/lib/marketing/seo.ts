@@ -5,6 +5,7 @@
  */
 import type { Metadata } from "next";
 import { FAQ as PRICING_FAQ, PLANS } from "./plans";
+import { pricingGateOn } from "./flags";
 import { ROUTES, SITE_URL, isConfirmed, type SiteRoute } from "./site";
 
 /** Corral's X/Twitter handle, e.g. "@corral". None exists yet (nothing in the repo, docs or handoffs names one), so
@@ -75,7 +76,8 @@ export function softwareApplication(pricesConfirmed = isConfirmed("prices")): Th
     applicationCategory: "BusinessApplication", operatingSystem: "Web", publisher: { "@id": ORG_ID },
   };
   const priced = PLANS.filter((p) => p.price !== null);
-  if (pricesConfirmed && priced.length) {
+  // Behind the pricing gate (lib/marketing/flags.ts) there are no offers, whatever is confirmed: no price in structured data.
+  if (pricesConfirmed && priced.length && !pricingGateOn()) {
     app.offers = priced.map((p) => ({ "@type": "Offer", name: p.name, price: String(p.price), priceCurrency: "USD", url: absoluteUrl(ROUTES.pricing) }));
   }
   return app;
@@ -90,7 +92,8 @@ export function faqPage(faq: { q: string; a: string }[], route: SiteRoute): Thin
 
 export const graph = (...things: Thing[]) => ({ "@context": "https://schema.org", "@graph": things });
 export const homeJsonLd = () => graph(organization(), website(), softwareApplication());
-export const pricingJsonLd = () => graph(faqPage(PRICING_FAQ, ROUTES.pricing));
+/** The /pricing FAQ. Behind the gate the page has no FAQ and no offers, so the graph is empty (the page renders none). */
+export const pricingJsonLd = () => (pricingGateOn() ? graph() : graph(faqPage(PRICING_FAQ, ROUTES.pricing)));
 
 /** JSON for an inline <script>: `<`, `>`, `&` and the JS line separators are escaped, so no string in the data can
     close the script element or start a comment; JSON.parse reads the escapes back as the same characters. */
