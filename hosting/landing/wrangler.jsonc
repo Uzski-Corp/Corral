@@ -12,6 +12,11 @@
     "not_found_handling": "404-page",
     "run_worker_first": ["/_next/image", "/_next/image/*", "/api/*"]
   },
+  // The pricing gate (POST /api/pricing-intent). Off until the flag is "1"; the template is "corral pricing" in AutoSend.
+  "vars": {
+    "PRICING_INTENT_ENABLED": "0",
+    "PRICING_TEMPLATE_ID": "A-17c633d3cf824a2466e2"
+  },
   "d1_databases": [
     {
       "binding": "WAITLIST_DB",

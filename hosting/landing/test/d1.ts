@@ -24,6 +24,16 @@ export class FakeD1 {
     return this.sqlite.prepare("SELECT * FROM waitlist ORDER BY created_at, email").all() as Record<string, unknown>[];
   }
 
+  intents(): Record<string, unknown>[] {
+    return this.sqlite.prepare("SELECT * FROM pricing_intents ORDER BY id").all() as Record<string, unknown>[];
+  }
+
+  insertIntent(row: { email: string; created_at: string; ip_hash?: string }): void {
+    this.sqlite
+      .prepare("INSERT INTO pricing_intents (email, full_name, industry, created_at, ip_hash) VALUES (?, 'Test', 'other', ?, ?)")
+      .run(row.email, row.created_at, row.ip_hash ?? "h");
+  }
+
   insert(row: { email: string; source?: string; country?: string | null; created_at: string; ip_hash: string }): void {
     this.sqlite
       .prepare("INSERT INTO waitlist (email, source, country, created_at, ip_hash) VALUES (?, ?, ?, ?, ?)")
