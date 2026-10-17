@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Newsreader } from "next/font/google";
 import { openGraphFor } from "@/lib/marketing/seo";
+import { pricingGateOn } from "@/lib/marketing/flags";
 import { ROUTES } from "@/lib/marketing/site";
 import { Closing, FencelineHero, Ledger, Lede, People, Plates, Pricing } from "@/components/marketing/fenceline";
 
@@ -32,7 +33,8 @@ export default function FencelinePage() {
       <Plates />
       <Ledger />
       <People />
-      <Pricing />
+      {/* Behind the pricing gate no plan or price appears anywhere on the site (lib/marketing/flags.ts). */}
+      {!pricingGateOn() && <Pricing />}
       <Closing />
     </main>
   );

@@ -1,15 +1,22 @@
-/* /pricing (M10). Three short plan cards, then what a read is, the comparison grouped the way the product is, and the FAQ. */
+/* /pricing (M10). Three short plan cards, then what a read is, the comparison grouped the way the product is, and the FAQ.
+   With NEXT_PUBLIC_PRICING_GATE=1 (lib/marketing/flags.ts) it is the gated page instead: PricingGated.tsx, no plans at all. */
 import Link from "next/link";
 import { Receipt, Receipts } from "@/components/app/primitives";
 import { COMPARE, FAQ, PLANS, priceWords, type Cell } from "@/lib/marketing/plans";
 import { ROUTES, claim } from "@/lib/marketing/site";
 import { WAITLIST } from "@/components/marketing/landing-v/copy";
 import { AgentSitePage } from "@/components/marketing/landing-v/SitePage";
+import { pricingGateOn } from "@/lib/marketing/flags";
 import { Section, ToConfirm } from "./Chrome";
+import { PricingGated } from "./PricingGated";
 
 const cell = (c: Cell) => (c === true ? <span className="sn-yes">Included</span> : c === false ? <span className="sn-no" aria-label="Not included">—</span> : c);
 
 export function PricingPage() {
+  return pricingGateOn() ? <PricingGated /> : <OpenPricingPage />;
+}
+
+function OpenPricingPage() {
   const prices = claim("prices")!;
   return (
     <AgentSitePage center current={ROUTES.pricing} kicker="Pricing" title="Pay for the ground you cover."

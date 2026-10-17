@@ -1,0 +1,44 @@
+/* The pricing gate (Bau, Oct 17): his pg.css, unchanged except the two notes marked in this file. */
+/* pricing-gate additions. ONLY what the existing system lacks, built from existing tokens (no new colours, fonts or radii).
+   Gaps filled: (1) industry combobox menu (system has Select for <12 options, no combobox), (2) bottom sheet (system has
+   Dialog and the mobile drawer, no sheet), (3) 44px fields to sit beside .wl__btn, (4) consent line, counter, honeypot. */
+.pg-dialog { width: var(--spacing-dialog); }
+.pg-dialog .c-dialog__body { gap: 16px; }
+.pg-dialog .c-input { height: 44px; padding: 0 12px; border-radius: 10px; font: 400 16px/1 var(--font-sans); letter-spacing: -0.01em; }  /* = .wl__input / .wl__btn scale */
+.pg-dialog .c-input--live input { font: inherit; letter-spacing: inherit; }
+.pg-dialog .c-select { font: 400 16px/20px var(--font-sans); letter-spacing: -0.01em; }
+.pg-dialog .c-field__hint { font-size: var(--text-meta); color: var(--color-text-tertiary); }
+.pg-dialog .c-field__hint a, .pg-link { color: var(--color-action); text-decoration: underline; text-decoration-color: rgb(31 95 214 / .35); text-underline-offset: 3px; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
+.pg-dialog .c-field__top > .pg-count { font: 400 12px/16px var(--font-sans); color: var(--color-text-quaternary); font-variant-numeric: tabular-nums; }
+.pg-dialog .c-input.is-filled { }
+.pg-btn { width: 100%; }
+.pg-btn[data-dim] { opacity: .4; cursor: not-allowed; }
+.pg-consent { margin-top: -4px; font-size: 12px; line-height: 16px; color: var(--color-text-tertiary); }
+.pg-consent a { color: var(--color-action); text-decoration: underline; text-decoration-color: rgb(31 95 214 / .35); text-underline-offset: 3px; }
+.pg-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.pg-menu { top: calc(100% + 4px); left: 0; right: 0; width: auto; min-width: 0; padding: 0; z-index: 30; overflow: hidden; }
+.pg-menu .c-cmd__search { height: 44px; }
+.pg-menu__list { padding: 6px; max-height: 232px; overflow: auto; display: flex; flex-direction: column; gap: 1px; }
+.pg-menu .c-menu__item { height: 36px; font-size: 14px; }
+.pg-dialog .c-banner { margin: 0; }
+.pg-dialog .c-banner__txt { font-size: 13px; }
+.pg-ok .wl__done { width: 100%; }
+.pg-ok .pg-ok__more { margin-top: 12px; font-size: 13px; line-height: 20px; color: var(--lv-muted); }
+.pg-foot-quiet { display: flex; justify-content: center; }
+.pg-sheetbar { display: none; }
+@media (max-width: 720px) {
+  .pg-scrim { align-items: flex-end !important; padding: 0 !important; }
+  .pg-dialog { width: 100%; max-height: 92dvh; border-radius: var(--radius-window) var(--radius-window) 0 0; animation-name: c-rise; padding-bottom: env(safe-area-inset-bottom); }
+  .pg-sheetbar { display: block; width: 36px; height: 4px; border-radius: 2px; background: var(--color-border-strong); margin: 8px auto 0; }
+  .pg-dialog .c-dialog__head { padding-top: 12px; }
+  .pg-dialog .c-input, .pg-dialog .c-select { font-size: 16px; }
+  .pg-menu__list { max-height: 188px; }
+}
+/* (The white-on-white success title was an unscoped `.wl__done-t { color:#fff }` in landing-v.css; fixed there.) */
+.pg-ok .wl__done { background: var(--color-canvas); }
+/* the page's one button: c-btn--ink at the waitlist button's 44px scale */
+.pg-cta { height: 44px; padding: 0 22px; margin-top: 36px; border-radius: 10px; font: 500 15px/1 var(--font-sans); letter-spacing: -0.01em; }
+.pg-hero { padding-bottom: 0; }
+.pg-dusk { margin-top: clamp(72px, 9vw, 120px); }
+.pg-dusk .lv-foot { margin-top: clamp(260px, 30vw, 420px); }
+@media (max-width: 720px) { .pg-dusk .lv-foot { margin-top: 260px; } }

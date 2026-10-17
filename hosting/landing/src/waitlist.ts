@@ -50,7 +50,7 @@ export async function hashIp(ip: string, salt?: string): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-function countryOf(request: Request): string | null {
+export function countryOf(request: Request): string | null {
   const country = (request as { cf?: { country?: unknown } }).cf?.country;
   return typeof country === "string" && COUNTRY.test(country) ? country : null;
 }

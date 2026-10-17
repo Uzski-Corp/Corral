@@ -7,8 +7,10 @@ function setup() {
   const { db, env } = makeEnv();
   const assets = vi.fn(async (req: Request) => new Response(`asset:${new URL(req.url).pathname}${new URL(req.url).search}`));
   const full = { ...env, ASSETS: { fetch: assets } as unknown as Fetcher } satisfies Env;
-  const fetch = (req: Request) => worker.fetch(req as Parameters<typeof worker.fetch>[0], full);
-  return { db, assets, fetch };
+  const waitUntil = vi.fn();
+  const fetch = (req: Request, vars: Partial<Env> = {}) =>
+    worker.fetch(req as Parameters<typeof worker.fetch>[0], { ...full, ...vars }, { waitUntil } as unknown as ExecutionContext);
+  return { db, assets, fetch, waitUntil };
 }
 
 describe("localImagePath", () => {
@@ -75,10 +77,26 @@ describe("worker.fetch", () => {
     expect((await fetch(new Request(`${URL_}?x=1`))).status).toBe(405);
   });
 
+  it("routes POST /api/pricing-intent to the pricing gate (404 while the flag is off), not ASSETS", async () => {
+    const { db, assets, fetch, waitUntil } = setup();
+    const ask = () => new Request(`${ORIGIN}/api/pricing-intent`, {
+      method: "POST", headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.9" },
+      body: JSON.stringify({ fullName: "Wanjiru Kamau", industry: "other", otherText: "Beekeeping", email: "w@acme.co" }),
+    });
+    expect((await fetch(ask())).status).toBe(404);
+    expect(db.intents()).toHaveLength(0);
+    const res = await fetch(ask(), { PRICING_INTENT_ENABLED: "1" });
+    expect(res.status).toBe(202);
+    expect(db.intents()).toHaveLength(1);
+    expect(waitUntil).toHaveBeenCalledOnce();
+    expect(assets).not.toHaveBeenCalled();
+  });
+
   it("leaves neighbouring /api paths to ASSETS", async () => {
     const { assets, fetch } = setup();
     await fetch(new Request(`${ORIGIN}/api/waitlist/extra`));
     await fetch(new Request(`${ORIGIN}/api/other`));
-    expect(assets).toHaveBeenCalledTimes(2);
+    await fetch(new Request(`${ORIGIN}/api/pricing-intent/extra`));
+    expect(assets).toHaveBeenCalledTimes(3);
   });
 });
