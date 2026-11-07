@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, cx } from "../primitives";
 import { Icon } from "../icons";
 import { ErrorState, Skeleton, SkeletonTable } from "../States";
@@ -11,10 +11,44 @@ import { advanceRun, type Run } from "@/lib/discovery/run";
 import type { DiscoveryReviewState } from "@/lib/discovery/state";
 import { DEMO_TODAY_M4, provOf, resultsFor, runsFor, type Result } from "./data";
 import { RunPanel, RunsList, type RunAction } from "./Run";
-import { RunSetup, SETUP_ERROR_SEED, type RunSetupSeed } from "./Setup";
+import { RunSetup, SETUP_ERROR_SEED, type RunSetupSeed, type SetupProduct } from "./Setup";
 import { useAppData } from "@/components/session/AppData";
 
 const f = (n: number) => n.toLocaleString("en-US");
+
+/** Companies stored on a live run. Sample runs keep the ColdTrace rows from resultsFor. */
+function companiesOf(run: Run): Result[] {
+  return (run.companies ?? []).map((c, i) => ({
+    id: `${run.id}-${i}`, company: c.name, domain: c.domain, person: "", title: "", avatar: "",
+    fit: 0, email: "Unverified", reply: "Not contacted", last: "—", why: c.why ? [c.why] : [],
+    country: run.criteria.countries[0], industry: run.criteria.industries[0], source: "Corral search",
+    via: run.criteria.queries[0] ?? run.name,
+  }));
+}
+
+/** Products on the signed-in workspace, oldest first, for the new-run menu. */
+function useWorkspaceProducts(live: boolean) {
+  const data = useAppData();
+  const [phase, setPhase] = useState<"loading" | "ready" | "error">("loading");
+  const [products, setProducts] = useState<SetupProduct[]>([]);
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    if (!live || !data) return;
+    const c = new AbortController();
+    void data.kb.listProducts(c.signal).then((r) => {
+      if (c.signal.aborted) return;
+      if (!r.ok) {
+        if (r.error.kind !== "aborted") setPhase("error");
+        return;
+      }
+      setProducts([...r.value].sort((a, b) => a.createdAt.localeCompare(b.createdAt)).map((p) => ({ id: p.id, name: p.name, sourceCount: p.sourceCount })));
+      setPhase("ready");
+    });
+    return () => c.abort();
+  }, [live, data, attempt]);
+  const retry = () => { setPhase("loading"); setAttempt((n) => n + 1); };
+  return { phase, products, retry };
+}
 
 /**
  * Discovery (M4): the runs that find companies for a product. Runs list on the left, the open run
@@ -25,9 +59,11 @@ export type DiscoveryCatalog = {
   phase: "loading" | "ready" | "error";
   runs: Run[];
   productName?: string;
+  /** Credits left this month, once the runs request has answered. */
+  creditsLeft?: number | null;
   onRetry?: () => void;
-  /** Persist a run the person starts. The row stays queued on the server. */
-  onCreate?: (run: Run) => void;
+  /** Persist a run. The server sends it to Pi and spends the estimate. */
+  onCreate?: (run: Run) => Promise<Run>;
 };
 
 export function DiscoveryView({ state, setupOpen, onSetupOpenChange, onOpenCompanies, onSegment, catalog }: {
@@ -37,6 +73,8 @@ export function DiscoveryView({ state, setupOpen, onSetupOpenChange, onOpenCompa
   catalog?: DiscoveryCatalog;
 }) {
   const toast = useToast();
+  const data = useAppData();
+  const workspaceProducts = useWorkspaceProducts(!!catalog);
   const frozen = !!state || !!catalog;
   const seeded = useMemo(() => (catalog ? { runs: catalog.runs, open: catalog.runs[0]?.id ?? null } : runsFor(state)), [catalog, state]);
   const [runs, setRuns] = useState<Run[]>(seeded.runs);
@@ -67,10 +105,23 @@ export function DiscoveryView({ state, setupOpen, onSetupOpenChange, onOpenCompa
     return () => clearInterval(t);
   }, [frozen, paused]);
 
+  const creating = useRef(false);
+  const catalogRef = useRef(catalog);
+  catalogRef.current = catalog;
+  const liveStamp = catalog?.runs.map((r) => `${r.id}:${r.status}:${r.found}:${r.companies?.length ?? 0}`).join("|") ?? "";
+  useEffect(() => {
+    const current = catalogRef.current;
+    if (!current) return;
+    setRuns((local) => {
+      const ids = new Set(current.runs.map((r) => r.id));
+      return [...local.filter((r) => !ids.has(r.id)), ...current.runs];
+    });
+  }, [liveStamp]);
+
   const run = runs.find((r) => r.id === open);
   const results = useMemo(() => {
     if (!run) return [];
-    const rows = resultsFor(run);
+    const rows = catalog ? companiesOf(run) : resultsFor(run);
     if (frozen || run.status !== "running") return rows;
     // Live: busy rows with a person settle one by one.
     let settled = 0;
@@ -78,10 +129,11 @@ export function DiscoveryView({ state, setupOpen, onSetupOpenChange, onOpenCompa
   }, [run, frozen, tick]);
   const lead = detail ? results.find((r) => r.id === detail) : undefined;
   const running = runs.find((r) => r.status === "running" || r.status === "paused");
-  const me = useAppData()?.person.name ?? "You";
+  const me = data?.person.name ?? "You";
 
   const act = (a: RunAction) => {
     if (!run) return;
+    if (catalog && a !== "edit" && a !== "widen") { toast({ children: "Run controls are not available yet." }); return; }
     const set = (patch: Partial<Run>) => setRuns((rs) => rs.map((r) => (r.id === run.id ? { ...r, ...patch } : r)));
     if (a === "pause") { set({ status: "paused", limitedBy: undefined }); toast({ children: `Paused ${run.name}`, meta: "nothing is lost; resume any time", action: { label: "Resume", onClick: () => set({ status: "running" }) } }); }
     else if (a === "cancel") { const before = run; set({ status: "cancelled" }); toast({ children: `Cancelled ${run.name}`, meta: `${f(run.found)} companies found so far stay in Companies`, action: { label: "Undo", onClick: () => set(before) } }); }
@@ -93,17 +145,25 @@ export function DiscoveryView({ state, setupOpen, onSetupOpenChange, onOpenCompa
     else if (a === "edit" || a === "widen") { setSeed({ criteria: a === "widen" ? { ...run.criteria, sizes: [...run.criteria.sizes, "201–1,000"] } : run.criteria, limit: run.limit, enrichAt: run.enrichAt }); onSetupOpenChange(true); }
   };
 
-  const start = (r: { name: string; criteria: Run["criteria"]; limit: number; enrichAt: number; queued: boolean }) => {
+  const start = async (r: { name: string; product: string; criteria: Run["criteria"]; limit: number; enrichAt: number; queued: boolean }) => {
+    if (creating.current) return;
     const id = `new-${runs.length}`;
     const blank = { done: 0, total: null, state: "waiting" as const };
-    // M13 (gap 6): every new run starts Queued, as the server stores it; it turns Running when a worker picks it up.
-    const nr: Run = { id, name: r.name, product: "ColdTrace Sensors", by: me, criteria: r.criteria, limit: r.limit, enrichAt: r.enrichAt,
-      status: "queued", after: r.queued ? running?.name : undefined, position: r.queued ? 1 : 0, started: undefined,
-      stages: { search: blank, read: blank, score: blank, people: blank, verify: blank },
-      found: 0, added: 0, updated: 0, fits: 0, credits: { used: 0, estimate: 221 } };
-    setRuns((rs) => [nr, ...rs]); setOpen(id); setDetail(undefined); onSetupOpenChange(false); setSeed(undefined);
-    catalog?.onCreate?.(nr);
-    toast({ icon: "globe", children: `Queued ${r.name}`, meta: r.queued ? `starts after ${running?.name}` : "starts in a moment · you can close this page" });
+    const nr: Run = { id, name: r.name, product: r.product, by: me, criteria: r.criteria, limit: r.limit, enrichAt: r.enrichAt,
+      status: catalog ? "running" : "queued", after: !catalog && r.queued ? running?.name : undefined, position: !catalog && r.queued ? 1 : 0, started: catalog ? "just now" : undefined,
+      stages: { search: catalog ? { done: 0, total: null, state: "running" } : blank, read: blank, score: blank, people: blank, verify: blank },
+      found: 0, added: 0, updated: 0, fits: 0, credits: { used: 0, estimate: catalog ? 0 : 221 } };
+    let saved = nr;
+    if (catalog) {
+      creating.current = true;
+      try {
+        if (!catalog.onCreate) throw new Error("Discovery is not available yet.");
+        saved = await catalog.onCreate(nr);
+      } catch (error) { toast({ tone: "error", children: error instanceof Error ? error.message : "The run was not saved. Try again." }); return; }
+      finally { creating.current = false; }
+    }
+    setRuns((rs) => [saved, ...rs]); setOpen(saved.id); setDetail(undefined); onSetupOpenChange(false); setSeed(undefined);
+    toast({ icon: "globe", children: catalog ? `Started ${saved.name}` : `Queued ${r.name}`, meta: catalog ? `${f(saved.credits.used)} credits spent · Pi has this run` : r.queued ? `starts after ${running?.name}` : "starts in a moment · you can close this page" });
   };
   // A queued run with nothing ahead is picked up shortly (the worker); then it is Running.
   const pickup = !frozen ? runs.find((r) => r.status === "queued" && !r.after) : undefined;
@@ -114,7 +174,9 @@ export function DiscoveryView({ state, setupOpen, onSetupOpenChange, onOpenCompa
   }, [pickup]);
 
   const setup = <RunSetup open={setupOpen} onClose={() => { onSetupOpenChange(false); setSeed(undefined); }} onStart={start} seed={seed} key={JSON.stringify(seed ?? null)}
-    queueBehind={running?.name} held={running ? running.credits.estimate - running.credits.used : 0} />;
+    queueBehind={catalog ? undefined : running?.name} held={catalog ? 0 : running ? running.credits.estimate - running.credits.used : 0}
+    products={catalog ? workspaceProducts.products : undefined} productsPhase={workspaceProducts.phase} onRetryProducts={workspaceProducts.retry}
+    creditsLeft={catalog ? (catalog.creditsLeft ?? null) : undefined} />;
 
   if (phase === "loading") return (
     <div className="c-view d-view"><div className="d-layout">
@@ -152,10 +214,10 @@ export function DiscoveryView({ state, setupOpen, onSetupOpenChange, onOpenCompa
         </div>
         {lead && (
           <div className="d-detail">
-            <LeadDetail lead={lead} backLabel="Back to results" foundVia={lead.via} prov={provOf(lead)} today={DEMO_TODAY_M4} provOpen={state === "detail" ? "email" : undefined}
+            {catalog ? <section aria-label={`${lead.company} details`}><h2>{lead.company}</h2><p>{lead.domain}</p>{lead.why.map(why => <p key={why}>{why}</p>)}<p className="c-faint">No verified contact or fit assessment is available.</p><Button onClick={() => setDetail(undefined)}>Back to results</Button></section> : <LeadDetail lead={lead} backLabel="Back to results" foundVia={lead.via} prov={provOf(lead)} today={DEMO_TODAY_M4} provOpen={state === "detail" ? "email" : undefined}
               fit={{ kind: "scored", score: scoreFor(lead, lead.fit, "2026-09-29") }}
               onClose={() => setDetail(undefined)} onStatus={() => toast({ children: "Status changed", meta: "sample action" })}
-              onEnroll={() => toast({ tone: "success", children: `${lead.company} enrolled in Cold-room pilot`, meta: "first email Thursday 08:10" })} />
+              onEnroll={() => toast({ tone: "success", children: `${lead.company} enrolled in Cold-room pilot`, meta: "first email Thursday 08:10" })} />}
           </div>
         )}
       </div>

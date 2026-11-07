@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  STAGES, advanceRun, currentStage, enrichBusy, enrichLabel, estimateCredits, etaText, fitPending, overallPercent, plural, runHeadline, setupIssues,
+  STAGES, advanceRun, currentStage, enrichBusy, enrichLabel, estimateCredits, etaText, exampleSearches, fitPending, overallPercent, plural, runFromApi, runHeadline, setupIssues,
   stageMeta, zeroResultHints, type Run, type StageProgress,
 } from "./run";
 
@@ -57,6 +57,22 @@ describe("run progress", () => {
     const all = setupIssues({ ...c, countries: [], industries: [] }, { need: 1352, left: 1289 });
     expect(all.map((i) => i.field)).toEqual(["countries", "industries", "credits"]);
     expect(all[2].text).toBe("This run needs about 1,352 credits and 1,289 are left this month. Lower the limit or raise the fit bar for finding people.");
+  });
+
+  it("fills a stored run that only has a name and a product", () => {
+    const run = runFromApi({ id: "1", name: "Banking · Kenya", status: "queued", product: "Athena" }, "Uzski");
+    expect(run.by).toBe("Uzski");
+    expect(run.stages.search.state).toBe("waiting");
+    expect(run.criteria.industries).toEqual([]);
+    expect(run.credits).toEqual({ used: 0, estimate: 0 });
+    expect(runHeadline(run)).toBe("Queued · starts in a moment");
+  });
+
+  it("writes searches from the industries and countries, nothing else", () => {
+    expect(exampleSearches({ industries: ["Dairy", "Seafood"], countries: ["Kenya", "Uganda"] })).toEqual([
+      '"dairy" Kenya', '"dairy" Uganda', '"seafood" Kenya',
+    ]);
+    expect(exampleSearches({ industries: [], countries: ["Kenya"] })).toEqual([]);
   });
 
   it("explains zero results from the searches and the criteria", () => {

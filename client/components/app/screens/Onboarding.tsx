@@ -8,6 +8,8 @@ import { useRouter } from "next/navigation";
 import { Avatar, Button, Receipt, Receipts, Segmented, cx } from "../primitives";
 import { GoogleG, Icon, Mark, MicrosoftMark } from "../icons";
 import { FormField, RadioGroup, Select, Switch, TextInput, Textarea } from "../Form";
+import { Dialog } from "../Overlays";
+import { Confetti } from "@/components/ui/confetti";
 import { Banner, Spinner } from "../States";
 import { WorkspaceTile } from "../Shell";
 import { ToastProvider, useToast } from "../Toaster";
@@ -63,8 +65,8 @@ function Flow({ initialStep = 1, initialDone, skipped: sk0 = [], crawl: crawl0 =
   const [skipped, setSkipped] = useState<number[]>(sk0);
   const [saving, setSaving] = useState(false);
   // step 1
-  const [name, setName] = useState(seed?.name ?? "ColdTrace");
-  const [slug, setSlug] = useState(seed?.slug ?? "coldtrace");
+  const [name, setName] = useState(seed?.name ?? (demo ? "ColdTrace" : ""));
+  const [slug, setSlug] = useState(seed?.slug ?? (demo ? "coldtrace" : ""));
   const [tz, setTz] = useState(seed?.tz || "nbo");
   const [team, setTeam] = useState(seed?.team || "small");
   const [nameErr, setNameErr] = useState(false);
@@ -159,7 +161,7 @@ function Flow({ initialStep = 1, initialDone, skipped: sk0 = [], crawl: crawl0 =
     </>,
     2: <>
       <FormField label="Product name" error={prodErr ? "Name the thing you sell. Corral scores every company against it." : undefined}>
-        <TextInput value={product} placeholder="ColdTrace Sensors" onChange={(e) => { setProduct(e.target.value); setProdErr(false); }} autoFocus />
+        <TextInput value={product} placeholder={demo ? "ColdTrace Sensors" : "Product name"} onChange={(e) => { setProduct(e.target.value); setProdErr(false); }} autoFocus />
       </FormField>
       <FormField label="What it does, in one sentence" help="Plain words beat taglines. This is what the copilot quotes back to prospects.">
         <Textarea rows={2} value={pitch} placeholder="Wireless temperature and door sensors that page the right person the minute a cold room drifts." onChange={(e) => setPitch(e.target.value)} />
@@ -305,6 +307,17 @@ function Flow({ initialStep = 1, initialDone, skipped: sk0 = [], crawl: crawl0 =
               <footer className="s-onb__foot"><span style={{ flex: 1 }} /><Button size="lg" variant="primary" onClick={exit}>Open Corral<Icon name="arrow" /></Button></footer>
             </div>
             <Preview name={name} slug={slug} tz={tzLabel} product={product} pitch={pitch} read={read} site={site} boxes={boxes} invites={done.includes(5) ? invites.filter(([e]) => e).length : 0} skipped={skipped} logoUrl={logoUrl} pages={pages} highlights={highlights} demo={demo} />
+            <Confetti
+              className="s-welcome-confetti"
+              options={{ particleCount: 120, spread: 80, origin: { y: 0.6 }, colors: ["#1F5FD6", "#1C1C1C", "#E7E5E4"] }}
+            />
+            <Dialog
+              open
+              onClose={() => void exit()}
+              title="Welcome"
+              description={`${name || "Your workspace"} is ready. You have 200 credits to find companies.`}
+              footer={<Button size="lg" variant="primary" onClick={() => void exit()}>Continue</Button>}
+            />
           </div>
         )}
       </main>

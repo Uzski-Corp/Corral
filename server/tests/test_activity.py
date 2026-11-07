@@ -43,7 +43,7 @@ async def test_a_new_account_has_no_activity(api_b: AsyncClient) -> None:
     assert (await api_b.get("/api/v1/mailboxes")).json()["mailboxes"] == []
     runs = (await api_b.get("/api/v1/discovery/runs")).json()
     assert runs["runs"] == []
-    assert runs["credits"] == {"month": 0, "used": 0, "left": 0}
+    assert runs["credits"] == {"month": 200, "used": 0, "left": 200}
     assert (await api_b.get("/api/v1/integrations")).json() == []
     assert (await api_b.get("/api/v1/developers/keys")).json() == []
     assert (await api_b.get("/api/v1/developers/connections")).json() == []
@@ -79,7 +79,7 @@ async def test_seed_fills_only_the_named_org(
 
     assert (await api_b.get("/api/v1/inbox")).json() == []
     assert (await api_b.get("/api/v1/sequences")).json() == []
-    assert (await api_b.get("/api/v1/discovery/runs")).json()["credits"]["month"] == 0
+    assert (await api_b.get("/api/v1/discovery/runs")).json()["credits"]["month"] == 200
 
 
 async def test_writes_persist_on_an_empty_account(api_b: AsyncClient) -> None:
@@ -91,8 +91,8 @@ async def test_writes_persist_on_an_empty_account(api_b: AsyncClient) -> None:
 
     run = await api_b.post("/api/v1/discovery/runs", json={"name": "Bakeries"})
     assert run.status_code == 201
-    assert run.json()["status"] == "queued"
-    assert (await api_b.get("/api/v1/discovery/runs")).json()["runs"][0]["status"] == "queued"
+    assert run.json()["status"] == "running"
+    assert (await api_b.get("/api/v1/discovery/runs")).json()["runs"][0]["status"] == "running"
 
     key = await api_b.post(
         "/api/v1/developers/keys", json={"name": "Sheets", "env": "test", "scopes": ["leads:read"]}

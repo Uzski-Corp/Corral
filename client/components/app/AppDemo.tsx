@@ -28,6 +28,7 @@ import { LeadsView } from "./leads";
 import type { LeadsReviewState } from "@/lib/leads/state";
 import { CREDITS, DiscoveryView, type DiscoveryCatalog } from "./discovery";
 import type { DiscoveryReviewState } from "@/lib/discovery/state";
+import { runFromApi } from "@/lib/discovery/run";
 import { SequencesView, seedFor, type SequenceCatalog, type SeqTab } from "./sequences";
 import type { KeysApi } from "./mcp/Keys";
 import type { TeamApi } from "./settings";
@@ -71,7 +72,7 @@ export function buildCommands(h: CommandHandlers, sample = true) {
   const recent: Command[] = sample ? [company("pwani"), company("kilima"), person(THREADS[0]), person(THREADS.find((t) => t.id === "sofia")!)].map((c) => ({ ...c, id: `r-${c.id}` })) : [];
   const entities: Command[] = sample ? [...LEADS.map((l) => company(l.id)), ...THREADS.map(person),
     ...LEADS.filter((l) => !THREADS.some((t) => t.name === l.person)).map((l): Command => ({ id: `pl-${l.id}`, group: "People", label: l.person, keywords: `${l.company} ${l.title}`, lead: <Avatar id={l.avatar} />, sub: `${l.title} · ${l.company}`, meta: <Tag status={l.reply} />, run: () => h.openCompany(l.id) }))] : [];
-  const fallback = (q: string): Command => ({ id: "fb", group: "Search the market", label: `Find companies matching “${q}”`, icon: "globe", sub: "Corral reads their sites and scores them for ColdTrace Sensors", run: () => h.act("find", `Finding “${q}”`) });
+  const fallback = (q: string): Command => ({ id: "fb", group: "Search the market", label: `Find companies matching “${q}”`, icon: "globe", sub: sample ? "Corral reads their sites and scores them for ColdTrace Sensors" : "Open discovery to choose a product and search criteria", run: () => h.act("find", `Finding “${q}”`) });
   return { commands, recent, entities, fallback };
 }
 
@@ -187,7 +188,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
     attempt();
   }, [onSignOut, router, toast]);
   const [view, setView] = useState<ViewId>(initialView);
-  const [segment, setSegment] = useState<string | undefined>(initialView === "segments" ? (initialSegment || SAVED_SEGMENTS[0][0]) : undefined);
+  const [segment, setSegment] = useState<string | undefined>(initialView === "segments" ? (initialSegment || (data ? undefined : SAVED_SEGMENTS[0][0])) : undefined);
   const [tabNow, setTabNow] = useState<string | undefined>(settingsTabOf(settingsTab));
   const [collapsed, setCollapsed] = useState(c0);
   const [palette, setPalette] = useState(cmdk);
@@ -270,10 +271,10 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
   const liveSegments = useLiveSegments(leadsOn ? data!.leads : null);
   const leadsLive = leadsOn && liveSegments ? { api: data!.leads, product: leadProduct, segments: liveSegments } : undefined;
   const sidebarSegments = useMemo<[string, number][] | undefined>(() => (liveSegments ? liveSegments.list.map((s) => [s.name, s.count]) : undefined), [liveSegments]);
-  const firstSegment = liveSegments ? liveSegments.list[0]?.name : SAVED_SEGMENTS[0][0];
+  const firstSegment = liveSegments ? liveSegments.list[0]?.name : data ? undefined : SAVED_SEGMENTS[0][0];
   // A segment name from the sample (or one that was deleted) isn't in the workspace: open the first real one.
   if (liveSegments?.phase === "ready" && view === "segments" && segment !== firstSegment && !liveSegments.byName(segment)) setSegment(firstSegment);
-  const productName = kbLive ? kbProducts?.selected?.name ?? data?.me.organization.name ?? PRODUCT.name : PRODUCT.name;
+  const productName = kbLive ? kbProducts?.selected?.name ?? data?.me.organization.name ?? PRODUCT.name : data ? "Choose a product" : PRODUCT.name;
   const discoveryLive = !!data && !discovery && view === "discovery";
   const sequencesLive = !!data && !sequences && view === "sequences";
   const settingsLive = !!data && !settings && !developer && view === "settings";
@@ -331,7 +332,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
         bouncedToday: typeof box.bouncedToday === "number" ? box.bouncedToday : 0,
         bounce30: typeof box.bounce30 === "number" ? box.bounce30 : 0,
         complaints30: typeof box.complaints30 === "number" ? box.complaints30 : 0,
-        auth: { spf: true, dkim: true, dmarc: true },
+        auth: { spf: false, dkim: false, dmarc: false },
         sequences: typeof box.sequences === "number" ? box.sequences : 0,
       })));
     });
@@ -343,12 +344,25 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
     void data.discovery.runs(c.signal).then((r) => {
       if (c.signal.aborted) return;
       if (!r.ok) { setDiscPhase("error"); return; }
-      setDiscRuns(r.value.runs as DiscoveryCatalog["runs"]);
+      setDiscRuns(r.value.runs.map((row) => runFromApi(row, data.person.name)));
       setCreditsLeft(r.value.credits.left);
       setDiscPhase("ready");
     });
     return () => c.abort();
   }, [data, discoveryLive, discTry]);
+  useEffect(() => {
+    if (!discoveryLive || !data) return;
+    let stopped = false;
+    const timer = setInterval(() => {
+      void data.discovery.runs().then((r) => {
+        if (stopped || !r.ok) return;
+        const next = r.value.runs.map((row) => runFromApi(row, data.person.name));
+        setDiscRuns(next);
+        setCreditsLeft(r.value.credits.left);
+      });
+    }, 4000);
+    return () => { stopped = true; clearInterval(timer); };
+  }, [data, discoveryLive]);
   useEffect(() => {
     if (!sequencesLive || !data) return;
     const c = new AbortController();
@@ -500,7 +514,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
       else if (id === "product") { if (data) { place("products"); setAdding(true); } else router.push("/onboarding?step=2"); }
       else if (id === "segment") { place("companies"); toast({ icon: "layers", children: "Filters ready. Press S to save them as a segment." }); }
       else if (id === "find") { place("discovery"); setSetupOpen(true); }
-      else toast({ icon: "mail", children: label, meta: "sample action" });
+      else toast({ icon: "mail", children: label, meta: data ? "This action is not available yet" : "sample action" });
     },
   }, !data), [data, go, place, router, toast, signOut]);
 
@@ -536,10 +550,10 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
   const table = view === "companies" || (view === "segments" && !noSegments);
   const findCompanies = () => { go("discovery"); setSetupOpen(true); };
   const actions = view === "unibox" ? <>
-      <DropdownMenu align="end" width={240} label="Product" items={[{ heading: "Replies about" }, { label: "All products", checked: true }, { label: "ColdTrace Sensors", meta: "11" }, { label: "ColdTrace Gateway", meta: "1" }]}
+      <DropdownMenu align="end" width={240} label="Product" items={data ? [{ label: "All conversations", checked: true }] : [{ heading: "Replies about" }, { label: "All products", checked: true }, { label: "ColdTrace Sensors", meta: "11" }, { label: "ColdTrace Gateway", meta: "1" }]}
         trigger={(tp) => <button type="button" className="c-btn c-btn--quiet" {...tp}><Icon name="filter" />All products<Icon name="down" size={12} /></button>} />
       <Tooltip label="Archive thread" kbd="E" side="bottom"><button type="button" className="c-iconbtn" aria-label="Archive thread" onClick={() => archive(active)}><Icon name="archive" /></button></Tooltip>
-      <Button kbd="C" onClick={() => toast({ icon: "mail", children: "Compose", meta: "sample action" })}>Compose</Button>
+      {!data && <Button kbd="C" onClick={() => toast({ icon: "mail", children: "Compose", meta: "sample action" })}>Compose</Button>}
     </>
     : view === "knowledge" ? <>
       <DropdownMenu align="end" width={240} label="Product" items={kbLive && kbProducts
@@ -551,11 +565,11 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
     </>
     : view === "companies" ? <><Button onClick={() => setImportOpen(true)}><Icon name="upload" />Import CSV</Button><Button variant="primary" onClick={findCompanies}><Icon name="globe" />Find companies</Button></>
     : view === "discovery" ? <><span className="d-credits"><span className="c-num c-strong">{(discoveryLive ? creditsLeft ?? 0 : CREDITS.left).toLocaleString("en-US")}</span> credits left this month</span>{discovery !== "empty" && (!discoveryLive || discRuns.length > 0) && <Button variant="primary" onClick={() => setSetupOpen(true)}><Icon name="plus" />New run</Button>}</>
-    : view === "sequences" ? (seqTab === "pool"
+    : view === "sequences" ? (data ? null : seqTab === "pool"
       ? <Button onClick={() => router.push("/onboarding?step=4")}><Icon name="plus" />Connect a mailbox</Button>
       : sequences !== "empty" && sequences !== "loading" && sequences !== "error" && (!sequencesLive || seqList.length > 0) ? <Button onClick={() => setNewSeq((x) => x + 1)}><Icon name="plus" />New sequence</Button> : null)
     : view === "segments" && noSegments ? null
-    : view === "segments" ? <><Button onClick={() => toast({ icon: "upload", children: `Exporting ${segment}`, meta: "CSV lands in your downloads" })}>Export</Button><Button variant="primary" onClick={() => setEnrollAll((x) => x + 1)}><Icon name="seq" />Enroll segment</Button></>
+    : view === "segments" ? <>{!data && <Button onClick={() => toast({ icon: "upload", children: `Exporting ${segment}`, meta: "CSV lands in your downloads" })}>Export</Button>}<Button variant="primary" disabled={!!data} onClick={() => setEnrollAll((x) => x + 1)}><Icon name="seq" />Enroll segment</Button></>
     : view === "products" && data ? <Button variant="primary" onClick={() => setAdding(true)}><Icon name="plus" />Add a product</Button>
     : null;
 
@@ -564,7 +578,7 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
       <AppShell frame={frame} className={className} active={view} onNavigate={go} crumbs={sessionError ? [ws, "Not connected"] : crumbs} actions={sessionError ? null : actions} collapsed={collapsed} onCollapsedChange={setCollapsed}
         onSearch={() => setPalette(true)} segment={segment} onSegment={(s) => place("segments", { segment: s })} defaultDrawer={drawer} hotkeys={hotkeys} account={account} onSignOut={signOut}
         pool={{ sent: poolNow.sent, cap: poolNow.cap, mailboxes: poolNow.total, attention: poolNow.attention }} onPool={() => { go("sequences"); setSeqTab("pool"); }}
-        counts={{ unibox: String(inboxLive && view === "unibox" && inboxPhase === "ready" ? needsYou(threads) : inboxLive ? (needsCount ?? 0) : needsYou(threads)) }} segments={view === "segments" && leads === "empty" ? [] : sidebarSegments}>
+        counts={{ unibox: String(inboxLive && view === "unibox" && inboxPhase === "ready" ? needsYou(threads) : inboxLive ? (needsCount ?? 0) : needsYou(threads)) }} segments={view === "segments" && leads === "empty" ? [] : (data ? sidebarSegments ?? [] : sidebarSegments)}>
         {sessionError ? <SessionUnavailable {...sessionError} /> : <>
         {view === "unibox" && data && !unibox && <DemoMailbox api={data.inbox} onThread={(t) => { setThreadsState(prev => [t, ...prev.filter(x => x.id !== t.id)]); setActive(t.id); setPane("read"); setInboxPhase("ready"); }} />}
         {view === "unibox" && <UniboxView key={unibox ?? inboxPhase} state={unibox ?? (inboxLive && inboxPhase !== "ready" ? inboxPhase : undefined)} threads={threads} setThreads={setThreads} active={active} setActive={setActive} tab={tab} setTab={setTab} pane={pane} setPane={setPane}
@@ -573,9 +587,9 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
             if (!result.ok) throw new Error(result.error.message);
             setThreadsState(prev => prev.map(t => t.id === id ? result.value as Thread : t));
           } : undefined} hotkeys={hotkeys && !palette && !enroll && !kbAdd && !importOpen && !setupOpen} />}
-        {table && <LeadsView key={`${view}-${segment ?? ""}`} view={view} state={leads} segment={segment} importOpen={importOpen} onImportOpenChange={setImportOpen}
-          builderOpen={builderOpen} onBuilderOpenChange={setBuilderOpen} enrollAllSignal={enrollAll} onFind={findCompanies} onEnroll={(n, replied) => { setEnrollFor({ n, replied }); setEnroll(true); }} live={leadsLive} />}
-        {view === "discovery" && <DiscoveryView key={discovery ?? (discoveryLive ? `${discPhase}:${discRuns.length}` : "sample")} state={discovery} catalog={discoveryLive ? { phase: discPhase, runs: discRuns, productName: data?.me.organization.name, onRetry: () => { setDiscPhase("loading"); setDiscTry((n) => n + 1); }, onCreate: (run) => { void data?.discovery.create({ name: run.name, status: "queued" }); } } : undefined} setupOpen={setupOpen} onSetupOpenChange={setSetupOpen} onOpenCompanies={() => go("companies")} />}
+        {table && <LeadsView key={`${view}-${segment ?? ""}`} view={view} state={leads} segment={segment} reviewSample={!data} importOpen={importOpen} onImportOpenChange={setImportOpen}
+          builderOpen={builderOpen} onBuilderOpenChange={setBuilderOpen} enrollAllSignal={enrollAll} onFind={findCompanies} onEnroll={(n, replied) => { if (data) { toast({ children: "Sequence enrollment is not available yet." }); return; } setEnrollFor({ n, replied }); setEnroll(true); }} live={leadsLive} />}
+        {view === "discovery" && <DiscoveryView key={discovery ?? (discoveryLive ? `${discPhase}:${discRuns.length}` : "sample")} state={discovery} catalog={discoveryLive ? { phase: discPhase, runs: discRuns, productName: data?.me.organization.name, creditsLeft, onRetry: () => { setDiscPhase("loading"); setDiscTry((n) => n + 1); }, onCreate: async (run) => { if (!data) throw new Error("Sign in to create a run."); const result = await data.discovery.create({ name: run.name, product: run.product, by: run.by, criteria: run.criteria, limit: run.limit, enrichAt: run.enrichAt, found: run.found, credits: run.credits, stages: run.stages, status: "running" }); if (!result.ok) throw new Error(result.error.message); const fresh = await data.discovery.credits(); if (fresh.ok) setCreditsLeft(fresh.value.left); return runFromApi(result.value, data.person.name); } } : undefined} setupOpen={setupOpen} onSetupOpenChange={setSetupOpen} onOpenCompanies={() => go("companies")} />}
         {view === "sequences" && <SequencesView key={sequences ?? (sequencesLive ? `${seqPhase}:${seqList.length}` : "sample")} state={sequences} catalog={sequencesLive ? { phase: seqPhase, list: seqList, onRetry: () => { setSeqPhase("loading"); setSeqTry((n) => n + 1); }, onPersist: persistSequence } : undefined} tab={seqTab} onTabChange={setSeqTab} pool={pool} onPoolChange={setPool} newSignal={newSeq} onConnectMailbox={() => router.push("/onboarding?step=4")} />}
         {noSegments && <div className="c-view c-view--center"><SegmentsEmpty onCreate={() => { place("companies"); setBuilderOpen(true); }}
           onImport={() => { place("companies"); setImportOpen(true); }} /></div>}

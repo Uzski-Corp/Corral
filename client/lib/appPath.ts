@@ -3,7 +3,7 @@ import type { ViewId } from "@/components/app/Shell";
 const VIEWS: readonly ViewId[] = ["unibox", "companies", "discovery", "contacts", "segments", "sequences", "products", "knowledge", "settings"];
 
 /** Settings pages that are their own route. Integrations is the index, `/app/settings`. */
-export const SETTINGS_PAGES = ["profile", "workspace", "team", "integrations", "billing", "mcp", "keys", "docs"] as const;
+export const SETTINGS_PAGES = ["profile", "workspace", "team", "integrations", "billing", "sms", "mcp", "keys", "docs"] as const;
 
 export type AppLocation = { view: ViewId; segment?: string; tab?: string };
 

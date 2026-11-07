@@ -22,7 +22,7 @@ import { useNow } from "../useNow";
 import { BrandLockup, Pill, Tile } from "./Handoff";
 import { ProfileSettings } from "./ProfileSettings";
 import { WorkspaceSettings } from "./WorkspaceSettings";
-import { BillingConnected, BillingView, TeamView, type TeamApi, type TeamSession } from "../settings";
+import { BillingConnected, BillingView, SmsPlayground, TeamView, type TeamApi, type TeamSession } from "../settings";
 import { useAppData } from "@/components/session/AppData";
 import { displayName, type Member } from "@/lib/api";
 import type { WorkspaceInvite } from "@/lib/api/workspace";
@@ -36,6 +36,7 @@ const SECTIONS: { id: string; label: string; note?: string; href?: string; group
   { id: "workspace", label: "Workspace", note: "Name, time zone, sending hours" }, { id: "team", label: "Team", note: "People and roles" },
   { id: "mailboxes", label: "Mailboxes", href: "/app/sequences?state=mailboxes" }, { id: "integrations", label: "Integrations" },
   { id: "billing", label: "Billing", note: "Plan and credits" },
+  { id: "sms", label: "SMS", note: "Send a text" },
   /* M9 (ENG-59): Developers. */
   { id: "mcp", label: "MCP", group: "dev" }, { id: "keys", label: "API keys", group: "dev" }, { id: "docs", label: "Docs", group: "dev" },
 ];
@@ -115,6 +116,7 @@ export function SettingsView({ state, developer, tab, onSection, liveIntegration
           : section === "team" ? <TeamView key={state ?? (liveTeam ? `api-${members?.length ?? "loading"}-${invites?.length ?? 0}` : "live")} members={teamMembers} invites={teamInvites} session={session} now={now} load={teamLoading ? "loading" : undefined} defaultInvite={state === "team-invite"}
               onInvite={liveTeam && teamApi ? async (emails, role) => { if (!(await teamApi.invite(emails, role))) throw new Error("The invites weren’t saved."); } : undefined} />
           : section === "billing" ? (data && !state ? <BillingConnected key="live" /> : <BillingView key={state ?? "review"} load={state === "billing-loading" ? "loading" : undefined} />)
+          : section === "sms" ? <SmsPlayground />
           : isDev(section) ? <Developer key={`${section}-${developer ?? "live"}-${liveKeys?.length ?? "s"}-${liveConnections?.length ?? "s"}`} section={section} state={developer && sectionOf(developer) === section ? developer : undefined} keys={developer ? null : liveKeys} connections={developer ? null : liveConnections} keysApi={keysApi} viewer={viewer} onDisconnect={onDisconnect} check={mcpCheck} />
           : <div className="i-later"><h2>{s.label}</h2><p className="c-muted">{s.note}. Designed in a later milestone; this keeps its place in Settings.</p></div>}
       </div>
@@ -165,6 +167,10 @@ export function Integrations({ state, live: api, onChange, loadDetail, names, on
   // Signed in, nothing has happened yet on a new connection: the toast says only that it's connected.
   const done = (id: IntegrationId) => { set(id, "connected"); void onChange?.(id, "connected"); if (signedIn) forget(id); setDialog(undefined); toast({ tone: "success", children: `${integration(id).name} connected`, meta: signedIn ? undefined : id === "cal" ? "1 booking caught up" : id === "phoenix" ? "test deal delivered" : "2 journeys on" }); };
   const fix = (id: IntegrationId) => { if (conn[id] === "reauth") { set(id, "connecting"); setDialog("connecting"); } else if (id === "phoenix") setDialog("connect-erp"); };
+
+  if (app && !state) return <div className="i-page"><div className="i-head"><h2>Integrations</h2><p>Self-service connections are not available yet. Use the demo mailbox in Unibox for approved email conversations.</p></div>
+    <ul className="i-list" aria-label="Integrations">{INTEGRATIONS.map(i => <li className="i-row" key={i.id}><span>{i.name}</span><span className="c-faint">{api === null ? "Loading status…" : api?.[i.id] === "connected" ? "Recorded as connected" : "Not connected"}</span></li>)}</ul>
+  </div>;
 
   if (load === "loading") return (
     <div className="i-page" aria-busy="true"><div className="i-head"><h2>Integrations</h2></div>

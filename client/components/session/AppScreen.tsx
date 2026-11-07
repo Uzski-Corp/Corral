@@ -3,6 +3,8 @@ import { useCallback, useMemo } from "react";
 import { AppDemo, type AppDemoProps, type SessionUnavailableProps, type ShellAccountProp } from "@/components/app";
 import type { ApiError } from "@/lib/api/errors";
 import type { AppReviewState } from "@/lib/auth/appState";
+import { AppSkeleton } from "@/components/app/States";
+import { SessionUnavailable } from "@/components/app/SessionUnavailable";
 import { useSession, type SessionValue } from "./SessionProvider";
 import { AppDataProvider, appDataFor } from "./AppData";
 
@@ -52,6 +54,11 @@ export function AppScreen({ preview, ...props }: Omit<AppDemoProps, "account" | 
     const account: ShellAccountProp = preview === "api-down" ? "unavailable" : preview === "account-loading" ? "loading" : preview === "no-avatar" ? SAMPLE_NO_AVATAR : undefined;
     const fail = preview === "signout-failed" ? async () => { await new Promise((r) => setTimeout(r, 500)); return { ok: false }; } : undefined;
     return <AppDemo {...props} account={account} onSignOut={fail} sessionError={sessionError} />;
+  }
+  // A live session must resolve before mounting any data-dependent dashboard.
+  if (session && session.status !== "review" && !data) {
+    if (sessionError) return <div className="c-shellbox c-shellbox--viewport"><SessionUnavailable {...sessionError} /></div>;
+    return <AppSkeleton frame={props.frame} label="Loading your workspace" />;
   }
   return (
     <AppDataProvider value={data}>

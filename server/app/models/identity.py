@@ -82,7 +82,9 @@ class Organization(TimestampMixin, Base):
     site_pages: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
     site_highlights: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
     pending_invites: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
-    discovery_credit_month: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    discovery_credit_month: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="200"
+    )
     discovery_credit_used: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
 
     @property

@@ -6,10 +6,13 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+import httpx
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import Settings
+from app.core.errors import ApiProblem
 from app.models.activity import (
     ApiKey,
     DiscoveryRun,
@@ -338,7 +341,10 @@ def run_out(row: DiscoveryRun) -> dict[str, Any]:
     return doc
 
 
-async def list_runs(session: AsyncSession, org_id: uuid.UUID) -> list[dict[str, Any]]:
+async def list_runs(
+    session: AsyncSession, org_id: uuid.UUID, settings: Settings
+) -> list[dict[str, Any]]:
+    await release_queued(session, org_id, settings)
     rows = (
         (
             await session.execute(
@@ -360,19 +366,175 @@ async def credits(session: AsyncSession, org: Organization) -> dict[str, int]:
     return {"month": month, "used": used, "left": max(0, month - used)}
 
 
+def run_cost(body: dict[str, Any]) -> int:
+    """Same estimate the new-run form shows: people lookups plus email checks."""
+    limit = body.get("limit")
+    bar = body.get("enrichAt")
+    if isinstance(limit, bool) or not isinstance(limit, int) or limit <= 0:
+        return 0
+    if isinstance(bar, bool) or not isinstance(bar, int):
+        bar = 70
+    share = 0.18 if bar >= 80 else 0.34 if bar >= 70 else 0.52
+    lookups = round(limit * share)
+    return lookups + round(lookups * 1.6)
+
+
+def discovery_prompt(body: dict[str, Any]) -> str:
+    criteria = body.get("criteria") if isinstance(body.get("criteria"), dict) else {}
+    industries = criteria.get("industries") if isinstance(criteria.get("industries"), list) else []
+    countries = criteria.get("countries") if isinstance(criteria.get("countries"), list) else []
+    sizes = criteria.get("sizes") if isinstance(criteria.get("sizes"), list) else []
+    product = body.get("product")
+    product = product if isinstance(product, str) and product else "the product"
+    name = body.get("name")
+    name = name if isinstance(name, str) and name else "Discovery"
+    limit = body.get("limit")
+    limit = limit if isinstance(limit, int) and not isinstance(limit, bool) else 100
+    bar = body.get("enrichAt")
+    bar = bar if isinstance(bar, int) and not isinstance(bar, bool) else 70
+    industry = ", ".join(str(item) for item in industries) or "any"
+    country = ", ".join(str(item) for item in countries) or "any"
+    size = ", ".join(str(item) for item in sizes) or "any"
+    return (
+        f"Discovery run “{name}” for {product}. Find up to {limit} companies. "
+        f"Industries: {industry}. Countries: {country}. Sizes: {size}. "
+        f"Find people when fit is at least {bar}."
+    )
+
+
+async def submit_discovery(
+    settings: Settings, org_id: uuid.UUID, run_id: uuid.UUID, prompt: str
+) -> None:
+    """Hand the run to Pi. No token means this process is not wired to Pi."""
+    token = settings.pi_service_token.get_secret_value()
+    if not token:
+        return
+    deadline = (datetime.now(UTC) + timedelta(minutes=25)).isoformat()
+    try:
+        async with httpx.AsyncClient(
+            base_url=settings.pi_service_url.rstrip("/"),
+            timeout=8,
+            headers={"Authorization": f"Bearer {token}"},
+        ) as client:
+            response = await client.put(
+                f"/discovery/{org_id}/{run_id}",
+                json={
+                    "org_id": str(org_id),
+                    "run_id": str(run_id),
+                    "prompt": prompt,
+                    "deadline": deadline,
+                },
+            )
+    except httpx.HTTPError as exc:
+        raise ApiProblem(
+            502, "pi_unavailable", "Pi did not start this run. Try again in a moment."
+        ) from exc
+    if response.status_code >= 400:
+        raise ApiProblem(
+            502, "pi_unavailable", "Pi did not accept this run. Try again in a moment."
+        )
+
+
+def _charge(org: Organization, cost: int) -> None:
+    left = org.discovery_credit_month - org.discovery_credit_used
+    if cost > left:
+        raise ApiProblem(
+            402,
+            "credits",
+            f"This run needs about {cost} credits and {left} are left this month.",
+        )
+    org.discovery_credit_used += cost
+
+
+def _running_document(body: dict[str, Any], cost: int) -> dict[str, Any]:
+    waiting = {"done": 0, "total": None, "state": "waiting"}
+    document = {k: v for k, v in body.items() if k not in {"id", "name", "status", "failure"}} | {
+        "status": "running",
+        "started": "just now",
+        "credits": {"used": cost, "estimate": cost},
+        "stages": {
+            "search": {"done": 0, "total": None, "state": "running"},
+            "read": waiting,
+            "score": waiting,
+            "people": waiting,
+            "verify": waiting,
+        },
+    }
+    return document
+
+
+async def release_queued(session: AsyncSession, org_id: uuid.UUID, settings: Settings) -> None:
+    """Send runs that were left queued straight to Pi and spend their credits."""
+    if not settings.pi_service_token.get_secret_value():
+        return
+    org = await session.get(Organization, org_id, with_for_update=True)
+    if org is None:
+        return
+    rows = (
+        (
+            await session.execute(
+                select(DiscoveryRun)
+                .where(DiscoveryRun.org_id == org_id, DiscoveryRun.status == "queued")
+                .with_for_update(skip_locked=True)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for row in rows:
+        doc = _doc(row)
+        cost = run_cost(doc)
+        charged = False
+        try:
+            _charge(org, cost)
+            charged = True
+            prompt = discovery_prompt({**doc, "name": row.name})
+            await submit_discovery(settings, org_id, row.id, prompt)
+        except ApiProblem as problem:
+            if charged and cost:
+                org.discovery_credit_used = max(0, org.discovery_credit_used - cost)
+            row.status = "failed"
+            title = (
+                "Not enough credits" if problem.error == "credits" else "Pi did not start this run"
+            )
+            row.document = doc | {
+                "status": "failed",
+                "failure": {"title": title, "fix": problem.detail},
+            }
+            continue
+        row.status = "running"
+        row.document = _running_document({**doc, "name": row.name}, cost)
+
+
 async def create_run(
-    session: AsyncSession, org_id: uuid.UUID, body: dict[str, Any]
+    session: AsyncSession, org_id: uuid.UUID, body: dict[str, Any], settings: Settings
 ) -> dict[str, Any]:
-    """A new run is queued. Nothing is crawled."""
+    """Start the run on Pi and spend the credit estimate now."""
+    org = await session.get(Organization, org_id, with_for_update=True)
+    if org is None:
+        raise ApiProblem(404, "not_found", "Workspace not found.")
+    cost = run_cost(body)
+    _charge(org, cost)
+    document = _running_document(body, cost)
     row = DiscoveryRun(
         org_id=org_id,
         name=str(body.get("name") or "Untitled run"),
-        status="queued",
-        document={k: v for k, v in body.items() if k not in {"id", "name", "status"}}
-        | {"status": "queued"},
+        status="running",
+        document=document,
     )
     session.add(row)
     await session.flush()
+    try:
+        await submit_discovery(settings, org_id, row.id, discovery_prompt(body))
+    except ApiProblem as problem:
+        if cost:
+            org.discovery_credit_used = max(0, org.discovery_credit_used - cost)
+        row.status = "failed"
+        row.document = document | {
+            "status": "failed",
+            "credits": {"used": 0, "estimate": cost},
+            "failure": {"title": "Pi did not start this run", "fix": problem.detail},
+        }
     return run_out(row)
 
 

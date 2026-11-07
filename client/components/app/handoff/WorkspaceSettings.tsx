@@ -37,8 +37,8 @@ export function WorkspaceSettings() {
   const [attempt, setAttempt] = useState(0);
   const [phase, setPhase] = useState<"loading" | "ready" | "error">(live ? "loading" : "ready");
   const [detail, setDetail] = useState<string | undefined>();
-  const [name, setName] = useState("ColdTrace");
-  const [slug, setSlug] = useState("coldtrace");
+  const [name, setName] = useState(live ? data.me.organization.name : "ColdTrace");
+  const [slug, setSlug] = useState(live ? "" : "coldtrace");
   const [tz, setTz] = useState("nbo");
   const [team, setTeam] = useState("small");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);

@@ -1,8 +1,8 @@
-"""Discovery runs and the workspace credit balance. A created run stays queued."""
+"""Discovery runs and the workspace credit balance. A created run is sent to Pi."""
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.activity import service
@@ -19,9 +19,9 @@ class RunIn(BaseModel):
 
 
 @router.get("/runs")
-async def list_runs(ctx: AuthContextDep, db: DbDep) -> dict[str, Any]:
+async def list_runs(ctx: AuthContextDep, db: DbDep, request: Request) -> dict[str, Any]:
     return {
-        "runs": await service.list_runs(db, ctx.org.id),
+        "runs": await service.list_runs(db, ctx.org.id, request.app.state.settings),
         "credits": await service.credits(db, ctx.org),
     }
 
@@ -32,5 +32,9 @@ async def get_credits(ctx: AuthContextDep, db: DbDep) -> dict[str, int]:
 
 
 @router.post("/runs", status_code=status.HTTP_201_CREATED, dependencies=WRITE)
-async def create_run(ctx: AuthContextDep, db: DbDep, body: RunIn) -> dict[str, Any]:
-    return await service.create_run(db, ctx.org.id, body.model_dump())
+async def create_run(
+    ctx: AuthContextDep, db: DbDep, body: RunIn, request: Request
+) -> dict[str, Any]:
+    return await service.create_run(
+        db, ctx.org.id, body.model_dump(), request.app.state.settings
+    )

@@ -17,6 +17,7 @@ from app.api.v1.routes import (
     products,
     segments,
     sequences,
+    sms,
     workspace,
 )
 from app.auth import routes as auth
@@ -45,6 +46,7 @@ for module in (
     kb,
     workspace,
     billing,
+    sms,
 ):
     api_router.include_router(module.router, dependencies=[Depends(require_auth)])
 api_router.include_router(sequences.mailbox_router, dependencies=[Depends(require_auth)])

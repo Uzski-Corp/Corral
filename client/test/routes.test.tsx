@@ -7,6 +7,7 @@ import ProductsPage, { metadata as productsMeta } from "@/app/app/products/page"
 import SegmentsPage, { metadata as segmentsMeta } from "@/app/app/segments/page";
 import SegmentPage from "@/app/app/segments/[segment]/page";
 import BillingPage from "@/app/app/settings/billing/page";
+import SmsPage from "@/app/app/settings/sms/page";
 import DocsPage from "@/app/app/settings/docs/page";
 import KeysPage from "@/app/app/settings/keys/page";
 import McpPage from "@/app/app/settings/mcp/page";
@@ -48,6 +49,7 @@ describe("every /app route folder renders its own screen", () => {
 
   it.each([
     ["billing", BillingPage],
+    ["sms", SmsPage],
     ["docs", DocsPage],
     ["keys", KeysPage],
     ["mcp", McpPage],
