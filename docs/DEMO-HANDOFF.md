@@ -26,7 +26,7 @@ The provider webhook URLs belong on the actual deployed API origin:
 - `POST /api/v1/billing/webhooks/paddle`
 - `POST /api/v1/inbox/webhooks/autosend`
 
-No deployment, provider configuration, payment, email, or SMS was performed here.
+Coolify deployment is now complete; see the deployment result below. No payment, email, or SMS was sent.
 
 ## Implemented source
 
@@ -79,12 +79,11 @@ AUTOSEND_DEMO_RECIPIENTS=["<your consenting demo recipient>"]
    Set the model provider key only in the Pi service env. `PI_MODEL` must exist in
    the pinned Pi model catalog. The default is `gpt-5-mini`; catalog compatibility
    remains unverified until dependency installation.
-5. Install Pi dependencies and keep the generated lockfile. Installation was
-   blocked by approval-review quota in this session, so no lockfile is supplied:
+5. Pi dependencies now have a committed lockfile. For a fresh checkout:
 
 ```sh
 cd services/pi-intelligence
-npm install --ignore-scripts
+npm ci --ignore-scripts
 npm run check
 ```
 
@@ -97,12 +96,12 @@ docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
 The existing API container startup runs migrations; inspect its startup output.
 Migrations `0010_billing`, `0011_demo_mail`, and `0012_ai_runs` must all be applied
 before using the changed routes. For non-container startup, run Alembic explicitly.
-No database migration was applied here.
+The live Coolify deployment applied all migrations through `0012_ai_runs`.
 
 Pi has no public port in Compose. Give its data volume one owner and a local disk;
 do not share SQLite files between replicas or over network storage. Node 24+ and
 Linux `/usr/bin/flock` are required. The Dockerfile installs these dependencies.
-Before release, switch its dependency step to `npm ci` after producing the lockfile.
+The Pi Dockerfile uses `npm ci` with the committed lockfile.
 
 ## Sean's manual demo exercise
 
@@ -123,8 +122,8 @@ Before release, switch its dependency step to `npm ci` after producing the lockf
 ## Validation and known limits
 
 No tests or autonomous UI QA were run during this takeover. Frontend typechecking
-and scoped Python lint/typechecking are static checks only. Database migrations and provider
-integration remain unverified. Pi dependency installation/typechecking is pending.
+and scoped Python lint/typechecking are static checks only. Live database migration startup is verified. Provider
+integration remains unverified. Pi dependencies are installed and its TypeScript check passed.
 The sandbox also denied starting the local Next preview (`listen EPERM`).
 Automatic approval review could not approve Pi dependency installation because its
 usage quota was exhausted. Branch creation was denied by filesystem permissions,
@@ -173,3 +172,22 @@ before generating replies. Keep Paddle sandbox until payment setup is complete.
 
 The Pi lockfile is now committed and `npm run check` completed successfully.
 No automated tests or UI QA have been executed.
+
+### Deployment result
+
+Coolify deployment `7tqorlh40iqyuapgpx8qcis2` finished successfully at commit
+`01e6ce9` on 7 November 2026. Public API `/readyz` returned database/Redis OK
+with valid TLS, and the dashboard root returned HTTP 200. All migrations through
+`0012_ai_runs` applied during actual startup. This is deployment verification,
+not an automated test-suite result or UI acceptance test.
+
+The billing migration now executes each SQL function as its own asyncpg command
+and casts UUIDs to text for its singleton aggregate on PostgreSQL 16.
+Pi dependencies are installed, pinned and typechecked. First build memory pressure
+was resolved by stopping Akiwah/CampoSocial staging (including databases, with
+volumes preserved), serializing Compose builds and limiting dashboard build heap.
+
+AutoSend verified sender/inbound address, recipient allowlist, real organization
+UUID and webhook signing secret remain unset. OPENAI_API_KEY and Paddle keys
+still need to be entered in Coolify. WorkOS URLs and DNS records were configured
+by Sean. Trial/login/UI acceptance remains Sean's manual exercise.
