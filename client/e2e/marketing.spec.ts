@@ -15,22 +15,23 @@ async function meta(page: import("@playwright/test").Page, attr: "name" | "prope
   return (await tag.count()) ? tag.first().getAttribute("content") : null;
 }
 
-test.describe("/ is the Agent landing (promoted from /v/4)", () => {
+test.describe("/ is the editorial landing", () => {
   test("signed out, / serves the landing with no redirect", async ({ page }) => {
     const res = await page.goto("/");
     expect(res?.status()).toBe(200);
     expect(res?.request().redirectedFrom()).toBeNull();
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByRole("heading", { level: 1, name: "Put an AI agent on lead generation." })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Find companies that need what you sell." })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Main" }).first().getByRole("link", { name: "Get started" })).toHaveAttribute("href", "/sign-in");
     await expect(page.getByRole("navigation", { name: "Main" }).first().getByRole("link", { name: "Sign in" })).toHaveCount(0);
-    await expect(page.locator(".lv-foot").getByRole("link", { name: "Sign in" })).toHaveCount(0);
+    await expect(page.locator(".ed-footer").getByRole("link", { name: "Sign in" })).toHaveCount(0);
   });
 
-  test("the waitlist forms on / sign up as home, with no variant picker", async ({ request }) => {
+  test("home starts at sign-in, with no waitlist and no variant picker", async ({ request }) => {
     const html = await (await request.get("/")).text();
-    expect(html.match(/name="source" value="home"/g)).toHaveLength(2);
-    expect(html).not.toMatch(/name="source" value="v\d"/);
+    expect(html).not.toContain("/api/waitlist");
     expect(html).not.toContain("proto-picker");
+    expect(html).toContain('href="/sign-in"');
   });
 
   test("the design index moved to /styleguide/landings, out of search", async ({ page, request }) => {
@@ -57,7 +58,7 @@ test.describe("marketing site", () => {
 
   test("the landings keep their absolute titles; / is the Agent landing", async ({ page }) => {
     await page.goto("/");
-    await expect(page).toHaveTitle("Corral · Put an AI agent on lead generation");
+    await expect(page).toHaveTitle("Corral · Find companies that need what you sell");
     expect(await page.locator('link[rel="canonical"]').getAttribute("href")).toMatch(/^https?:\/\/[^/]+\/?$/);
     // /open-range was removed (ENG-87): the 404, not a copy or a redirect.
     expect((await page.goto("/open-range"))?.status()).toBe(404);

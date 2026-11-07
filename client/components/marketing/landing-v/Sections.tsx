@@ -12,19 +12,19 @@ import { ScoreIllustration, WorkflowIllustration } from "./Illustrations";
 import { WaitlistForm } from "./WaitlistForm";
 
 /** `links` defaults to the landing's in-page anchors; the inner pages pass the site routes and their own `current`. */
-export function Nav({ tone = "light", links = NAV_LINKS, current, ctaHref = "#join" }: { tone?: "light" | "blue"; links?: { label: string; href: string }[]; current?: string; ctaHref?: string }) {
+export function Nav({ tone = "light", links = NAV_LINKS, current, cta = WAITLIST.cta, ctaHref = "#join" }: { tone?: "light" | "blue"; links?: { label: string; href: string }[]; current?: string; cta?: string; ctaHref?: string }) {
   return (
     <nav className={`lv-nav lv-wrap lv-nav--${tone}`} aria-label="Main">
       <Link className="lv-logo" href={ROUTES.home}><Mark size={22} /><span>Corral</span></Link>
       <div className="lv-nav__links">{links.map((l) => <Link key={l.href} href={l.href} aria-current={current === l.href ? "page" : undefined}>{l.label}</Link>)}</div>
       <div className="lv-nav__end">
-        <a className="lv-nav__cta" href={ctaHref}>{WAITLIST.cta}</a>
+        <a className="lv-nav__cta" href={ctaHref}>{cta}</a>
       </div>
     </nav>
   );
 }
 
-function LogoItem({ l }: { l: Logo }) {
+export function LogoItem({ l }: { l: Logo }) {
   // Plain <img>: the SVGs ship as they are, and the static build has no image optimiser.
   // eslint-disable-next-line @next/next/no-img-element
   if (l.wordmark) return <li className="lv-logos__i is-word"><img src={l.src} alt={l.name} height={16} /></li>;
@@ -78,7 +78,7 @@ export function Proof({ illustrated = false }: { illustrated?: boolean }) {
 
 /** Where each client takes Corral, from Settings → MCP (lib/mcp/tools.ts). V4 shows this here, since its hero
     already shows the agent conversation. */
-function ClientList() {
+export function ClientList() {
   const logo: Record<string, string | undefined> = { cursor: "/corral/logos/cursor.svg", "claude-code": "/corral/logos/claude.svg", claude: "/corral/logos/claude.svg", vscode: "/corral/logos/vscode.svg" };
   return (
     <figure className="lv-clients c-app" aria-label="MCP clients and where Corral goes in each">

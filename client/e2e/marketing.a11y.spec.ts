@@ -7,7 +7,7 @@ import { audit, WIDTHS } from "./axe";
  * The site has no review states, so it runs in the "app" project against `next start`.
  */
 const PAGES: [path: string, h1: RegExp][] = [
-  ["/", /Put an AI agent on lead generation/],
+  ["/", /Find companies that need what you sell/],
   ["/fenceline", /./],
   ["/pricing", /Pay for the ground/],
   ["/security", /./],
