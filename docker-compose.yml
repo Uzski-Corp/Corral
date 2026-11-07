@@ -117,7 +117,7 @@ services:
     ports:
       - "${WEB_PORT:-3000}:3000"
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
+      CORRAL_APP: "1"
     depends_on:
       api:
         condition: service_healthy

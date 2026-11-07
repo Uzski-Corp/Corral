@@ -47,3 +47,32 @@ pnpm test:e2e           # Playwright: production build + e2e/mock-api.mjs (a sta
 `pnpm exec playwright install chromium` once, or `PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e` to use
 the system Chrome. Visual baselines are in `e2e/__screenshots__`; refresh them with
 `pnpm test:e2e --update-snapshots` after an intended design change.
+
+## Production build and Docker parity
+
+`pnpm build` uses webpack and verifies that the emitted root-layout CSS includes
+app styles, design tokens, and fonts on home, app, and sign-in. A build with
+missing styles fails before an image can be packaged. This is an artifact check;
+it does not run the test suite or browser QA.
+
+Local Compose and Coolify both build `client/Dockerfile`, with Node 22.23.4,
+pnpm 12.6.0, and the committed lockfile. The build directory is
+`/workspace/corral`: do not change it to `/app`, where this Next.js webpack
+build loses root-layout styles. The final image contains only the standalone
+server, traced dependencies, static assets, and public files. Public API and
+Paddle values are supplied as build arguments; secrets stay in runtime settings.
+Docker's source checksums invalidate changed build layers. No manual source
+revision label or routine no-cache rebuild is needed.
+
+Use one frontend at a time on port 3000:
+
+- Production parity: `docker compose up --build` from the repo root.
+- Development: stop only the Docker frontend with `docker compose stop web`,
+  keep the API and its dependencies running, then run `pnpm dev` in `client/`.
+
+The dev command explicitly binds 3000 and fails if it is occupied, rather than
+silently choosing 3001 and leaving two different frontend builds running.
+
+Coolify uses `/docker-compose.coolify.yml` from `main`. Its serialized build
+command should be `docker compose --progress plain --parallel 1 build`, without
+a `web` target so API and worker changes are also built. Deployment remains manual.

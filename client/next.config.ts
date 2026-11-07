@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  output: "standalone",
   // The legal pages live at /legal/* (Bau's M10 routes, HANDOFF §18); the short addresses people type redirect there.
   async redirects() {
     return [
