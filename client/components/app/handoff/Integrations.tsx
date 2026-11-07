@@ -22,7 +22,7 @@ import { useNow } from "../useNow";
 import { BrandLockup, Pill, Tile } from "./Handoff";
 import { ProfileSettings } from "./ProfileSettings";
 import { WorkspaceSettings } from "./WorkspaceSettings";
-import { BillingView, TeamView, type TeamApi, type TeamSession } from "../settings";
+import { BillingConnected, BillingView, TeamView, type TeamApi, type TeamSession } from "../settings";
 import { useAppData } from "@/components/session/AppData";
 import { displayName, type Member } from "@/lib/api";
 import type { WorkspaceInvite } from "@/lib/api/workspace";
@@ -114,7 +114,7 @@ export function SettingsView({ state, developer, tab, onSection, liveIntegration
           : section === "workspace" ? <WorkspaceSettings />
           : section === "team" ? <TeamView key={state ?? (liveTeam ? `api-${members?.length ?? "loading"}-${invites?.length ?? 0}` : "live")} members={teamMembers} invites={teamInvites} session={session} now={now} load={teamLoading ? "loading" : undefined} defaultInvite={state === "team-invite"}
               onInvite={liveTeam && teamApi ? async (emails, role) => { if (!(await teamApi.invite(emails, role))) throw new Error("The invites weren’t saved."); } : undefined} />
-          : section === "billing" ? <BillingView key={state ?? "live"} load={state === "billing-loading" ? "loading" : undefined} />
+          : section === "billing" ? (data && !state ? <BillingConnected key="live" /> : <BillingView key={state ?? "review"} load={state === "billing-loading" ? "loading" : undefined} />)
           : isDev(section) ? <Developer key={`${section}-${developer ?? "live"}-${liveKeys?.length ?? "s"}-${liveConnections?.length ?? "s"}`} section={section} state={developer && sectionOf(developer) === section ? developer : undefined} keys={developer ? null : liveKeys} connections={developer ? null : liveConnections} keysApi={keysApi} viewer={viewer} onDisconnect={onDisconnect} check={mcpCheck} />
           : <div className="i-later"><h2>{s.label}</h2><p className="c-muted">{s.note}. Designed in a later milestone; this keeps its place in Settings.</p></div>}
       </div>

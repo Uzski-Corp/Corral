@@ -18,6 +18,8 @@ DedupeScope = Literal["product", "org", "off"]
 UnsubscribeScope = Literal["address", "company"]
 MIB = 1024 * 1024
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR"]
+PaddleEnvironment = Literal["sandbox", "production"]
+PastDueAccess = Literal["unresolved", "retain", "revoke"]
 
 
 class Settings(BaseSettings):
@@ -45,6 +47,17 @@ class Settings(BaseSettings):
     worker_job_timeout_s: int = Field(default=300, ge=1)
     worker_max_tries: int = Field(default=5, ge=1, le=50)
     worker_shutdown_grace_s: int = Field(default=20, ge=0, le=300)
+
+    # One explicitly configured workspace may use the consent-only demo mailbox.
+    pi_service_url: str = "http://127.0.0.1:8090"
+    pi_service_token: SecretStr = SecretStr("")
+
+    autosend_api_key: SecretStr = SecretStr("")
+    autosend_webhook_secret: SecretStr = SecretStr("")
+    autosend_demo_org_id: str = ""
+    autosend_demo_from: str = ""
+    autosend_demo_reply_to: str = ""
+    autosend_demo_recipients: list[str] = []
 
     # Observability
     otel_enabled: bool = False
@@ -162,6 +175,43 @@ class Settings(BaseSettings):
     onboarding_site_max_pages: int = Field(default=6, ge=1, le=20)
     onboarding_site_timeout_s: float = Field(default=8.0, gt=0, le=20)
 
+    # Billing. The seven-day trial is a product rule, not a tunable allowance.
+    # Price IDs stay empty until Sean maps confirmed Corral prices. Athena sandbox
+    # price IDs are rejected. Access enforcement stays off until the existing-workspace
+    # rollout is decided. Past-due access stays "unresolved" until that policy is chosen.
+    paddle_environment: PaddleEnvironment = "sandbox"
+    paddle_checkout_url: str = ""
+    paddle_api_key: SecretStr = SecretStr("")
+    paddle_webhook_secret: SecretStr = SecretStr("")
+    paddle_api_timeout_s: float = Field(default=10.0, gt=0, le=30)
+    # Paddle's SDK rejects webhook timestamps older than five seconds.
+    paddle_webhook_tolerance_s: int = Field(default=5, ge=5, le=5)
+    billing_trial_days: int = Field(default=7, ge=7, le=7)
+    billing_enforce_access: bool = False
+    billing_past_due_access: PastDueAccess = "unresolved"
+    billing_reconcile_limit: int = Field(default=25, ge=1, le=100)
+    billing_recheck_delay_s: int = Field(default=900, ge=60, le=86_400)
+    paddle_price_field_month: str = ""
+    paddle_price_field_year: str = ""
+    paddle_price_range_month: str = ""
+    paddle_price_range_year: str = ""
+    paddle_price_territory_month: str = ""
+    paddle_price_territory_year: str = ""
+
+    @field_validator("pi_service_token")
+    @classmethod
+    def _pi_token_length(cls, value: SecretStr) -> SecretStr:
+        if value.get_secret_value() and len(value.get_secret_value()) < 32:
+            raise ValueError("PI_SERVICE_TOKEN must be at least 32 characters")
+        return value
+
+    @field_validator("paddle_checkout_url")
+    @classmethod
+    def _checkout_url(cls, value: str) -> str:
+        if value and not value.startswith("https://"):
+            raise ValueError("PADDLE_CHECKOUT_URL must use HTTPS")
+        return value
+
     @field_validator("workos_cookie_password")
     @classmethod
     def _cookie_password_is_fernet_key(cls, value: SecretStr) -> SecretStr:
@@ -215,6 +265,25 @@ class Settings(BaseSettings):
         return self
 
     @model_validator(mode="after")
+    def _paddle_settings_match_the_environment(self) -> "Settings":
+        from app.billing.catalog import validate_price_mappings
+
+        key = self.paddle_api_key.get_secret_value()
+        if key:
+            sandbox_key = "sdbx" in key
+            live_key = "_live_" in key or key.startswith("pdl_live")
+            if self.paddle_environment == "sandbox" and live_key and not sandbox_key:
+                raise ValueError("PADDLE_API_KEY is a live key but PADDLE_ENVIRONMENT=sandbox")
+            if self.paddle_environment == "production" and sandbox_key:
+                raise ValueError(
+                    "PADDLE_API_KEY is a sandbox key but PADDLE_ENVIRONMENT=production"
+                )
+        if self.app_env == "production" and self.paddle_environment != "production" and key:
+            raise ValueError("APP_ENV=production cannot use a Paddle sandbox API key")
+        validate_price_mappings(self)
+        return self
+
+    @model_validator(mode="after")
     def _deployed_envs_require_auth(self) -> "Settings":
         if self.app_env in ("staging", "production") and not self.workos_configured:
             raise ValueError(
@@ -234,6 +303,16 @@ class Settings(BaseSettings):
     @property
     def cookie_secure(self) -> bool:
         return self.app_env not in ("local", "test")
+
+    @property
+    def paddle_configured(self) -> bool:
+        return bool(self.paddle_api_key.get_secret_value())
+
+    @property
+    def paddle_api_base(self) -> str:
+        if self.paddle_environment == "sandbox":
+            return "https://sandbox-api.paddle.com"
+        return "https://api.paddle.com"
 
     @property
     def r2_configured(self) -> bool:

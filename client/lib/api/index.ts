@@ -1,3 +1,4 @@
+import { createReplyApi } from "./replies";
 import { getConfig, type ClientConfig } from "../config";
 import { createApiClient } from "./client";
 import { createAuthApi, type AuthApi } from "./auth";
@@ -9,6 +10,7 @@ import { createSequencesApi, type SequencesApi } from "./sequences";
 import { createDiscoveryApi, type DiscoveryApi } from "./discovery";
 import { createIntegrationsApi, type IntegrationsApi } from "./integrations";
 import { createDevelopersApi, type DevelopersApi } from "./developers";
+import { createBillingApi, type BillingApi } from "./billing";
 
 export * from "./client";
 export * from "./errors";
@@ -21,6 +23,7 @@ export * from "./sequences";
 export * from "./discovery";
 export * from "./integrations";
 export * from "./developers";
+export * from "./billing";
 
 /** The auth API bound to this deploy's config. */
 export function authApiFor(config: ClientConfig = getConfig(), fetchImpl?: typeof fetch): AuthApi {
@@ -64,3 +67,9 @@ export function integrationsApiFor(config: ClientConfig = getConfig(), fetchImpl
 export function developersApiFor(config: ClientConfig = getConfig(), fetchImpl?: typeof fetch): DevelopersApi {
   return createDevelopersApi(clientFor(config, fetchImpl));
 }
+
+export function billingApiFor(config: ClientConfig = getConfig(), fetchImpl?: typeof fetch): BillingApi {
+  return createBillingApi(clientFor(config, fetchImpl));
+}
+
+export function replyApiFor(config: ClientConfig = getConfig()) { return createReplyApi(clientFor(config)); }

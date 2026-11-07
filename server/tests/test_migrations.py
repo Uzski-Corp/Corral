@@ -12,11 +12,21 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.db.base import Base
-from app.models import ALL_TENANT_TABLES
+from app.models import ALL_TENANT_TABLES, OPERATIONAL_TABLES
 from tests.conftest import alembic_config
 
-RLS_TABLES = {"organizations", "users", "memberships", *ALL_TENANT_TABLES}
-FUNCTIONS = {"app_provision_identity", "app_resolve_membership"}
+RLS_TABLES = {"organizations", "users", "memberships", *ALL_TENANT_TABLES, *OPERATIONAL_TABLES}
+FUNCTIONS = {
+    "app_provision_identity",
+    "app_resolve_membership",
+    "app_billing_record_webhook",
+    "app_billing_load_webhook",
+    "app_billing_attach_transaction",
+    "app_billing_resolve_org",
+    "app_billing_mark_webhook",
+    "app_billing_unprocessed",
+    "app_billing_subscription_targets",
+}
 
 
 def query(url: str, sql: str) -> list[Any]:
@@ -72,7 +82,7 @@ def test_upgrade_downgrade_upgrade_round_trip(scratch_database_url: str) -> None
 def test_each_revision_steps_down_and_up(scratch_database_url: str) -> None:
     cfg = alembic_config(scratch_database_url)
     command.upgrade(cfg, "head")
-    for _ in range(9):
+    for _ in range(10):
         command.downgrade(cfg, "-1")
     assert tables(scratch_database_url) == {"alembic_version"}
     for expected in (
@@ -85,6 +95,7 @@ def test_each_revision_steps_down_and_up(scratch_database_url: str) -> None:
         set(),
         {"mailboxes"},
         set(),
+        {"workspace_billing"},
     ):
         command.upgrade(cfg, "+1")
         assert expected <= tables(scratch_database_url)
@@ -115,8 +126,13 @@ def test_policies_are_keyed_by_current_org(scratch_database_url: str) -> None:
         "SELECT tablename, qual FROM pg_policies WHERE policyname = 'tenant_isolation'",
     )
     by_table = dict(policies)
-    assert set(by_table) == RLS_TABLES - {"users"}
+    assert set(by_table) == RLS_TABLES - {"users", *OPERATIONAL_TABLES}
     assert all("app.current_org" in qual for qual in by_table.values())
+    deny = query(
+        scratch_database_url,
+        "SELECT tablename FROM pg_policies WHERE policyname = 'billing_webhook_deny'",
+    )
+    assert set(deny) == set(OPERATIONAL_TABLES)
 
 
 def test_definer_functions_not_executable_by_public(scratch_database_url: str) -> None:

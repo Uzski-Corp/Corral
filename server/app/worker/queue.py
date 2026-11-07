@@ -64,5 +64,11 @@ class JobQueue:
             _defer_by=INGEST_DEFER_S,
         )
 
+    async def enqueue_billing_event(self, event_id: str) -> Job | None:
+        """Project one stored Paddle event. The same event id is not queued twice."""
+        return await self.redis.enqueue_job(
+            "process_billing_event", event_id, _job_id=f"billing_event:{event_id}"
+        )
+
     async def close(self) -> None:
         await self.redis.aclose(close_connection_pool=True)

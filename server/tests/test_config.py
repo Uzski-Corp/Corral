@@ -35,6 +35,22 @@ def test_accepts_fernet_cookie_password() -> None:
     )
 
 
+def test_paddle_rejects_athena_price_ids() -> None:
+    with pytest.raises(ValidationError, match="Athena"):
+        make_settings(paddle_price_field_month="pri_01m215b0ecq2b4ax936hxkg1zp")
+
+
+def test_trial_length_is_seven_days() -> None:
+    assert make_settings().billing_trial_days == 7
+    with pytest.raises(ValidationError):
+        make_settings(billing_trial_days=14)
+
+
+def test_paddle_environment_cannot_mix_live_and_sandbox_keys() -> None:
+    with pytest.raises(ValidationError, match="sandbox"):
+        make_settings(paddle_environment="sandbox", paddle_api_key="pdl_live_apikey_example")
+
+
 def test_r2_keys_are_all_or_nothing() -> None:
     with pytest.raises(ValidationError, match="R2_ACCOUNT_ID"):
         make_settings(r2_account_id="acct")

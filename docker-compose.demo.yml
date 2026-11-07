@@ -1,0 +1,24 @@
+# Optional private AI service. Use with docker-compose.yml; no public Pi port.
+services:
+  api:
+    environment:
+      PI_SERVICE_URL: http://pi:8090
+  worker:
+    environment:
+      PI_SERVICE_URL: http://pi:8090
+  pi:
+    build: ./services/pi-intelligence
+    env_file:
+      - path: ./services/pi-intelligence/.env
+        required: false
+    environment:
+      CORRAL_INTERNAL_URL: http://api:8000
+      PI_DATA_DIR: /data
+    volumes:
+      - pi_data:/data
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+volumes:
+  pi_data:

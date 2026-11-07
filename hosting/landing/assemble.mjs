@@ -10,6 +10,7 @@ const dist = path.join(root, "dist");
 const pages = [
   ["index.html", "index.html"],
   ["pricing.html", "pricing.html"],
+  ["pay.html", "pay.html"],
   ["security.html", "security.html"],
   ["mcp.html", "mcp.html"],
   ["changelog.html", "changelog.html"],

@@ -1,6 +1,7 @@
 """Workspace onboarding is stored on the organization, and a site read is the site itself."""
 
 from collections.abc import AsyncIterator
+from datetime import timedelta
 
 import pytest
 from httpx import AsyncClient
@@ -8,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from app.kb.web import FetchFailure
+from app.models.billing import WorkspaceBilling
 from app.models.identity import Organization
 from app.models.knowledge import KbSource
 from app.onboarding.site import SitePage, SiteRead
@@ -100,6 +102,21 @@ async def test_profile_round_trips_and_completion_sticks(
             await s.execute(select(Organization).where(Organization.id == world.a.org_id))
         ).scalar_one()
     assert org.slug == "northwind" and org.onboarded_at is not None
+    billing = (
+        await s.execute(select(WorkspaceBilling).where(WorkspaceBilling.org_id == world.a.org_id))
+    ).scalar_one()
+    assert billing.trial_ends_at is not None and billing.trial_started_at is not None
+    assert billing.trial_ends_at - billing.trial_started_at == timedelta(days=7)
+    started = billing.trial_started_at
+    repeat = await api.patch(API, json={"complete": True})
+    assert repeat.json()["onboarded"] is True
+    async with AsyncSession(db_engine) as s:
+        again = (
+            await s.execute(
+                select(WorkspaceBilling).where(WorkspaceBilling.org_id == world.a.org_id)
+            )
+        ).scalar_one()
+    assert again.trial_started_at == started
 
 
 async def test_slug_collision_and_private_urls(make_client: ClientFactory, world: World) -> None:

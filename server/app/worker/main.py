@@ -9,15 +9,18 @@ import math
 from typing import Any
 
 import structlog
-from arq import func
+from arq import cron, func
 from arq.connections import RedisSettings
 
+from app.ai.jobs import poll_reply_runs
+from app.billing.jobs import process_billing_event, reconcile_billing, schedule_billing_reminders
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
 from app.db.session import Database
 from app.kb.embeddings import Embedder, build_embedder
 from app.kb.ingest import ingest_source
 from app.leads.importer import import_leads
+from app.mail.jobs import poll_demo_mail
 from app.worker.jobs import count_org_leads
 from app.worker.queue import QUEUE_NAME
 
@@ -69,6 +72,18 @@ def build_worker_kwargs(settings: Settings) -> dict[str, Any]:
                 timeout=settings.leads_import_timeout_s,
                 max_tries=settings.worker_max_tries,
             ),
+            func(
+                process_billing_event,
+                name="process_billing_event",
+                timeout=settings.worker_job_timeout_s,
+                max_tries=settings.worker_max_tries,
+            ),
+        ],
+        "cron_jobs": [
+            cron(poll_reply_runs, second={3, 13, 23, 33, 43, 53}, run_at_startup=True),
+            cron(poll_demo_mail, second={0, 10, 20, 30, 40, 50}, run_at_startup=True),
+            cron(reconcile_billing, minute=set(range(0, 60, 5))),
+            cron(schedule_billing_reminders, minute={7}),
         ],
         "on_startup": on_startup,
         "on_shutdown": on_shutdown,
@@ -88,6 +103,7 @@ class WorkerSettings:
 
     _kwargs = build_worker_kwargs(get_settings())
     functions = _kwargs["functions"]
+    cron_jobs = _kwargs["cron_jobs"]
     on_startup = _kwargs["on_startup"]
     on_shutdown = _kwargs["on_shutdown"]
     queue_name = _kwargs["queue_name"]

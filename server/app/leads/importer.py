@@ -44,7 +44,7 @@ from app.worker.jobs import TRANSIENT_ERRORS, retry_delay_s
 
 log = structlog.get_logger(__name__)
 
-Outcome = Literal["done", "failed", "missing", "finished"]
+Outcome = Literal["done", "failed", "missing", "finished", "blocked"]
 MISSING_TRIES = 3
 LOOKUP_CHUNK = 1_000
 
@@ -452,6 +452,16 @@ RETRYABLE: tuple[type[BaseException], ...] = (*TRANSIENT_ERRORS, IntegrityError)
 
 async def import_leads(ctx: dict[str, Any], org_id: str, import_id: str) -> Outcome:
     """arq entrypoint. A unique-key race with a concurrent edit is retried from scratch."""
+    from app.billing.jobs import defer_until_billable
+
+    if await defer_until_billable(
+        ctx,
+        org_id,
+        "import_leads",
+        (org_id, import_id),
+        f"import_leads:{import_id}:billing",
+    ):
+        return "blocked"
     job = ImportJob(
         db=ctx["db"],
         settings=ctx["settings"],

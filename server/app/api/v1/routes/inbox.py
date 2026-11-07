@@ -1,13 +1,15 @@
-"""Unibox threads, messages and drafts. Sending stores a message; it does not send mail."""
+"""Unibox threads, messages and drafts. Sending creates a durable demo-mail delivery intent."""
 
+import uuid
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.activity import service
-from app.auth.deps import AuthContextDep, DbDep, require_trusted_origin
+from app.auth.deps import AuthContextDep, DbDep, SettingsDep, require_trusted_origin
 from app.core.errors import ApiProblem
+from app.mail.service import enqueue_reply
 
 router = APIRouter(prefix="/inbox", tags=["inbox"])
 WRITE = [Depends(require_trusted_origin)]
@@ -26,6 +28,7 @@ class ThreadPatch(BaseModel):
 class SendIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    request_id: uuid.UUID
     body: str = Field(min_length=1, max_length=20_000)
 
 
@@ -58,9 +61,11 @@ async def patch_thread(
 
 @router.post("/{thread_id}/send", dependencies=WRITE)
 async def send_reply(
-    ctx: AuthContextDep, db: DbDep, thread_id: str, body: SendIn
+    ctx: AuthContextDep, db: DbDep, settings: SettingsDep, thread_id: str, body: SendIn
 ) -> dict[str, Any]:
-    row = await service.send_reply(db, ctx.org.id, thread_id, body.body)
+    row = await enqueue_reply(
+        db, settings, ctx.org.id, body.request_id, body.body, thread_key=thread_id
+    )
     if row is None:
         raise _missing()
     return row

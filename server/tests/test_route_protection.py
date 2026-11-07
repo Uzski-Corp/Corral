@@ -59,6 +59,9 @@ async def test_authenticated_request_is_allowed(
 
 # POSTs that only read (a search body is too big for a query string). Everything else that
 # isn't GET/HEAD/OPTIONS changes state and must check the Origin (CSRF).
+# Paddle authenticates this POST with Paddle-Signature. Browser Origin checks do not apply.
+PROVIDER_WEBHOOKS = {"/api/v1/billing/webhooks/paddle", "/api/v1/inbox/webhooks/autosend", "/api/v1/ai/tools/{org_id}/{run_id}/{tool}"}
+
 READ_ONLY_POSTS = {
     "/api/v1/products/{product_id}/knowledge/search",
     "/api/v1/companies/query",
@@ -74,7 +77,9 @@ def state_changing_routes() -> list[tuple[str, str]]:
         (method.upper(), path)
         for path, operations in sorted(schema["paths"].items())
         for method in sorted(operations)
-        if method not in {"get", "head", "options"} and path not in READ_ONLY_POSTS
+        if method not in {"get", "head", "options"}
+        and path not in READ_ONLY_POSTS
+        and path not in PROVIDER_WEBHOOKS
     ]
 
 
@@ -102,6 +107,13 @@ async def test_every_state_changing_route_checks_the_origin(
     headers = {} if origin is None else {"Origin": origin}
     res = await db_client.request(method, concrete, headers=headers)
     assert res.status_code == 403, f"{method} {path} accepts a cross-site request"
+
+
+def test_paddle_webhook_is_intentionally_public() -> None:
+    assert "/api/v1/billing/webhooks/paddle" in PUBLIC_PATHS
+    routes = set(state_changing_routes())
+    assert ("POST", "/api/v1/billing/webhooks/paddle") not in routes
+    assert ("POST", "/api/v1/billing/checkout") in routes
 
 
 def test_read_only_posts_are_real_routes() -> None:

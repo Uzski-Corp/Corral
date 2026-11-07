@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ToastProvider } from "../Toaster";
-import { BillingView, PRICE_PLACEHOLDER, TeamView, parseInvites, type Member, type TeamSession, type WorkspaceInvite } from ".";
+import { BillingView, TeamView, parseInvites, type Member, type TeamSession, type WorkspaceInvite } from ".";
 
 const NOW = new Date("2026-10-03T12:00:00Z");
 const ME: Member = { id: "u1", name: "Wanjiru Mwangi", email: "wanjiru@kilima.co.ke", role: "owner" };
@@ -53,10 +53,11 @@ describe("TeamView (the API's shapes)", () => {
 });
 
 describe("BillingView", () => {
-  it("never shows a made-up price and writes to hello@corral.so", () => {
+  it("shows the confirmed monthly prices and writes to hello@corral.so", () => {
     render(<BillingView />);
     expect(screen.getByText("No plan yet")).toBeInTheDocument();
-    expect(screen.getAllByText(PRICE_PLACEHOLDER).length).toBeGreaterThan(0);
+    expect(screen.getByText("$49")).toBeInTheDocument();
+    expect(screen.getByText("$149")).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /Talk to us|Write to us/ })[0]).toHaveAttribute("href", expect.stringContaining("mailto:hello@corral.so"));
   });
   it("has a loading skeleton", () => {

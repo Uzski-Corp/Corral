@@ -24,6 +24,10 @@
 .b-plan__per { font-size: var(--text-meta); color: var(--color-text-quaternary); }
 .b-plan .c-btn { min-width: 96px; justify-content: center; }
 .b-foot { margin: 0; text-align: center; font-size: var(--text-label); }
+.b-sms { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; }
+.b-sms h3 { margin: 0; font-size: var(--text-label); font-weight: 500; }
+.b-sms__phone, .b-sms__opt { display: flex; align-items: center; gap: 8px; font-size: var(--text-label); }
+.b-sms__actions { display: flex; gap: 8px; }
 @container shell (max-width: 767px) {
   .t-role { width: auto; font-size: var(--text-meta); color: var(--color-text-tertiary); } /* M14: no row menu, so the role stays */
   .b-plan { flex-wrap: wrap; gap: 8px 12px; }

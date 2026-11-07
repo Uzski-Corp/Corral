@@ -69,6 +69,11 @@ PUBLIC_PATHS = frozenset(
         "/api/v1/auth/refresh",
         "/api/v1/auth/code/send",
         "/api/v1/auth/code/verify",
+        # Signed by Paddle-Signature. Listed here so the route-auth test treats it as
+        # intentionally public. The handler still rejects a missing or bad signature.
+        "/api/v1/billing/webhooks/paddle",
+        "/api/v1/inbox/webhooks/autosend",
+        "/api/v1/ai/tools/{org_id}/{run_id}/{tool}",
     }
 )
 _CODE_ROUTE_ERRORS: dict[int | str, dict[str, Any]] = {

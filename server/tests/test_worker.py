@@ -34,10 +34,17 @@ def test_worker_kwargs_follow_settings() -> None:
             leads_import_timeout_s=13,
         )
     )
-    job, ingest, lead_import = kwargs["functions"]
+    by_name = {job.name: job for job in kwargs["functions"]}
+    job, ingest, lead_import = (
+        by_name["count_org_leads"],
+        by_name["ingest_source"],
+        by_name["import_leads"],
+    )
     assert (job.name, job.timeout_s, job.max_tries) == ("count_org_leads", 7, 3)
     assert (ingest.name, ingest.timeout_s, ingest.max_tries) == ("ingest_source", 11, 3)
     assert (lead_import.name, lead_import.timeout_s) == ("import_leads", 13)
+    assert by_name["process_billing_event"].name == "process_billing_event"
+    assert len(kwargs["cron_jobs"]) == 4
     assert kwargs["job_completion_wait"] == 9
     assert kwargs["queue_name"] == QUEUE_NAME
     assert kwargs["retry_jobs"] is True
@@ -155,6 +162,7 @@ async def test_enqueue_and_process_sample_job_end_to_end(
     settings = make_settings(database_url=migrated_database, redis_url="redis://unused")
     kwargs = build_worker_kwargs(settings)
     kwargs.pop("queue_name")
+    kwargs.pop("cron_jobs")  # This exercise targets the explicitly enqueued job.
     worker = Worker(
         **kwargs,
         redis_pool=queue.redis,

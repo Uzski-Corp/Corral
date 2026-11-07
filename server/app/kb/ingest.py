@@ -37,7 +37,7 @@ from app.worker.jobs import TRANSIENT_ERRORS, retry_delay_s
 log = structlog.get_logger(__name__)
 
 MISSING_SOURCE_TRIES = 3  # the enqueueing request may not have committed yet
-Outcome = Literal["ready", "partial", "failed", "stale", "missing"]
+Outcome = Literal["ready", "partial", "failed", "stale", "missing", "blocked"]
 FetcherFactory = Callable[[FetchConfig], SafeFetcher]
 RETRYABLE: tuple[type[BaseException], ...] = (*TRANSIENT_ERRORS, EmbeddingUnavailable)
 
@@ -259,6 +259,16 @@ async def ingest_source(
     ctx: dict[str, Any], org_id: str, source_id: str, generation: int
 ) -> Outcome:
     """arq entrypoint. Arguments are primitives; malformed ids fail fast (no retry)."""
+    from app.billing.jobs import defer_until_billable
+
+    if await defer_until_billable(
+        ctx,
+        org_id,
+        "ingest_source",
+        (org_id, source_id, generation),
+        f"ingest_source:{source_id}:{generation}:billing",
+    ):
+        return "blocked"
     job = IngestJob(
         db=ctx["db"],
         settings=ctx["settings"],

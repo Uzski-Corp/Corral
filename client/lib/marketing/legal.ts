@@ -59,7 +59,7 @@ export const TERMS: LegalSection[] = [
   ] },
   { id: "payment", title: "Plans and payment", body: [
     "Paid plans are billed in advance for each billing period at the price shown when you subscribe, plus applicable taxes. Plans include a number of company reads (discovery and fit scoring) per period; unused reads do not carry over unless the plan says so.",
-    "You can change or cancel your plan at any time; cancellation takes effect at the end of the current billing period, and fees already paid are not refunded except where the law requires it. [TODO for Sean: payment processor, currency, trial terms (the site mentions a 14-day trial) and refund policy.]",
+    "You can change or cancel your plan at any time; cancellation takes effect at the end of the current billing period, and fees already paid are not refunded except where the law requires it. [TODO for Sean: refund policy. The workspace trial is 7 days, no card. Paid plans are monthly USD through Paddle.]",
     "We may change prices with at least 30 days' notice to workspace owners; a change applies from your next billing period.",
   ] },
   { id: "third-party", title: "Integrations and third-party services", body: [

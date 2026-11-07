@@ -202,3 +202,19 @@
   .u-paneskel__head, .u-paneskel__body { padding-inline: 16px; }
 }
 }
+
+/* Live demo transport uses the existing Unibox palette and quiet form hierarchy. */
+.demo-mail { padding: 12px 20px; border-bottom: 1px solid var(--color-border-subtle); flex-shrink: 0; }
+.demo-mail-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.demo-mail-form, .demo-mail-reply { display: grid; gap: 12px; padding-block: 12px; }
+.demo-mail-form { max-width: 680px; }
+.demo-mail-form label { display: grid; gap: 6px; }
+.demo-mail-form input, .demo-mail-form select, .demo-mail-form textarea, .demo-mail-reply textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--color-border-subtle); border-radius: 8px; padding: 10px 12px; background: transparent; color: inherit; font: inherit; }
+.demo-mail textarea, .demo-mail-reply textarea { resize: vertical; }
+.demo-mail li { padding-block: 6px; overflow-wrap: anywhere; }
+.demo-mail details { margin-top: 8px; }
+.demo-mail-reply { padding: 16px; }
+
+.demo-suggestion { display: grid; gap: 12px; }
+.demo-suggestion-body { white-space: pre-wrap; }
+.demo-suggestion select { font: inherit; color: inherit; background: var(--color-canvas); border: 1px solid var(--color-border); border-radius: 6px; padding: 6px; }

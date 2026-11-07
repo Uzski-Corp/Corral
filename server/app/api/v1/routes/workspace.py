@@ -23,6 +23,7 @@ from app.api.v1.workspace_schemas import (
     WorkspaceUpdate,
 )
 from app.auth.deps import AuthContextDep, DbDep, SettingsDep, require_trusted_origin
+from app.billing.service import start_trial
 from app.core.config import Settings
 from app.core.errors import ApiProblem
 from app.kb.service import DuplicateSource, KnowledgeBaseService
@@ -152,7 +153,9 @@ async def list_members(ctx: AuthContextDep, db: DbDep) -> list[dict[str, str]]:
 
 
 @router.patch("", dependencies=WRITE)
-async def update_workspace(ctx: AuthContextDep, db: DbDep, body: WorkspaceUpdate) -> WorkspaceOut:
+async def update_workspace(
+    ctx: AuthContextDep, db: DbDep, settings: SettingsDep, body: WorkspaceUpdate
+) -> WorkspaceOut:
     org = ctx.org
     if body.name is not None:
         org.name = body.name
@@ -181,6 +184,7 @@ async def update_workspace(ctx: AuthContextDep, db: DbDep, body: WorkspaceUpdate
         ]
     if body.complete and org.onboarded_at is None:
         org.onboarded_at = datetime.now(UTC)
+        await start_trial(db, org_id=org.id, user_id=ctx.user.id, settings=settings)
     if body.slug is not None and body.slug != org.slug:
         org.slug = body.slug
         try:

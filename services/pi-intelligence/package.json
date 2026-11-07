@@ -1,0 +1,1 @@
+{"name":"corral-pi-intelligence","private":true,"type":"module","engines":{"node":">=24"},"scripts":{"start":"node --env-file-if-exists=.env src/server.ts","check":"tsc --noEmit"},"dependencies":{"@earendil-works/chord":"1.4.0","@earendil-works/pi-ai":"1.4.0","@earendil-works/pi-durable":"1.4.0"},"devDependencies":{"@types/node":"26.6.5","typescript":"7.0.2"}}
