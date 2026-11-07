@@ -171,6 +171,39 @@ The lead table is **companies** (accounts) with their **primary person**; people
   client, queue pool and DB are closed, and telemetry is flushed last. The worker stops
   taking jobs on SIGTERM and waits up to `WORKER_SHUTDOWN_GRACE_S` for running ones.
 
+## Billing
+
+Paddle owns subscriptions and payments. Corral owns the 7-day trial, entitlements, and
+authorization. The trial starts once, in the same transaction as workspace onboarding
+completion. Repeating completion does not move the dates. Workspaces that already
+finished onboarding are not backdated.
+
+`BILLING_ENFORCE_ACCESS` defaults to false. While it is false, new billable work is
+allowed and the snapshot still reports the real entitlement. When it is true, these
+writes are refused after the trial and without a paid subscription:
+
+- adding a knowledge-base file or URL
+- re-reading a knowledge-base source
+- a lead CSV import that writes rows
+
+The worker checks again before `ingest_source` and `import_leads`. If access is gone
+it defers the job and leaves the accepted upload in place. These stay open: reads,
+billing itself, discovery, sequences and email, knowledge search, and import dry runs.
+Company counts, AI drafts, and mailbox counts are shown and are not count-enforced.
+
+Checkout is a server-created transaction. The browser never chooses a price id.
+`checkout.completed` does not grant access. The billing screen shows “Confirming payment”
+until the snapshot reports paid access, and stops polling after two minutes. A
+scheduled cancellation keeps access until `cancel_effective_at`. `past_due` does not
+count as paid while `BILLING_PAST_DUE_ACCESS` is `unresolved`.
+
+Webhook: `POST /api/v1/billing/webhooks/paddle`. Subscribe to `transaction.completed`,
+`transaction.payment_failed`, `subscription.created`, `subscription.updated`,
+`subscription.canceled`, and `subscription.past_due`. The handler verifies
+`Paddle-Signature` on the raw body before it parses JSON. Events are stored, then
+projected by the worker. Sandbox and production keys cannot be mixed. Territory is
+contact-sales. There is no yearly price. Billing SMS has no provider and never sends.
+
 ## Tests
 
 ```bash
@@ -184,3 +217,7 @@ The suite applies the real Alembic migrations, runs up/down/up round trips in a 
 database (so the DB user needs `CREATEDB`), and checks models match migrations.
 Redis-backed tests (queue, worker, readiness) use `TEST_REDIS_URL` (e.g.
 `redis://localhost:6379/15`; the DB is flushed), then a testcontainers Redis, else skip.
+
+## Demo integration handoff
+
+See [Demo handoff](../docs/DEMO-HANDOFF.md) for the Paddle payment page, consent-only AutoSend mailbox, private Pi reply service, environment setup, and manual exercise. These integrations have not been exercised against live providers or a migrated database.

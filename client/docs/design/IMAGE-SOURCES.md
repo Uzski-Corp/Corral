@@ -8,7 +8,7 @@ None of these images are model-released or cleared for brand use. They are refer
 
 | Where it shows at launch | Files | Replace with | Owner |
 |---|---|---|---|
-| `/open-range` hero, Unibox plate, read plate, pricing band; sign-in art; app empty-state art | `or/range-wide.jpg`, `or/range-sky.jpg`, `or/range-grass.jpg`, `or/dusk.jpg` | Licensed or commissioned East African landscape (sky, grass, acacia at dusk), same crops | Aegon (buy) → Bau (grade) |
+| `/open-range` hero, Unibox plate, read plate, pricing band; app empty-state art | `or/range-wide.jpg`, `or/range-sky.jpg`, `or/range-grass.jpg`, `or/dusk.jpg` | Licensed or commissioned East African landscape (sky, grass, acacia at dusk), same crops | Aegon (buy) → Bau (grade) |
 | `/fenceline` plates I–VI | `en/land-plate.jpg`, `en/land-band.jpg`, `en/acacia-plate.jpg` | Same, then re-engraved with `round2/img/engrave2.py` | Aegon → Bau |
 | `/open-range` People section, `/fenceline` People plates and hero face stack | `or/p-*.jpg`, `or/hero-wanjiru.jpg`, `en/p-*.jpg`, `en/hero-kamau.jpg`, `en/av-*.jpg` | Model-released portraits of real customers who agreed to be quoted, **or** remove the section until there are real quotes | Aegon |
 | Every embedded app screen on the public site and in the share images (`opengraph-image.jpg` for `/`, `/open-range`, `/fenceline`, `/security`) | `app/av-*.jpg` (11) | Model-released stock with an advertising licence, **or** initials avatars on public pages only (as the account menu does in the `no-avatar` review state) | Aegon → Krak (a prop to force initials) |
@@ -21,7 +21,7 @@ Files live in `client/public/corral/`. Treatments are in `/workspace/corral/roun
 ## Landscapes
 | Used as | Files | Source |
 |---|---|---|
-| Open Range sky and dune grass (hero, Unibox plate, grass close-up; M1: sign-in art panel and onboarding card band use `range-wide`, app empty states use `range-sky` and `range-grass` crops) | `or/range-wide.jpg`, `or/range-sky.jpg`, `or/range-grass.jpg` | Unsplash, https://unsplash.com/photos/FK38342kkz0 (images.unsplash.com/photo-1523865820710-ce918e171d67). Film-graded. |
+| Open Range sky and dune grass (hero, Unibox plate, grass close-up; M1: onboarding card band uses `range-wide`, app empty states use `range-sky` and `range-grass` crops) | `or/range-wide.jpg`, `or/range-sky.jpg`, `or/range-grass.jpg` | Unsplash, https://unsplash.com/photos/FK38342kkz0 (images.unsplash.com/photo-1523865820710-ce918e171d67). Film-graded. |
 | Open Range dusk (pricing and footer) | `or/dusk.jpg` | Unsplash, images.unsplash.com/photo-1770843093638-1941ee5cbc64 (acacia at sunrise). Film-graded. |
 | Fenceline farmland engravings (hero Pl. I, band Pl. II, index card) | `en/land-plate.jpg`, `en/land-band.jpg` | Unsplash, Kiambu, Kenya, by Alphonse Oudia, https://unsplash.com/photos/PW6S2yUhMYA (photo-1747854844312-cd1b46303cda). Engraved. |
 | Fenceline acacia engravings (Pl. III, Pl. VI) | `en/acacia-plate.jpg` | Same Unsplash photo as the dusk image (photo-1770843093638-1941ee5cbc64). Engraved. |

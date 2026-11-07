@@ -2,6 +2,57 @@
 ### Project Specification & Scaffolding Blueprint
 **Backend:** FastAPI (Python 3.12+) | **Frontend:** Next.js 15+ (TypeScript, React 19) | **Database:** PostgreSQL 16 + `pgvector`
 
+## Current delivery scope · 7 November 2026
+
+This section supersedes conflicting architecture and launch assumptions in the original blueprint below. It describes the agreed direction and planned work, not completed integrations.
+
+### Hosted product and billing
+
+Corral is a proprietary, dashboard-first hosted product. Public MCP access is not a launch dependency. FastAPI owns tenant authorization, business records, entitlements, and usage in Postgres; arq owns deterministic background work. Pi Durable is a private Node service for bounded multi-step AI runs, starting with Unibox drafting. Its checkpoints are execution state, not the product's source of truth. Hermes/OpenClaw are not required for this launch path.
+
+Paddle handles paid subscriptions. Corral owns a seven-day, no-card workspace trial starting on onboarding completion; customers choose a plan afterwards or subscribe early with an explicitly disclosed immediate charge. Paid checkout must not grant a second trial. Trial expiry preserves records while pausing new paid operations. The billing scaffold and demo transport are implemented in the current checkout; see [Demo handoff](docs/DEMO-HANDOFF.md) for setup and verification limits.
+
+The pricing recommendation under review is Field at USD 49/month and Range at USD 149/month, with Territory custom. Proposed research/draft allowances are 500/200 for Field, 2,000/1,000 for Range, and 25/20 total for the trial. These are planning values pending final commercial approval and cost measurement, not authorization to create live Paddle prices. Billing SMS is opt-in for billing administrators; sponsor/provider details remain unresolved and live SMS delivery is deferred.
+
+### AutoSend demo email integration
+
+Use AutoSend's direct API behind a Python email-provider adapter to demonstrate real email delivery and replies before Google/Microsoft mailbox integration. No AutoSend MCP dependency is needed.
+
+```mermaid
+flowchart LR
+    KB[Product knowledge] --> AI[Pi generates reply suggestion]
+    AI --> UI[Customer reviews and approves]
+    UI --> DB[Postgres send intent and outbox]
+    DB --> W[arq delivery job]
+    W --> AS[AutoSend API]
+    AS --> R[Consenting demo recipient]
+    R --> IN[AutoSend inbound webhook]
+    IN --> API[FastAPI validates and deduplicates]
+    API --> UB[Postgres thread and Corral Unibox]
+```
+
+- Use one verified Corral demo sender, clearly labelled **Demo mailbox**, and an explicit recipient allowlist of owned addresses or consenting demo participants. Enforce the allowlist server-side at enqueue and delivery.
+- Bind the sender, organization, thread, and permitted recipient in trusted application code. Pi may draft but cannot send. Keep provider credentials server-side.
+- Persist send intent transactionally with dispatch state. Record provider message IDs and distinguish queued, provider-accepted, delivered, failed, and uncertain states. Provider acceptance is not proof of delivery.
+- Verify current AutoSend API authentication, webhook verification, threading, delivery-event support, and idempotency capabilities during implementation. Do not invent endpoints or guarantees.
+- Deduplicate inbound/provider events durably. Resolve organization and thread from trusted mailbox/provider-message mappings; never trust an inbound payload's claimed organization. Handle unmatched replies without attaching them to another tenant.
+- Preserve user edits when a generated draft finishes. Mark a suggestion stale when the thread changes. Duplicate approval requests must not create another send intent.
+- A timeout after provider acceptance is ambiguous: reconcile before retrying. Use provider idempotency if supported; do not claim exactly-once email delivery solely from a database row.
+- Handle unavailable credentials/domain configuration, failed delivery, delayed events, and retry/recovery visibly. Never display a mock send as delivered.
+- AutoSend may also serve ongoing transactional emails such as trial and billing reminders. It does not replace Paddle or the sponsor SMS integration.
+
+Demo recipients must be consenting. AutoSend's fair-use policy prohibits unsolicited messages and sending to purchased or scraped lists. References: [sending API overview](https://autosend.com/transactional-emails), [inbound and threaded replies](https://autosend.com/inbound), [fair-use policy](https://autosend.com/legal/fair-use).
+
+The demo does not validate customer Google/Microsoft OAuth, mailbox synchronization, mailbox rotation, or production cold-outreach delivery. Those remain a separate implementation workstream. The inspected inbox endpoint currently stores a message without sending it; this integration must add real provider delivery rather than rename that existing behavior.
+
+### Next implementation slices
+
+1. **Billing, in parallel:** finish Cursor's Paddle/trial work, review its diff, and supply commercial settings. Billing SMS stays unavailable until the sponsor is specified.
+2. **Demo email transport:** implement the AutoSend adapter, durable send dispatch, inbound mapping, provider-event reconciliation, and honest Unibox delivery states. This can first use a manually written reply and does not depend on Pi.
+3. **Grounded reply drafting:** add the tenant-scoped `ai_run` contract and transactional dispatch, persistent Pi service, read-thread/KB-search tools, cancellation/recovery, version-aware suggestion reconciliation, and a hook into the billing usage policy.
+4. **Demo handoff:** prepare a live preview with a consenting demo recipient and a small product knowledge base. Sean exercises manual send, inbound reply, AI suggestion, editing, approval, and failure recovery. Do not execute tests or autonomous browser QA; report untested behavior explicitly.
+5. **Production follow-through:** customer mailbox integrations, measured research/scoring economics, and sponsor-backed billing SMS. Do not promise these as working in the demo.
+
 ---
 
 ## 1. Executive Summary & Product Vision

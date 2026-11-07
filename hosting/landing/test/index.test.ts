@@ -7,7 +7,8 @@ function setup() {
   const { db, env } = makeEnv();
   const assets = vi.fn(async (req: Request) => new Response(`asset:${new URL(req.url).pathname}${new URL(req.url).search}`));
   const full = { ...env, ASSETS: { fetch: assets } as unknown as Fetcher } satisfies Env;
-  const fetch = (req: Request) => worker.fetch(req as Parameters<typeof worker.fetch>[0], full);
+  const ctx = { waitUntil: () => {}, passThroughOnException: () => {} } as unknown as ExecutionContext;
+  const fetch = (req: Request) => worker.fetch(req as Parameters<typeof worker.fetch>[0], full, ctx);
   return { db, assets, fetch };
 }
 

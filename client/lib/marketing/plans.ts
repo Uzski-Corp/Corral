@@ -1,17 +1,17 @@
 /**
  * Plans, shared by both landings and /pricing so a price can only be wrong in one place.
- * Prices and limits are placeholders until confirmed (lib/marketing/site.ts CLAIMS "prices").
+ * Monthly USD and the allowances below are confirmed. Yearly prices are not. Territory is agreed, not priced.
  */
 export type PlanId = "field" | "range" | "territory";
 /** `includes`: the four lines a plan card shows; the full comparison is COMPARE. */
 export type Plan = { id: PlanId; name: string; tag: string; price: number | null; line: string; cta: string; primary?: boolean; reads: number | null; meter: number; includes: string[] };
 export const PLANS: Plan[] = [
-  { id: "field", name: "Field", tag: "for one", price: 49, line: "One product, one founder doing their own outbound.", cta: "Start with one product", reads: 1000, meter: 0.12,
-    includes: ["1 product", "1,000 companies read a month", "2 mailboxes", "Unibox drafts and Cal.com"] },
-  { id: "range", name: "Range", tag: "for a team", price: 149, line: "A small team working a real territory.", cta: "Start a 14-day trial", primary: true, reads: 5000, meter: 0.5,
-    includes: ["3 products", "5,000 companies read a month", "10 mailboxes, 5 teammates", "AutoSend nurture"] },
+  { id: "field", name: "Field", tag: "for one", price: 49, line: "One product, one founder doing their own outbound.", cta: "Start with one product", reads: 500, meter: 0.12,
+    includes: ["1 product", "500 companies a month", "200 AI drafts", "2 mailboxes"] },
+  { id: "range", name: "Range", tag: "for a team", price: 149, line: "A small team working a real territory.", cta: "Start a 7-day trial", primary: true, reads: 2000, meter: 0.5,
+    includes: ["3 products", "2,000 companies a month", "1,000 AI drafts", "10 mailboxes, 5 teammates"] },
   { id: "territory", name: "Territory", tag: "for many", price: null, line: "Several products, several markets, one Unibox.", cta: "Book a walkthrough", reads: null, meter: 0.95,
-    includes: ["Unlimited products", "25,000+ companies read a month", "Your own mailboxes", "Phoenix ERP and SSO"] },
+    includes: ["Products agreed", "Companies agreed", "Mailboxes agreed", "Walkthrough before a price"] },
 ];
 export const priceWords = (p: Plan) => (p.price === null ? "Let’s talk" : `$${p.price}`);
 
@@ -20,7 +20,7 @@ export type Cell = string | boolean;
 export const COMPARE: { group: string; rows: { label: string; note?: string; cells: Record<PlanId, Cell> }[] }[] = [
   { group: "Reading the market", rows: [
     { label: "Products", cells: { field: "1", range: "3", territory: "Unlimited" } },
-    { label: "Companies read a month", note: "A read is one company’s site, scored for one product.", cells: { field: "1,000", range: "5,000", territory: "25,000+" } },
+    { label: "Companies read a month", note: "Shown on the plan. Corral does not count-enforce this yet.", cells: { field: "500", range: "2,000", territory: "Agreed" } },
     { label: "Fit with reasons", cells: { field: true, range: true, territory: true } },
   ] },
   { group: "Writing", rows: [

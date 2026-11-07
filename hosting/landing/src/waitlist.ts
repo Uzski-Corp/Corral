@@ -11,9 +11,12 @@
 
    Server side: trim + lowercase + re-validate, dedupe on the primary key (INSERT ... ON CONFLICT DO NOTHING),
    country from request.cf, a SHA-256 of the IP instead of the IP, a capped body, and at most RATE_LIMIT.max new
-   addresses per IP hash per RATE_LIMIT.windowMs. No email is sent from here. */
+   addresses per IP hash per RATE_LIMIT.windowMs. A new address gets one confirmation email (confirm.ts), sent after the
+   response through ctx.waitUntil. */
 
-export interface WaitlistEnv {
+import { sendConfirmation, type ConfirmEnv } from "./confirm";
+
+export interface WaitlistEnv extends ConfirmEnv {
   WAITLIST_DB: D1Database;
   /** Optional secret mixed into the IP hash, so stored hashes can't be reversed by hashing every IPv4 address. */
   IP_HASH_SALT?: string;
@@ -147,7 +150,7 @@ async function store(env: WaitlistEnv, row: { email: string; source: Source; cou
   return result.meta.changes > 0 ? "joined" : "exists";
 }
 
-export async function handleWaitlist(request: Request, env: WaitlistEnv): Promise<Response> {
+export async function handleWaitlist(request: Request, env: WaitlistEnv, ctx?: Pick<ExecutionContext, "waitUntil">): Promise<Response> {
   if (request.method !== "POST") return json(405, { error: "method_not_allowed" }, { allow: "POST" });
 
   const origin = request.headers.get("origin");
@@ -174,6 +177,7 @@ export async function handleWaitlist(request: Request, env: WaitlistEnv): Promis
         ? formRedirect(request, "error")
         : json(429, { error: "rate_limited" }, { "retry-after": String(RATE_LIMIT.windowMs / 1000) });
     }
+    if (stored === "joined") ctx?.waitUntil(sendConfirmation(env, email));
     if (form) return formRedirect(request, stored);
     return stored === "joined" ? json(201, { status: "joined" }) : json(200, { status: "exists" });
   } catch (err) {

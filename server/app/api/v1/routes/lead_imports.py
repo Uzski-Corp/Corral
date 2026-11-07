@@ -23,6 +23,7 @@ from app.api.v1.deps import PageDep
 from app.api.v1.lead_schemas import DryRunOut, ImportOut, ImportPlanOut, RowErrorOut
 from app.auth.deps import AuthContextDep, DbDep, RateLimiterDep, SettingsDep, require_trusted_origin
 from app.auth.ratelimit import RateLimited, RateRule
+from app.billing.entitlements import require_billable_work
 from app.core.errors import ApiProblem
 from app.kb.files import sanitize_filename
 from app.leads.csv_import import (
@@ -135,6 +136,7 @@ async def create_import(
             errors=[RowErrorOut.model_validate(e) for e in classified.errors[:MAX_SHOWN_ERRORS]],
         )
         return Response(body.model_dump_json(), status_code=200, media_type="application/json")
+    await require_billable_work(db, settings, ctx.org.id)
     row = LeadImport(
         org_id=ctx.org.id,
         filename=filename,

@@ -1,12 +1,14 @@
 "use client";
 /* Sign-in: the one brand moment inside the product. Form in the app language on the left;
-   the Open Range sky on the right with one real product fragment floating on it. */
+   the landing's sunlit reef on the right with the landing's agent card floating in the water. */
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ROUTES } from "@/lib/marketing/site";
 import { useRouter } from "next/navigation";
-import { Avatar, Button, FitBar, Logo, Receipt, Receipts, Tag, cx } from "../primitives";
+import { Button, cx } from "../primitives";
+import { HeroAgent } from "@/components/marketing/landing-v/Visuals";
+import "@/components/marketing/landing-v/landing-v.css";
 import { GoogleG, Icon, Mark } from "../icons";
 import { FormField, TextInput } from "../Form";
 import { Banner, Spinner } from "../States";
@@ -256,14 +258,10 @@ export function SignIn({ initial = "default", actions }: { initial?: SignInState
       </section>
 
       <aside className="s-auth__art" aria-label="Corral">
-        <Image src="/corral/or/range-wide.jpg" alt="" fill priority sizes="(max-width: 900px) 100vw, 60vw" className="s-auth__img" />
-        <div className="s-auth__card c-card" aria-hidden="true">
-          <div className="s-auth__card-top"><Logo company="Kilima Dairies" /><span className="c-strong">Kilima Dairies</span><span className="c-mono">kilima.co.ke</span><span style={{ flex: 1 }} /><FitBar value={94} /></div>
-          <Receipts><Receipt meta="38 pages">Read kilima.co.ke</Receipt><Receipt meta="4 of 4">Matched every ColdTrace pain</Receipt><Receipt live meta="2h ago">Wanjiru Mwangi replied</Receipt></Receipts>
-          <div className="s-auth__card-foot"><Avatar id="wanjiru" size={24} /><span><span className="c-strong">Wanjiru Mwangi</span> · Head of Supply Chain</span><span style={{ flex: 1 }} /><Tag status="Interested" /></div>
-        </div>
-        <p className="s-auth__line">Every row ends in a person.</p>
-        <span className="s-auth__credit">Sample content · reference photography</span>
+        <Image src="/corral/hero-sunlit-reef.png" alt="" fill priority sizes="(max-width: 900px) 100vw, 60vw" className="s-auth__img" />
+        <p className="s-auth__line"></p>
+        <div className="s-auth__card" aria-hidden="true"><HeroAgent /></div>
+        <span className="s-auth__credit">Sample content</span>
       </aside>
     </div>
   );

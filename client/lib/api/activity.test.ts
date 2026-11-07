@@ -41,8 +41,8 @@ describe("inbox api", () => {
     expect((await api.patch("a/b", { unread: false })).ok).toBe(true);
     expect(patch[0].body).toEqual({ unread: false });
     const send = capture("post", "/api/v1/inbox/t1/send", { id: "t1" });
-    expect((await api.send("t1", "Hello")).ok).toBe(true);
-    expect(send[0].body).toEqual({ body: "Hello" });
+    expect((await api.send("t1", "Hello", "c09440db-cbca-49cd-b2b7-561d008306e9")).ok).toBe(true);
+    expect(send[0].body).toEqual({ body: "Hello", request_id: "c09440db-cbca-49cd-b2b7-561d008306e9" });
   });
   it("rejects a summary without a count", async () => {
     capture("get", "/api/v1/inbox/summary", { needs_you: "3" });

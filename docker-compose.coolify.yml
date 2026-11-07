@@ -1,0 +1,116 @@
+# Coolify Git-source deployment. Only web and API receive public proxy routes.
+x-api-env: &api-env
+  APP_ENV: staging
+  DATABASE_URL: postgresql+asyncpg://corral:${POSTGRES_PASSWORD:?required}@postgres:5432/corral
+  REDIS_URL: redis://redis:6379/0
+  FRONTEND_URL: https://app.corral.uzskicorp.agency
+  CORS_ORIGINS: '["https://app.corral.uzskicorp.agency"]'
+  WORKOS_REDIRECT_URI: https://api.corral.uzskicorp.agency/api/v1/auth/callback
+  WORKOS_API_KEY: ${WORKOS_API_KEY:?required}
+  WORKOS_CLIENT_ID: ${WORKOS_CLIENT_ID:?required}
+  WORKOS_COOKIE_PASSWORD: ${WORKOS_COOKIE_PASSWORD:?required}
+  SESSION_COOKIE_NAME: corral_session
+  SESSION_COOKIE_DOMAIN: .corral.uzskicorp.agency
+  PI_SERVICE_URL: http://pi:8090
+  PI_SERVICE_TOKEN: ${PI_SERVICE_TOKEN:?required}
+  AUTOSEND_API_KEY: ${AUTOSEND_API_KEY:-}
+  AUTOSEND_WEBHOOK_SECRET: ${AUTOSEND_WEBHOOK_SECRET:-}
+  AUTOSEND_DEMO_ORG_ID: ${AUTOSEND_DEMO_ORG_ID:-}
+  AUTOSEND_DEMO_FROM: ${AUTOSEND_DEMO_FROM:-}
+  AUTOSEND_DEMO_REPLY_TO: ${AUTOSEND_DEMO_REPLY_TO:-}
+  AUTOSEND_DEMO_RECIPIENTS: ${AUTOSEND_DEMO_RECIPIENTS:-[]}
+  KB_EMBEDDING_PROVIDER: ${KB_EMBEDDING_PROVIDER:-hashing}
+  KB_EMBEDDING_API_KEY: ${KB_EMBEDDING_API_KEY:-}
+  KB_EMBEDDING_MODEL: text-embedding-3-small
+  PADDLE_ENVIRONMENT: sandbox
+  PADDLE_API_KEY: ${PADDLE_API_KEY:-}
+  PADDLE_WEBHOOK_SECRET: ${PADDLE_WEBHOOK_SECRET:-}
+  PADDLE_PRICE_FIELD_MONTH: pri_01m6tsa6mzj5hcyrmt41vep1d0
+  PADDLE_PRICE_RANGE_MONTH: pri_01m6tsa72dx1cjx3q7v5am3nz4
+  PADDLE_CHECKOUT_URL: https://app.corral.uzskicorp.agency/pay
+  BILLING_ENFORCE_ACCESS: 'false'
+  R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
+  R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+  R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+  R2_BUCKET: ${R2_BUCKET:-}
+  R2_PUBLIC_BASE_URL: ${R2_PUBLIC_BASE_URL:-}
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: corral
+      POSTGRES_DB: corral
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U corral -d corral']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  api:
+    build: ./server
+    environment: *api-env
+    expose: ['8000']
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'python', '-c', "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz')"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 90s
+  worker:
+    build: ./server
+    command: ['arq', 'app.worker.main.WorkerSettings']
+    environment: *api-env
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+  pi:
+    build: ./services/pi-intelligence
+    environment:
+      PI_SERVICE_TOKEN: ${PI_SERVICE_TOKEN:?required}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      PI_MODEL: gpt-5-mini
+      CORRAL_INTERNAL_URL: http://api:8000
+      PI_DATA_DIR: /data
+      PORT: '8090'
+    volumes:
+      - pi_data:/data
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+  web:
+    build:
+      context: ./client
+      args:
+        NEXT_PUBLIC_API_URL: https://api.corral.uzskicorp.agency
+        NEXT_PUBLIC_PADDLE_ENVIRONMENT: sandbox
+        NEXT_PUBLIC_PADDLE_CLIENT_TOKEN: ${NEXT_PUBLIC_PADDLE_CLIENT_TOKEN:-}
+    environment:
+      CORRAL_APP: '1'
+      SESSION_COOKIE_NAME: corral_session
+    expose: ['3000']
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+volumes:
+  pgdata:
+  pi_data:

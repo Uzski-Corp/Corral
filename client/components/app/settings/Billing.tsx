@@ -1,16 +1,14 @@
 "use client";
-/* Settings → Billing (M13, gap 3): before any plan, a calm pick of the three plans or a way to talk to us.
-   Prices are NOT confirmed (lib/marketing/site.ts CLAIMS "prices"), so every price renders the literal
-   placeholder PRICE_PLACEHOLDER until Aegon confirms them. Never ship this with a made-up number. */
+/* Settings → Billing review states. Live billing is BillingConnected.
+   Monthly USD is confirmed: Field $49, Range $149. Territory stays contact-sales.
+   Yearly prices are not confirmed, so this screen does not offer a year. */
 import { ChatCircle, CreditCard } from "@phosphor-icons/react/dist/ssr";
 import { Button, cx } from "../primitives";
 import { EmptyState, Skeleton } from "../States";
-import { PLANS, type PlanId } from "@/lib/marketing/plans";
+import { PLANS, priceWords, type PlanId } from "@/lib/marketing/plans";
 
-/** OPEN QUESTION for Aegon: the real prices. Until then the UI shows this token, on purpose. */
-export const PRICE_PLACEHOLDER = "{price}";
 export const BILLING_COPY = {
-  title: "Billing", noPlan: "No plan yet", noPlanLine: "Pick one when you’re ready to send.",
+  title: "Billing", noPlan: "No plan yet", noPlanLine: "A 7-day trial starts when the workspace is ready. No card.",
   perMonth: "a month", choose: "Choose", talk: "Talk to us", contact: "Not sure? Write to us and we’ll help you pick.",
 } as const;
 const SALES = "mailto:hello@corral.so?subject=Picking%20a%20Corral%20plan"; // OPEN QUESTION: confirm the sales address
@@ -33,7 +31,7 @@ export function BillingView({ load, onChoose }: { load?: "loading"; onChoose?: (
             <span className="b-plan__txt"><span className="b-plan__name">{p.name}<span className="b-plan__tag">{p.tag}</span></span><span className="b-plan__line">{p.line}</span></span>
             {p.price === null
               ? <><span className="b-plan__price" /><a className="c-btn c-btn--quiet" href={SALES}><ChatCircle size={14} />{BILLING_COPY.talk}</a></>
-              : <><span className="b-plan__price"><span className="c-mono" data-placeholder="price">{PRICE_PLACEHOLDER}</span><span className="b-plan__per">{BILLING_COPY.perMonth}</span></span>
+              : <><span className="b-plan__price"><span className="c-mono">{priceWords(p)}</span><span className="b-plan__per">{BILLING_COPY.perMonth}</span></span>
                 <Button variant={p.primary ? "primary" : "default"} onClick={() => onChoose?.(p.id)}>{BILLING_COPY.choose}</Button></>}
           </li>
         ))}

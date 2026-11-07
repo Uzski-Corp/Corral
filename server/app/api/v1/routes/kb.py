@@ -23,6 +23,7 @@ from app.api.v1.kb_schemas import (
 )
 from app.auth.deps import AuthContextDep, DbDep, RateLimiterDep, SettingsDep, require_trusted_origin
 from app.auth.ratelimit import RateLimited, RateRule
+from app.billing.entitlements import require_billable_work
 from app.core.errors import ApiProblem
 from app.kb.embeddings import Embedder
 from app.kb.files import UploadRejected, check_upload, sanitize_filename
@@ -187,6 +188,7 @@ async def upload_file(
         kind = check_upload(filename, data, max_bytes=settings.kb_max_file_bytes)
     except UploadRejected as exc:
         raise ApiProblem(exc.status_code, exc.error, exc.detail) from exc
+    await require_billable_work(service.session, settings, ctx.org.id)
     replace = None
     if replace_source_id is not None:
         replace = await service.get_source(product_id, replace_source_id)
@@ -232,6 +234,7 @@ async def add_url(
         url = normalize_url(body.url, allowed_ports=settings.kb_url_allowed_ports)
     except UrlRejected as exc:
         raise ApiProblem(422, exc.error, exc.detail) from exc
+    await require_billable_work(service.session, settings, ctx.org.id)
     try:
         source = await service.add_url(product_id, url=url, scope=body.scope, added_by=ctx.user.id)
     except DuplicateSource as exc:
@@ -273,6 +276,7 @@ async def restore_source(service: ServiceDep, source: SourceDep) -> SourceOut:
 async def reread_source(service: ServiceDep, source: SourceDep, queue: QueueDep) -> SourceOut:
     if source.deleted_at is not None:
         raise ApiProblem(409, "removed", "Restore the source before reading it again.")
+    await require_billable_work(service.session, service.settings, service.org_id)
     source = await service.start_reread(source)
     await _enqueue(queue, source)
     return await one_out(service, source)

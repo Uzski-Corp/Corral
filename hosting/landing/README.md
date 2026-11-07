@@ -26,7 +26,11 @@ to the D1 database `corral-waitlist` (binding `WAITLIST_DB`, id `217835f7-3973-4
 - Form post (JS off): `303` back to the Referer path (same origin, else `/`) with `#waitlist-joined|exists|invalid|error`.
 - Emails are trimmed and lowercased; unknown sources are stored as `unknown`; the country comes from `request.cf`.
 - The IP is stored only as a SHA-256 hash (salted with the optional `IP_HASH_SALT` secret), used for the rate limit:
-  at most 5 new addresses per IP per 10 minutes. No email is sent.
+  at most 5 new addresses per IP per 10 minutes.
+- A new address (never a repeat) gets one "You're on the list" email through AutoSend (`src/confirm.ts`), from
+  `Corral <hello@uzskicorp.agency>` with replies to `corral@uzskicorp.agency`, sent after the response
+  (`ctx.waitUntil`). It needs the secret `AUTOSEND_API_KEY` (an API key from the AutoSend project "Uzski Corp Mail"):
+  `pnpm exec wrangler secret put AUTOSEND_API_KEY`. Without it, signups still work and no email goes out.
 
 ```sh
 pnpm test                 # vitest, D1 faked with node:sqlite running the real migrations

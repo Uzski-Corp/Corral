@@ -1,4 +1,4 @@
-/* M1 screens: sign-in and onboarding. App tokens only; the Open Range photo is the one brand element. */
+/* M1 screens: sign-in and onboarding. App tokens only; the sunlit reef is the one brand element. */
 @layer components {
 /* ---------- shared */
 .s-auth__brand { display: inline-flex; align-items: center; gap: 8px; color: var(--color-text); font: 600 15px/1 var(--font-sans); letter-spacing: -0.2px; text-decoration: none; }
@@ -27,20 +27,25 @@
 .s-auth__hr { height: 1px; background: var(--color-border-subtle); }
 .s-auth__foot { display: flex; gap: 16px; font-size: var(--text-meta); color: var(--color-text-quaternary); }
 .s-auth__foot a { color: inherit; text-decoration: none; } .s-auth__foot a:hover { color: var(--color-text-secondary); }
-.s-auth__art { position: relative; margin: 8px; border-radius: var(--radius-window); overflow: hidden; min-height: 560px; background: #BFD3E6; }
-.s-auth__img { object-fit: cover; object-position: 22% 50%; }
-.s-auth__card { position: absolute; left: 9%; top: 14%; width: 420px; padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; font-size: var(--text-label); color: var(--color-text-secondary); box-shadow: var(--shadow-window); }
-.s-auth__card-top { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-.s-auth__card-foot { display: flex; align-items: center; gap: 8px; padding-top: 12px; border-top: 1px solid var(--color-border-subtle); white-space: nowrap; }
-.s-auth__line { position: absolute; left: 9%; bottom: 8%; margin: 0; max-width: 12em; font: 500 clamp(28px, 3vw, 44px)/1.04 var(--font-inter-tight); letter-spacing: -0.035em; color: #1C1C1C; }
-.s-auth__credit { position: absolute; right: 16px; bottom: 14px; font-size: 11px; color: rgb(28 28 28 / .8); }
+/* The landing's sunlit reef; the scrim keeps the white line legible over the open water. */
+.s-auth__art {
+  --lv-ink: #141414; --lv-muted: #6A6A6A; --lv-art-neutral: #F3F3F3; --lv-ease: cubic-bezier(0.23, 1, 0.32, 1);
+  --mk-font-display: var(--font-inter-tight), var(--font-sans);
+  position: relative; display: flex; flex-direction: column; gap: 48px; padding: 72px 8% 96px;
+  margin: 8px; border-radius: var(--radius-window); overflow: hidden; min-height: 560px; background: #83B5D7;
+}
+.s-auth__art::before { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, rgb(11 15 28 / .32) 0%, rgb(11 15 28 / 0) 45%); pointer-events: none; }
+.s-auth__img { object-fit: cover; object-position: 50% 100%; }
+.s-auth__line { position: relative; z-index: 2; margin: 0; max-width: 11em; text-wrap: balance; font: 500 clamp(32px, 3.4vw, 52px)/1.02 var(--font-inter-tight); letter-spacing: -0.035em; color: #fff; text-shadow: 0 2px 24px rgb(11 15 28 / .25); }
+.s-auth__card { position: relative; z-index: 2; width: min(100%, 440px); }
+.s-auth__credit { position: absolute; z-index: 2; right: 16px; bottom: 14px; font-size: 11px; color: rgb(255 255 255 / .8); text-shadow: 0 1px 2px rgb(11 15 28 / .5); }
 
 @media (max-width: 900px) {
   .s-auth { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
-  .s-auth__art { order: -1; min-height: 0; height: 208px; margin: 8px 8px 0; border-radius: var(--radius-card); }
+  .s-auth__art { order: -1; min-height: 0; height: 208px; padding: 24px 20px; margin: 8px 8px 0; border-radius: var(--radius-card); }
   .s-auth__card { display: none; }
-  .s-auth__line { font-size: 22px; left: 20px; bottom: 14px; }
-  .s-auth__img { object-position: 30% 100%; }
+  .s-auth__line { font-size: 24px; }
+  .s-auth__img { object-position: 50% 100%; }
   .s-auth__credit { display: none; }
   .s-auth__form { padding: 20px 20px 24px; }
   .s-auth__box { align-items: flex-start; padding: 28px 0 36px; }

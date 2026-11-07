@@ -1,6 +1,7 @@
 "use client";
 /* The M1 app, wired with sample data: shell + Unibox home, Companies, Segments, Contacts, ⌘K,
    an enroll dialog and toasts. Engineering: copy the composition, replace data.ts with real queries. */
+import { DemoMailbox } from "./unibox/DemoMailbox";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LEADS, THREADS, type Lead, type Thread } from "./data";
@@ -242,6 +243,14 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
       setInboxPhase("ready");
     });
     return () => c.abort();
+  }, [data, unibox, view]);
+  useEffect(() => {
+    if (!data || unibox || view !== "unibox") return;
+    let stopped = false;
+    const timer = setInterval(() => {
+      void data.inbox.list().then(r => { if (!stopped && r.ok) setThreadsState(r.value as Thread[]); });
+    }, 5000);
+    return () => { stopped = true; clearInterval(timer); };
   }, [data, unibox, view]);
   const [needsCount, setNeedsCount] = useState<number | null>(null);
   useEffect(() => {
@@ -557,8 +566,13 @@ function Demo({ initialView = "unibox", cmdk = false, collapsed: c0 = false, dra
         pool={{ sent: poolNow.sent, cap: poolNow.cap, mailboxes: poolNow.total, attention: poolNow.attention }} onPool={() => { go("sequences"); setSeqTab("pool"); }}
         counts={{ unibox: String(inboxLive && view === "unibox" && inboxPhase === "ready" ? needsYou(threads) : inboxLive ? (needsCount ?? 0) : needsYou(threads)) }} segments={view === "segments" && leads === "empty" ? [] : sidebarSegments}>
         {sessionError ? <SessionUnavailable {...sessionError} /> : <>
+        {view === "unibox" && data && !unibox && <DemoMailbox api={data.inbox} onThread={(t) => { setThreadsState(prev => [t, ...prev.filter(x => x.id !== t.id)]); setActive(t.id); setPane("read"); setInboxPhase("ready"); }} />}
         {view === "unibox" && <UniboxView key={unibox ?? inboxPhase} state={unibox ?? (inboxLive && inboxPhase !== "ready" ? inboxPhase : undefined)} threads={threads} setThreads={setThreads} active={active} setActive={setActive} tab={tab} setTab={setTab} pane={pane} setPane={setPane}
-          onArchive={archive} onSend={data && !unibox ? (id, text) => { void data.inbox.send(id, text); } : undefined} hotkeys={hotkeys && !palette && !enroll && !kbAdd && !importOpen && !setupOpen} />}
+          onArchive={archive} onSend={data && !unibox ? async (id, text, requestId) => {
+            const result = await data.inbox.send(id, text, requestId);
+            if (!result.ok) throw new Error(result.error.message);
+            setThreadsState(prev => prev.map(t => t.id === id ? result.value as Thread : t));
+          } : undefined} hotkeys={hotkeys && !palette && !enroll && !kbAdd && !importOpen && !setupOpen} />}
         {table && <LeadsView key={`${view}-${segment ?? ""}`} view={view} state={leads} segment={segment} importOpen={importOpen} onImportOpenChange={setImportOpen}
           builderOpen={builderOpen} onBuilderOpenChange={setBuilderOpen} enrollAllSignal={enrollAll} onFind={findCompanies} onEnroll={(n, replied) => { setEnrollFor({ n, replied }); setEnroll(true); }} live={leadsLive} />}
         {view === "discovery" && <DiscoveryView key={discovery ?? (discoveryLive ? `${discPhase}:${discRuns.length}` : "sample")} state={discovery} catalog={discoveryLive ? { phase: discPhase, runs: discRuns, productName: data?.me.organization.name, onRetry: () => { setDiscPhase("loading"); setDiscTry((n) => n + 1); }, onCreate: (run) => { void data?.discovery.create({ name: run.name, status: "queued" }); } } : undefined} setupOpen={setupOpen} onSetupOpenChange={setSetupOpen} onOpenCompanies={() => go("companies")} />}

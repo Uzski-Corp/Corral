@@ -96,30 +96,27 @@ async def test_patch_thread_validation_and_404(api: AsyncClient) -> None:
     missing = await api.patch(f"/api/v1/inbox/{uuid.uuid4()}", json={"handled": True})
     assert missing.status_code == 404
     assert missing.json()["error"] == "not_found"
-    assert (await api.post("/api/v1/inbox/nobody/send", json={"body": "hi"})).status_code == 404
+    assert (
+        await api.post(
+            "/api/v1/inbox/nobody/send", json={"body": "hi", "request_id": str(uuid.uuid4())}
+        )
+    ).status_code == 404
     assert (await api.post("/api/v1/inbox/brian/send", json={"body": ""})).status_code == 422
 
 
-async def test_send_reply_records_a_message_and_drops_the_draft(
+async def test_unconnected_sample_mailbox_never_claims_delivery(
     api: AsyncClient, db_engine: AsyncEngine, world: World
 ) -> None:
-    res = await api.post("/api/v1/inbox/brian/send", json={"body": "Thursday it is."})
-    assert res.status_code == 200, res.text
-    body = res.json()
-    assert body["history"][-1] == {
-        "from": "you",
-        "who": "You",
-        "at": "Just now",
-        "body": "Thursday it is.",
-        "meta": "Sent",
-    }
-    assert "draft" not in body
-    async with as_tenant(db_engine, world.a) as session:
-        drafts = await session.scalar(select(func.count()).select_from(InboxDraft))
-    assert drafts == 0
-    # Sending again works without a draft to remove.
-    again = await api.post("/api/v1/inbox/brian/send", json={"body": "And the one-pager."})
-    assert len(again.json()["history"]) == 3
+    before = next(r for r in (await api.get("/api/v1/inbox")).json() if r["id"] == "brian")
+    res = await api.post(
+        "/api/v1/inbox/brian/send",
+        json={"body": "Thursday it is.", "request_id": str(uuid.uuid4())},
+    )
+    assert res.status_code == 409
+    assert res.json()["error"] == "mailbox_not_connected"
+    after = next(r for r in (await api.get("/api/v1/inbox")).json() if r["id"] == "brian")
+    assert after["history"] == before["history"]
+    assert after["draft"] == before["draft"]
 
 
 async def test_a_thread_without_a_slug_is_found_by_uuid(
@@ -463,7 +460,11 @@ async def test_writes_refuse_an_untrusted_origin(
 
 async def test_another_org_cannot_reach_seeded_rows(api_b: AsyncClient) -> None:
     assert (await api_b.patch("/api/v1/inbox/brian", json={"handled": True})).status_code == 404
-    assert (await api_b.post("/api/v1/inbox/brian/send", json={"body": "x"})).status_code == 404
+    assert (
+        await api_b.post(
+            "/api/v1/inbox/brian/send", json={"body": "x", "request_id": str(uuid.uuid4())}
+        )
+    ).status_code == 404
     assert (
         await api_b.patch("/api/v1/sequences/pilot", json={"status": "paused"})
     ).status_code == 404

@@ -12,6 +12,16 @@ from app.models.activity import (
     McpCall,
     McpConnection,
 )
+from app.models.ai import AI_TABLES, AiRun
+from app.models.billing import (
+    BILLING_TABLES,
+    OPERATIONAL_TABLES,
+    BillingCheckout,
+    BillingSmsNotification,
+    BillingSmsPreference,
+    PaddleWebhookEvent,
+    WorkspaceBilling,
+)
 from app.models.crm import (
     CRM_TABLES,
     Company,
@@ -31,17 +41,34 @@ from app.models.domain import (
 )
 from app.models.identity import Membership, Organization, User
 from app.models.knowledge import KB_TABLES, KbChunk, KbSource, KbSourceFile, Product
+from app.models.mail import MAIL_TABLES, MailDelivery, MailEvent
 
-ALL_TENANT_TABLES: tuple[str, ...] = (*TENANT_TABLES, *KB_TABLES, *CRM_TABLES, *ACTIVITY_TABLES)
+ALL_TENANT_TABLES: tuple[str, ...] = (
+    *AI_TABLES,
+    *MAIL_TABLES,
+    *TENANT_TABLES,
+    *KB_TABLES,
+    *CRM_TABLES,
+    *ACTIVITY_TABLES,
+    *BILLING_TABLES,
+)
 """Every org-scoped table with a ``tenant_isolation`` row-level security policy."""
 
 __all__ = [
+    "AI_TABLES", "AiRun",
+    "MAIL_TABLES",
+    "MailDelivery",
+    "MailEvent",
     "ACTIVITY_TABLES",
     "ALL_TENANT_TABLES",
+    "BILLING_TABLES",
     "CRM_TABLES",
     "KB_TABLES",
     "TENANT_TABLES",
     "ApiKey",
+    "BillingCheckout",
+    "BillingSmsNotification",
+    "BillingSmsPreference",
     "Company",
     "CompanyFit",
     "DiscoveryRun",
@@ -60,7 +87,9 @@ __all__ = [
     "McpCall",
     "McpConnection",
     "Membership",
+    "OPERATIONAL_TABLES",
     "Organization",
+    "PaddleWebhookEvent",
     "Product",
     "Segment",
     "SegmentPin",
@@ -68,4 +97,5 @@ __all__ = [
     "Suppression",
     "TenantModel",
     "User",
+    "WorkspaceBilling",
 ]

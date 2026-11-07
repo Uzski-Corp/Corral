@@ -2,7 +2,7 @@
    any density, needs no image optimiser (the corral-landing Worker is a static build), and reads with JS off.
    The sample workspace (ColdTrace Sensors selling to Kilima Dairies) is the product's own demo data. */
 import type { CSSProperties, ReactNode } from "react";
-import { Article, Binoculars, ChatCircleDots, Envelope, Gauge, UserFocus } from "@phosphor-icons/react/dist/ssr";
+import { Article, Binoculars, ChatCircleDots, Check, Envelope, Gauge, MagnifyingGlass, UserFocus } from "@phosphor-icons/react/dist/ssr";
 import { Avatar, FitBar, Tag } from "@/components/app/primitives";
 import { Mark } from "@/components/app/icons";
 import { AGENT_LOGOS, SECTIONS } from "./copy";
@@ -61,6 +61,29 @@ export function AgentRun({ play = false, className }: { play?: boolean; classNam
         ))}
       </ol>
       <figcaption className="lv-run__cap">Sample workspace</figcaption>
+    </figure>
+  );
+}
+
+/* ------------------------------------------------------------ the V4 hero: one ask, four steps, one picture each */
+/** Read at a glance: a glyph or a face per step and a few words, the way the How it works pictures read. */
+export function HeroAgent({ className }: { className?: string }) {
+  return (
+    <figure className={`lv-hc c-app ${className ?? ""}`} aria-label="Sample: you ask for dairies in Kenya that need cold-room alerts. Corral finds Kilima Dairies, scores it a strong fit at 94, finds Wanjiru Mwangi, Head of Supply Chain, and sends the first email. She replied.">
+      <div className="lv-hc__bar">
+        <span className="lv-hc__agent"><Mark size={14} />Corral agent</span>
+      </div>
+      <div className="lv-hc__body">
+        <p className="lv-hc__ask">Find dairies in Kenya that need cold-room alerts.</p>
+        <ol className="lv-hc__rows">
+          <li style={{ "--i": 0 } as CSSProperties}><span className="lv-hc__ic"><MagnifyingGlass size={16} weight="bold" /></span><b>Found Kilima Dairies</b><em>kilima.co.ke</em></li>
+          <li style={{ "--i": 1 } as CSSProperties}><span className="lv-hc__ic is-ok"><Check size={16} weight="bold" /></span><b>Strong fit</b><span className="lv-hc__score">94</span></li>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <li style={{ "--i": 2 } as CSSProperties}><span className="lv-hc__ic is-photo"><img src="/corral/app/av-wanjiru.jpg" alt="" width={32} height={32} /></span><b>Wanjiru Mwangi</b><em>Head of Supply Chain</em></li>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <li style={{ "--i": 3 } as CSSProperties}><span className="lv-hc__ic is-logo"><img src="/corral/logos/gmail.svg" alt="" width={18} height={18} /></span><b>First email sent</b><span className="lv-hc__tag">Replied</span></li>
+        </ol>
+      </div>
     </figure>
   );
 }

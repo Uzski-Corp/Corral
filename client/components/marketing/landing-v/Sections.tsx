@@ -12,14 +12,13 @@ import { ScoreIllustration, WorkflowIllustration } from "./Illustrations";
 import { WaitlistForm } from "./WaitlistForm";
 
 /** `links` defaults to the landing's in-page anchors; the inner pages pass the site routes and their own `current`. */
-export function Nav({ tone = "light", links = NAV_LINKS, current }: { tone?: "light" | "blue"; links?: { label: string; href: string }[]; current?: string }) {
+export function Nav({ tone = "light", links = NAV_LINKS, current, ctaHref = "#join" }: { tone?: "light" | "blue"; links?: { label: string; href: string }[]; current?: string; ctaHref?: string }) {
   return (
     <nav className={`lv-nav lv-wrap lv-nav--${tone}`} aria-label="Main">
       <Link className="lv-logo" href={ROUTES.home}><Mark size={22} /><span>Corral</span></Link>
       <div className="lv-nav__links">{links.map((l) => <Link key={l.href} href={l.href} aria-current={current === l.href ? "page" : undefined}>{l.label}</Link>)}</div>
       <div className="lv-nav__end">
-        <Link className="lv-nav__signin" href={ROUTES.signIn}>Sign in</Link>
-        <a className="lv-nav__cta" href="#join">{WAITLIST.cta}</a>
+        <a className="lv-nav__cta" href={ctaHref}>{WAITLIST.cta}</a>
       </div>
     </nav>
   );
@@ -146,14 +145,20 @@ export function FinalAndFooter({ source, formId }: { source: WaitlistSource; for
         <p>{SECTIONS.final.body}</p>
         <WaitlistForm id={formId} fragments={Boolean(formId)} source={source} tone="dark" align="center" note={false} />
       </div>
-      <footer className="lv-foot lv-wrap">
-        <Link className="lv-logo" href={ROUTES.home}><Mark size={20} /><span>Corral</span></Link>
-        <div className="lv-foot__links">
-          <Link href={ROUTES.mcp}>MCP</Link><Link href={ROUTES.security}>Security</Link><Link href={ROUTES.changelog}>Changelog</Link>
-          <Link href={ROUTES.terms}>Terms</Link><Link href={ROUTES.privacy}>Privacy</Link><Link href={ROUTES.signIn}>Sign in</Link>
-        </div>
-        <span className="lv-foot__c">© 2026 Corral. Made in Nairobi.</span>
-      </footer>
+      <Footer />
     </section>
+  );
+}
+
+export function Footer() {
+  return (
+    <footer className="lv-foot lv-wrap">
+      <Link className="lv-logo" href={ROUTES.home}><Mark size={20} /><span>Corral</span></Link>
+      <div className="lv-foot__links">
+        <Link href={ROUTES.mcp}>MCP</Link><Link href={ROUTES.security}>Security</Link><Link href={ROUTES.changelog}>Changelog</Link>
+        <Link href={ROUTES.terms}>Terms</Link><Link href={ROUTES.privacy}>Privacy</Link>
+      </div>
+      <span className="lv-foot__c">© 2026 Corral. Made in Nairobi.</span>
+    </footer>
   );
 }

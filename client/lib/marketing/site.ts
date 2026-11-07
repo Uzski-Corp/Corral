@@ -23,17 +23,23 @@ export const ROUTES = {
 export type SiteRoute = (typeof ROUTES)[keyof typeof ROUTES];
 export const PUBLIC_ROUTES: SiteRoute[] = Object.values(ROUTES);
 
+/** What opens while the app is off (CORRAL_APP unset): the pages the landing links to, and the short legal
+    addresses that redirect to them. Everything else is the 404 (proxy.ts). */
+export const OPEN_PATHS: ReadonlySet<string> = new Set([
+  ROUTES.home, ROUTES.pricing, ROUTES.security, ROUTES.mcp, ROUTES.changelog, ROUTES.terms, ROUTES.privacy, "/terms", "/privacy",
+]);
+export const isOpenPath = (pathname: string) => OPEN_PATHS.has(pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname);
+
 /** Which landing is home. Open Range is `/` since ENG-87 (Aegon's call) and has no other address (/open-range was
     removed); Fenceline stays live at /fenceline, noindex (HANDOFF §18 "Pick /"). */
 export type Landing = "open-range" | "fenceline";
 export const HOME: Landing = "open-range";
 export const homeOf = (l: Landing = HOME) => (l === "open-range" ? ROUTES.home : ROUTES.fenceline);
 
-/** What the sitemap lists: every public page except sign-in, Fenceline (live but noindex while Open Range is home),
-    and the legal stubs until counsel's text is in. */
+/** What the sitemap lists: the open pages, without the legal ones until counsel's text is in. */
 export function sitemapRoutes(legalConfirmed = isConfirmed("legal")): SiteRoute[] {
-  const legal: string[] = [ROUTES.terms, ROUTES.privacy, ROUTES.dpa];
-  return PUBLIC_ROUTES.filter((r) => r !== ROUTES.signIn && r !== ROUTES.fenceline && (legalConfirmed || !legal.includes(r)));
+  const legal: string[] = [ROUTES.terms, ROUTES.privacy];
+  return PUBLIC_ROUTES.filter((r) => isOpenPath(r) && (legalConfirmed || !legal.includes(r)));
 }
 
 export const NAV: { label: string; href: SiteRoute }[] = [

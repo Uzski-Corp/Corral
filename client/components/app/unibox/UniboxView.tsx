@@ -1,6 +1,7 @@
 "use client";
 /* The Unibox view in the app (M7, ENG-57): tabs, filters and triage over the list, the thread with Corral's
    draft, the lead rail. Moved from AppDemo and extended; the list / pane / rail are the M1 components. */
+import { LiveReply, type SendReply } from "./LiveReply";
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import type { Thread } from "../data";
 import { Button, Kbd } from "../primitives";
@@ -44,7 +45,7 @@ export type UniboxViewProps = {
   state?: UniboxReviewState;
   onArchive: (id: string) => void;
   /** Persist a sent reply. The undo window still runs locally; the message is stored when it sends. */
-  onSend?: (id: string, text: string) => void;
+  onSend?: SendReply;
   /** Unibox keys (J K ↵ Esc E H 1–6 T R ⌘↵ ⌘Z ?). Off while another dialog or the palette is open. */
   hotkeys?: boolean;
 };
@@ -101,7 +102,7 @@ export function UniboxView({ threads, setThreads, active, setActive, tab, setTab
     const h = setTimeout(() => {
       const text = textOf(id);
       setSent((m) => ({ ...m, [id]: { text, at: "Just now" } })); setSend(id, "sent");
-      onSend?.(id, text);
+
       toast({ tone: "success", icon: "send", children: `Sent to ${threads.find((x) => x.id === id)?.name.split(" ")[0]}`, meta: "sequence stays stopped" });
     }, 900);
     return () => clearTimeout(h);
@@ -163,7 +164,7 @@ export function UniboxView({ threads, setThreads, active, setActive, tab, setTab
       const typing = !!target.closest?.("input, textarea, [contenteditable]");
       const mod = e.metaKey || e.ctrlKey;
       if (ks || m || !cur) return;
-      if (mod && e.key === "Enter") { if (!typing || target.closest(".c-ux__pane")) { e.preventDefault(); h.send(cur); } return; }
+      if (!onSend && mod && e.key === "Enter") { if (!typing || target.closest(".c-ux__pane")) { e.preventDefault(); h.send(cur); } return; }
       if (mod && e.key.toLowerCase() === "z" && !typing) { if (sends[cur.id] === "undo") { e.preventDefault(); h.undo(cur); } return; }
       if (typing || mod || e.altKey || target.closest("[role=dialog], [role=menu], [role=listbox]:not(.c-threads)")) return;
       const key = e.key;
@@ -245,7 +246,7 @@ export function UniboxView({ threads, setThreads, active, setActive, tab, setTab
         <p className="u-resolved"><Icon name="check" size={12} />Sent from {fromOf(t)} in this thread. {t.seq ? `${t.seq.name} stays stopped for ${t.name.split(" ")[0]}.` : ""}</p></>
     : mine ? <><SentMessage text={mine.text} at={mine.at} from={fromOf(t)} pending />{card}</>
     : card;
-  const slot = again ? <>{again}{rest}</> : rest;
+  const slot = onSend && t ? <LiveReply key={t.id} thread={t} send={onSend} /> : again ? <>{again}{rest}</> : rest;
 
   return (
     <div className="c-view">
@@ -264,7 +265,7 @@ export function UniboxView({ threads, setThreads, active, setActive, tab, setTab
                 message={<Message key={`m-${t.id}`} t={t} safe={state === "thread"} />}
                 draft={<>{meet === "late" && meetBlock}{slot}</>} />
             </div>
-            <div className="c-ux__rail"><ContextRail t={t} fit={<FitSummary t={t} />} sequence={<SequenceTrail t={t} />} extra={<><MailboxLine t={t} disconnected={s === "disconnected"} />{t.meeting && <HandoffRail h={handoff} />}</>} /></div>
+            <div className="c-ux__rail"><ContextRail t={t} fit={onSend ? <span className="c-faint">No verified fit assessment for this demo conversation.</span> : <FitSummary t={t} />} sequence={<SequenceTrail t={t} />} extra={<><MailboxLine t={t} disconnected={s === "disconnected"} />{t.meeting && <HandoffRail h={handoff} />}</>} /></div>
           </>}
         </div>
       )}

@@ -42,6 +42,11 @@ export function WaitlistForm({ source, tone = "light", align = "start", initial 
     if (r === "invalid") input.current?.focus();
   }
 
+  /** Not a valid address yet: a pointer click only sends the visitor to the field. Keyboard submits (detail 0) still run, so they can explain. */
+  const blocked = !isEmail(email);
+  /** Full colour until they start typing, so the call to action reads before anyone touches it. */
+  const dimmed = blocked && email.length > 0;
+
   const done = state === "joined" || state === "exists";
   const msgId = `${uid}-msg`;
   const shown = email.trim();
@@ -76,7 +81,13 @@ export function WaitlistForm({ source, tone = "light", align = "start", initial 
             onChange={(e) => { setEmail(e.target.value); if (state === "invalid" || state === "error") setState("idle"); }}
             readOnly={state === "submitting"}
           />
-          <button className="wl__btn" type="submit" aria-disabled={state === "submitting" || undefined}>
+          <button
+            className="wl__btn"
+            type="submit"
+            aria-disabled={state === "submitting" || dimmed || undefined}
+            data-dim={dimmed || undefined}
+            onClick={(e) => { if (blocked && e.detail > 0 && state !== "submitting") { e.preventDefault(); input.current?.focus(); } }}
+          >
             {state === "submitting"
               ? <><CircleNotch className="wl__spin" size={16} weight="bold" aria-hidden="true" /><span>{WAITLIST.busy}…</span></>
               : <>{WAITLIST.cta}<ArrowRight className="wl__arrow" size={15} weight="bold" aria-hidden="true" /></>}
