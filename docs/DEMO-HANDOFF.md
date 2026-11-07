@@ -150,3 +150,26 @@ before production use.
 - [AutoSend inbound message schema](https://docs.autosend.com/api-reference/inbound-emails/get-message)
 - [AutoSend webhook signatures](https://docs.autosend.com/others/webhooks/verify-requests)
 - [AutoSend event types](https://docs.autosend.com/others/webhooks/event-type)
+
+## Coolify deployment (7 November 2026)
+
+Project: Corral. Application UUID: `uwpxnpwz0i9twspfgszajrg5`.
+Git source: `Uzski-Corp/Corral`, branch `codex/corral-demo-live`.
+Compose file: `docker-compose.coolify.yml`. Manual deployments are enabled;
+auto-deploy is disabled. Database, Redis, worker and Pi have no published host ports.
+Postgres and Pi checkpoint volumes persist independently of container rebuilds.
+
+App: `https://app.corral.uzskicorp.agency`.
+API: `https://api.corral.uzskicorp.agency`.
+Both DNS-only A records must point to `204.168.155.177`.
+WorkOS must allow the deployed callback:
+`https://api.corral.uzskicorp.agency/api/v1/auth/callback`,
+and frontend origin `https://app.corral.uzskicorp.agency`.
+Credentials belong in Coolify's application environment. The local demo mailbox
+values were placeholders; replace them with actual verified addresses and the
+organization UUID created after signing into the deployed app. Configure the
+AutoSend webhook after the API is reachable. Add `OPENAI_API_KEY` in Coolify
+before generating replies. Keep Paddle sandbox until payment setup is complete.
+
+The Pi lockfile is now committed and `npm run check` completed successfully.
+No automated tests or UI QA have been executed.
