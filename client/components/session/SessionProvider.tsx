@@ -21,7 +21,7 @@ import type { ApiError } from "@/lib/api/errors";
 import { getConfig, type ClientConfig } from "@/lib/config";
 import { err, ok, type Result } from "@/lib/result";
 import { markOnboarded } from "@/lib/auth/cookies";
-import { signInUrl } from "@/lib/auth/paths";
+import { SIGN_IN, signInUrl } from "@/lib/auth/paths";
 import { forgetVisitor, rememberVisitor } from "@/lib/marketing/visitor";
 
 /** What the shell shows for the signed-in person and workspace. */
@@ -100,6 +100,8 @@ export function SessionProvider({ children, config: configProp, api: apiProp, na
   const toSignIn = useCallback(() => {
     forgetVisitor();
     if (leaving.current) return;
+    // Already on the sign-in page. Replacing it reloads the document, /me 401s again, and the tab refreshes forever.
+    if (window.location.pathname === SIGN_IN) return;
     leaving.current = true;
     navigator.replace(signInUrl(here()));
   }, [navigator]);

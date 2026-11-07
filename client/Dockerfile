@@ -10,6 +10,8 @@ RUN corepack enable && corepack prepare pnpm@12.6.0 --activate
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
+# Bump when the web image must not reuse a previous Next build.
+ARG CORRAL_SOURCE_REV=sign-in-401-loop
 COPY . .
 
 ARG NEXT_PUBLIC_API_URL=http://localhost:8000

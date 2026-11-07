@@ -74,6 +74,15 @@ describe("SessionProvider in live mode", () => {
     expect(n.replace).toHaveBeenCalledTimes(1);
   });
 
+  it("does not reload sign-in when /me is already 401 there", async () => {
+    window.history.replaceState(null, "", "/sign-in");
+    server.use(http.get(ME, unauthorized), http.post(REFRESH, unauthorized));
+    const { nav: n } = mount();
+    await waitFor(() => expect(status()).toBe("loading:-:-"));
+    await act(async () => { await probe.current!.refresh(); });
+    expect(n.replace).not.toHaveBeenCalled();
+  });
+
   it("keeps the shell up when the API is down, then recovers on refresh", async () => {
     let up = false;
     server.use(http.get(ME, () => (up ? HttpResponse.json(ME_BODY) : HttpResponse.json({ detail: "Authentication provider unavailable" }, { status: 503 }))));
