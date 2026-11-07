@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "programming-best-practices": {
+      "source": "Uzski-Corp/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/programming-best-practices/SKILL.md",
+      "computedHash": "2aff6d3bf2faa5cac271a04fff509935521195782d2489a82d18d5d32c9305eb"
+    }
+  }
+}
