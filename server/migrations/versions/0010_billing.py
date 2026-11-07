@@ -277,7 +277,11 @@ def upgrade() -> None:
         f"CREATE POLICY billing_webhook_deny ON {OPERATIONAL} USING (false) WITH CHECK (false)"
     )
 
-    op.execute(_FUNCTIONS_SQL)
+    # asyncpg prepares each execute: one function definition per command.
+    # Split only the outer dollar-quoted terminator, never PL/pgSQL semicolons.
+    for statement in _FUNCTIONS_SQL.split("$fn$;"):
+        if statement.strip():
+            op.execute(statement + "$fn$;")
     for signature in FUNCTIONS:
         op.execute(f"REVOKE ALL ON FUNCTION {signature} FROM PUBLIC")
         op.execute(f"GRANT EXECUTE ON FUNCTION {signature} TO {APP_ROLE}")
