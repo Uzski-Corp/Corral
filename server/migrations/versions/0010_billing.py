@@ -244,7 +244,10 @@ def upgrade() -> None:
         sa.Column("org_id", sa.Uuid()),
         sa.Column("detail", sa.Text()),
         sa.Column(
-            "received_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False
+            "received_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.Column("processed_at", sa.DateTime(timezone=True)),
         sa.PrimaryKeyConstraint("event_id", name=op.f(f"pk_{OPERATIONAL}")),
@@ -351,7 +354,7 @@ RETURNS uuid
 LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path = pg_catalog, public
 AS $fn$
-    SELECT CASE WHEN count(DISTINCT org_id) = 1 THEN min(org_id) ELSE NULL END
+    SELECT CASE WHEN count(DISTINCT org_id) = 1 THEN min(org_id::text)::uuid ELSE NULL END
     FROM (
         SELECT org_id FROM billing_checkouts
         WHERE p_txn IS NOT NULL AND paddle_transaction_id = p_txn
