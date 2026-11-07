@@ -11,7 +11,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
 # Bump when the web image must not reuse a previous Next build.
-ARG CORRAL_SOURCE_REV=sign-in-401-loop
+ARG CORRAL_SOURCE_REV=sign-in-screens
 COPY . .
 
 ARG NEXT_PUBLIC_API_URL=http://localhost:8000
@@ -21,7 +21,8 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_PADDLE_ENVIRONMENT=$NEXT_PUBLIC_PADDLE_ENVIRONMENT \
     NEXT_PUBLIC_PADDLE_CLIENT_TOKEN=$NEXT_PUBLIC_PADDLE_CLIENT_TOKEN
 
-RUN NODE_OPTIONS=--max-old-space-size=768 pnpm build --webpack \
+RUN echo "corral web ${CORRAL_SOURCE_REV}" \
+    && NODE_OPTIONS=--max-old-space-size=768 pnpm build --webpack \
     && chown -R node:node /app
 
 ENV NODE_ENV=production \
