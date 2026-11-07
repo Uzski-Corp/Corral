@@ -207,6 +207,7 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
     return () => { off = true; setPlan(null); };
   }, [confirm, enrollPlan, sel]);
   const enroll = () => {
+    if (lv) { toast({ children: "Sequence enrollment is not available yet." }); return; }
     if (n >= BULK_CONFIRM_AT) { setConfirm(true); return; }
     onEnroll(n, sel.ids.has("pwani"));
   };
@@ -348,7 +349,7 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
                 : SAVED_SEGMENTS.map(([s, c]) => ({ label: s, meta: String(c), onSelect: () => toast({ tone: "success", icon: "layers", children: `Added ${f(n)} to ${s}`, meta: "pinned, even if rules change" }) }))),
                 "separator", { label: "New segment from selection", icon: "plus", onSelect: () => { if (!sel.all) setPins({ ids: [...sel.ids] }); setDraft({ rules: rules.length ? rules : [newRule("fit")], match, name: "" }); onBuilderOpenChange(true); } }]}
                 trigger={(tp) => <button type="button" className="c-btn" {...tp}><Icon name="layers" />Add to segment<Icon name="down" size={12} /></button>} />
-              <Button onClick={() => toast({ icon: "upload", children: `Exporting ${f(n)} companies`, meta: "CSV lands in your downloads" })}>Export</Button>
+              {!lv && <Button onClick={() => toast({ icon: "upload", children: `Exporting ${f(n)} companies`, meta: "CSV lands in your downloads" })}>Export</Button>}
             </span>
             <button type="button" className="c-iconbtn l-bulk__x" aria-label="Clear selection" onClick={clear}><Icon name="x" /></button>
             <span className="c-kbd l-bulk__esc" aria-hidden="true">Esc</span>
@@ -367,7 +368,7 @@ export function LeadsView({ view, state, segment, importOpen, onImportOpenChange
         <Banner tone="info" title={`Sends spread over ${plan ? plan.days : Math.ceil(willEnroll / perDay)} working days.`}>Your mailbox pool sends {perDay} a day, so the first emails go out Thursday 08:10 and the last next Wednesday.</Banner>
       </Dialog>
       <ImportDialog open={importOpen} onClose={() => onImportOpenChange(false)} existing={importLive.existing} seed={importSeed(state)} sample={importLive.sample} runner={importLive.runner}
-        onDone={(m) => toast({ tone: "success", children: m, meta: "scoring now" })}
+        onDone={(m) => toast({ tone: "success", children: m, meta: lv ? undefined : "scoring now" })}
         onSegment={(importId) => { onImportOpenChange(false); if (lv) setPins({ importId }); setDraft({ rules: [{ ...newRule("source"), value: ["CSV import"] }], match: "all", name: lv ? "" : "Trade show · Sep" }); onBuilderOpenChange(true); }} />
     </div>
   );

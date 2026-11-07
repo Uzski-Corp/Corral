@@ -97,7 +97,7 @@ export function parseConfig(env: EnvInput): Result<ClientConfig, ConfigError> {
   }
   const apiUrl = parseApiUrl(env.NEXT_PUBLIC_API_URL, production);
   if (!apiUrl.ok) return apiUrl;
-  return ok({ mode: "live", apiUrl: apiUrl.value, sessionCookie: cookie, reviewStates: !production, apiTimeoutMs: timeout.value });
+  return ok({ mode: "live", apiUrl: apiUrl.value, sessionCookie: cookie, reviewStates: false, apiTimeoutMs: timeout.value });
 }
 
 /** Literal references so Next can inline the public values into client bundles. */

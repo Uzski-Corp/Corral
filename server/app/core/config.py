@@ -59,6 +59,11 @@ class Settings(BaseSettings):
     autosend_demo_reply_to: str = ""
     autosend_demo_recipients: list[str] = []
 
+    # Sample bulk SMS (ThriveVAS). Empty key means the playground refuses to send.
+    thrivevas_api_key: SecretStr = SecretStr("")
+    thrivevas_base_url: str = "https://sms.thrivevas.com"
+    thrivevas_sender_id: str = "ThriveVas"
+
     # Observability
     otel_enabled: bool = False
     otel_service_name: str = "corral-api"
@@ -303,6 +308,10 @@ class Settings(BaseSettings):
     @property
     def cookie_secure(self) -> bool:
         return self.app_env not in ("local", "test")
+
+    @property
+    def thrivevas_configured(self) -> bool:
+        return bool(self.thrivevas_api_key.get_secret_value())
 
     @property
     def paddle_configured(self) -> bool:

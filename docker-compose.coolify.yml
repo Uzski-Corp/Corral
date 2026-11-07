@@ -11,8 +11,11 @@ x-api-env: &api-env
   WORKOS_COOKIE_PASSWORD: ${WORKOS_COOKIE_PASSWORD:?required}
   SESSION_COOKIE_NAME: corral_session
   SESSION_COOKIE_DOMAIN: .corral.uzskicorp.agency
-  PI_SERVICE_URL: http://pi:8090
+  # Durable Pi runs on Rumpty, not in this stack. Set PI_SERVICE_URL in Coolify.
+  PI_SERVICE_URL: ${PI_SERVICE_URL:?required}
   PI_SERVICE_TOKEN: ${PI_SERVICE_TOKEN:?required}
+  THRIVEVAS_API_KEY: ${THRIVEVAS_API_KEY:-}
+  THRIVEVAS_SENDER_ID: ${THRIVEVAS_SENDER_ID:-ThriveVas}
   AUTOSEND_API_KEY: ${AUTOSEND_API_KEY:-}
   AUTOSEND_WEBHOOK_SECRET: ${AUTOSEND_WEBHOOK_SECRET:-}
   AUTOSEND_DEMO_ORG_ID: ${AUTOSEND_DEMO_ORG_ID:-}
@@ -81,21 +84,6 @@ services:
     depends_on:
       api:
         condition: service_healthy
-  pi:
-    build: ./services/pi-intelligence
-    environment:
-      PI_SERVICE_TOKEN: ${PI_SERVICE_TOKEN:?required}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      PI_MODEL: gpt-5-mini
-      CORRAL_INTERNAL_URL: http://api:8000
-      PI_DATA_DIR: /data
-      PORT: '8090'
-    volumes:
-      - pi_data:/data
-    restart: unless-stopped
-    depends_on:
-      api:
-        condition: service_healthy
   web:
     build:
       context: ./client
@@ -114,4 +102,3 @@ services:
         condition: service_healthy
 volumes:
   pgdata:
-  pi_data:

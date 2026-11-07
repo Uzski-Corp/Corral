@@ -44,7 +44,62 @@ export type Run = {
   perQuery?: [string, number][];
   found: number; added: number; updated: number; fits: number;
   credits: { used: number; estimate: number };
+  /** Companies this run already has, when the API stored them. */
+  companies?: { name: string; domain: string; why?: string }[];
 };
+
+const RUN_STATUSES = new Set<RunStatus>(["queued", "running", "paused", "done", "partial", "failed", "cancelled"]);
+const waiting = (): StageProgress => ({ done: 0, total: null, state: "waiting" });
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+/** A run row from the API, including one saved before the screen stored every field. */
+export function runFromApi(raw: unknown, by = "You"): Run {
+  const row = isRecord(raw) ? raw : {};
+  const status = typeof row.status === "string" && RUN_STATUSES.has(row.status as RunStatus) ? row.status as RunStatus : "queued";
+  const criteria = isRecord(row.criteria)
+    ? {
+        industries: Array.isArray(row.criteria.industries) ? row.criteria.industries.filter((x): x is string => typeof x === "string") : [],
+        countries: Array.isArray(row.criteria.countries) ? row.criteria.countries.filter((x): x is string => typeof x === "string") : [],
+        sizes: Array.isArray(row.criteria.sizes) ? row.criteria.sizes.filter((x): x is string => typeof x === "string") : [],
+        queries: Array.isArray(row.criteria.queries) ? row.criteria.queries.filter((x): x is string => typeof x === "string") : [],
+      }
+    : { industries: [], countries: [], sizes: [], queries: [] };
+  const stage = (id: StageId): StageProgress => {
+    const stages = isRecord(row.stages) ? row.stages[id] : undefined;
+    if (!isRecord(stages)) return waiting();
+    const state = stages.state === "running" || stages.state === "done" || stages.state === "paused" || stages.state === "failed" || stages.state === "waiting" ? stages.state : "waiting";
+    return { done: typeof stages.done === "number" ? stages.done : 0, total: typeof stages.total === "number" ? stages.total : null, state };
+  };
+  const credits = isRecord(row.credits)
+    ? { used: typeof row.credits.used === "number" ? row.credits.used : 0, estimate: typeof row.credits.estimate === "number" ? row.credits.estimate : 0 }
+    : { used: 0, estimate: 0 };
+  const companies = Array.isArray(row.companies)
+    ? row.companies.flatMap((item) => {
+        if (!isRecord(item) || typeof item.name !== "string" || !item.name) return [];
+        return [{ name: item.name, domain: typeof item.domain === "string" ? item.domain : "", ...(typeof item.why === "string" ? { why: item.why } : {}) }];
+      })
+    : undefined;
+  return {
+    id: typeof row.id === "string" ? row.id : "run",
+    name: typeof row.name === "string" && row.name ? row.name : "Untitled run",
+    product: typeof row.product === "string" ? row.product : "",
+    by: typeof row.by === "string" && row.by ? row.by : by,
+    criteria, limit: typeof row.limit === "number" ? row.limit : 250, enrichAt: typeof row.enrichAt === "number" ? row.enrichAt : 70, status,
+    stages: { search: stage("search"), read: stage("read"), score: stage("score"), people: stage("people"), verify: stage("verify") },
+    ...(typeof row.started === "string" ? { started: row.started } : {}),
+    ...(typeof row.finished === "string" ? { finished: row.finished } : {}),
+    ...(typeof row.after === "string" ? { after: row.after } : {}),
+    found: typeof row.found === "number" ? row.found : 0,
+    added: typeof row.added === "number" ? row.added : 0,
+    updated: typeof row.updated === "number" ? row.updated : 0,
+    fits: typeof row.fits === "number" ? row.fits : 0,
+    credits,
+    ...(companies && companies.length ? { companies } : {}),
+  };
+}
 
 /** 0–100 across all five stages, equally weighted. A stage with an unknown total counts as half done while running. */
 export function overallPercent(r: Pick<Run, "stages">): number {
@@ -111,6 +166,18 @@ export function setupIssues(c: Criteria, credits: { need: number; left: number }
   if (c.countries.length === 0) out.push({ field: "countries", text: "Pick at least one country. Corral searches country by country." });
   if (c.industries.length === 0) out.push({ field: "industries", text: "Pick at least one industry, or Corral would search for everything." });
   if (credits.need > credits.left) out.push({ field: "credits", text: `This run needs about ${f(credits.need)} credits and ${f(credits.left)} are left this month. Lower the limit or raise the fit bar for finding people.` });
+  return out;
+}
+
+/** Example searches written from the industries and countries picked for this run. */
+export function exampleSearches(c: Pick<Criteria, "industries" | "countries">, limit = 3): string[] {
+  const out: string[] = [];
+  for (const industry of c.industries) {
+    for (const country of c.countries) {
+      out.push(`"${industry.toLowerCase()}" ${country}`);
+      if (out.length >= limit) return out;
+    }
+  }
   return out;
 }
 

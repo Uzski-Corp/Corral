@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import { atomicJSON } from './storage.ts';
 
 export type Run = { org_id: string; run_id: string; token: string; deadline: string };
+export type DiscoveryJob = { org_id: string; run_id: string; prompt: string; deadline: string };
 const schema = { type: 'object', additionalProperties: false, required: ['body', 'source_ids'], properties: {
   body: { type: 'string' }, source_ids: { type: 'array', items: { type: 'string' } },
 } };
@@ -73,5 +74,33 @@ export async function execute(directory: string, run: Run, controls: { abort?: (
     if (typeof result.body !== 'string' || !result.body.trim() || result.body.length > 20000 || !Array.isArray(result.source_ids) || !result.source_ids.every((id: unknown) => typeof id === 'string')) throw new Error('Invalid reply format');
     const usage = await harness.usage(BACKGROUND_CONTEXT);
     return { ...result, tokens: Object.values(usage.models).reduce((total, m) => total + (m.totalTokens ?? m.input + m.output), 0) };
+  } finally { clearTimeout(timer); if (harness) await harness.close(BACKGROUND_CONTEXT); else await storage.close(BACKGROUND_CONTEXT); }
+}
+
+/** A queued discovery search, run on the same durable harness as a reply draft. */
+export async function discover(directory: string, job: DiscoveryJob, controls: { abort?: () => Promise<void> }) {
+  const models = createModels();
+  models.setProvider(openaiProvider());
+  const modelId = process.env.PI_MODEL || 'gpt-5-mini';
+  if (!models.getModel('openai', modelId)) throw new Error('PI_MODEL is absent from the pinned catalog');
+  const storage = await openNodeSqliteStorage(join(directory, 'session.sqlite'));
+  let harness: Awaited<ReturnType<typeof Harness.open>> | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    harness = await Harness.open(storage, { models, registry: createRegistry(), identity: { attribution: null }, settings: {
+      stream: { timeoutMs: 45000, maxRetries: 0 }, retry: { enabled: true, maxRetries: 1, baseDelayMs: 1000 }, compaction: { enabled: false },
+    } }, BACKGROUND_CONTEXT);
+    const root = await harness.root(BACKGROUND_CONTEXT, { agent: { model: { provider: 'openai', modelId }, thinkingLevel: 'low', instructions: 'Find companies that match this discovery search. Return concise JSON with a companies array of name, domain, and why. Use only the search given. Do not invent emails or prices.' } });
+    controls.abort = () => root.abort(BACKGROUND_CONTEXT);
+    if (Date.now() >= Date.parse(job.deadline)) throw new Error('Run deadline reached');
+    timer = setTimeout(() => void root.abort(BACKGROUND_CONTEXT).catch(() => {}), Math.max(1, Date.parse(job.deadline) - Date.now()));
+    const settled = await (await root.submit({ type: 'input', content: job.prompt, requestId: job.run_id }, BACKGROUND_CONTEXT)).wait(BACKGROUND_CONTEXT);
+    if (settled.status !== 'done' || settled.type !== 'input') throw new Error('Run did not complete');
+    const entry = await root.commit(tx => tx.entry(AssistantEntry, settled.answer), BACKGROUND_CONTEXT);
+    const message = entry?.model?.[0];
+    if (!message || message.role !== 'assistant' || message.stopReason !== 'stop') throw new Error('Incomplete discovery');
+    const text = message.content.filter(p => p.type === 'text').map(p => p.text).join('');
+    if (!text.trim()) throw new Error('Empty discovery');
+    return { text };
   } finally { clearTimeout(timer); if (harness) await harness.close(BACKGROUND_CONTEXT); else await storage.close(BACKGROUND_CONTEXT); }
 }

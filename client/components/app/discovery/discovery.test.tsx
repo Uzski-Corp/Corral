@@ -155,7 +155,28 @@ describe("RunSetup", () => {
     await userEvent.click(screen.getByRole("radio", { name: "80" }));
     expect(screen.getByText("~45")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Start run" }));
-    expect(onStart).toHaveBeenCalledWith(expect.objectContaining({ limit: 250, enrichAt: 80, queued: false }));
+    expect(onStart).toHaveBeenCalledWith(expect.objectContaining({ limit: 250, enrichAt: 80, queued: false, product: "ColdTrace Sensors" }));
+  });
+
+  it("lists the workspace's products and does not offer the sample catalog", async () => {
+    const onStart = vi.fn();
+    render(<RunSetup open onClose={vi.fn()} onStart={onStart} inline held={0} productsPhase="ready" creditsLeft={2000}
+      products={[{ id: "p1", name: "Fresh milk", sourceCount: 2 }, { id: "p2", name: "Yoghurt line", sourceCount: 0 }]} />);
+    expect(screen.getByRole("button", { name: "Product: Fresh milk" })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByText("ColdTrace Sensors")).not.toBeInTheDocument();
+    expect(screen.queryByText(/cold room/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Hunter/)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Industries: none picked" }));
+    const industry = screen.getByRole("menu", { name: "Industries" });
+    expect(within(industry).getByRole("menuitemcheckbox", { name: "Software" })).toBeInTheDocument();
+    expect(within(industry).queryByRole("menuitemcheckbox", { name: "Cold storage" })).not.toBeInTheDocument();
+    await userEvent.type(within(industry).getByLabelText("Search Industries"), "soft");
+    expect(within(industry).getByRole("menuitemcheckbox", { name: "Software" })).toBeInTheDocument();
+    expect(within(industry).queryByRole("menuitemcheckbox", { name: "Agriculture" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Product: Fresh milk" }));
+    expect(screen.getByRole("option", { name: /Yoghurt line/ })).toBeInTheDocument();
+    expect(screen.getByText("No sources yet")).toBeInTheDocument();
   });
 });
 

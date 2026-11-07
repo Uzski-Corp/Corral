@@ -6,7 +6,7 @@ const parse = (env: EnvInput) => parseConfig(env);
 describe("parseConfig", () => {
   it("defaults to the local API in development", () => {
     const r = parse({ NODE_ENV: "development" });
-    expect(r).toEqual({ ok: true, value: { mode: "live", apiUrl: DEV_API_URL, sessionCookie: "wos_session", reviewStates: true, apiTimeoutMs: DEFAULT_API_TIMEOUT_MS } });
+    expect(r).toEqual({ ok: true, value: { mode: "live", apiUrl: DEV_API_URL, sessionCookie: "wos_session", reviewStates: false, apiTimeoutMs: DEFAULT_API_TIMEOUT_MS } });
   });
 
   it("normalises the API URL to its origin", () => {

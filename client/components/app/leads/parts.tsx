@@ -29,11 +29,17 @@ export function StatusMenu({ value, onChange, label, defaultOpen, align = "start
   );
 }
 
-/** Multi-pick for a rule value: a button that shows the picks and a checkable menu. */
-export function MultiPick({ values, options, onChange, label, invalid }: { values: string[]; options: string[]; onChange: (v: string[]) => void; label: string; invalid?: boolean }) {
+/** Multi-pick for a rule value: a button that shows the picks and a checkable menu. `searchable` filters a long list and keeps the menu open. */
+export function MultiPick({ values, options, onChange, label, invalid, searchable }: {
+  values: string[]; options: string[]; onChange: (v: string[]) => void; label: string; invalid?: boolean; searchable?: boolean;
+}) {
   const shown = values.length === 0 ? "Pick…" : values.length > 2 ? `${values.slice(0, 2).join(", ")} +${values.length - 2}` : values.join(", ");
+  const choices = [...new Set([...options, ...values])].sort((a, b) => a.localeCompare(b));
+  const toggle = (o: string) => onChange(values.includes(o) ? values.filter((v) => v !== o) : [...values, o]);
   return (
-    <DropdownMenu label={label} width={240} items={options.map((o): MenuEntry => ({ label: o, checked: values.includes(o), onSelect: () => onChange(values.includes(o) ? values.filter((v) => v !== o) : [...values, o]) }))}
+    <DropdownMenu label={label} width={260} searchable={searchable} closeOnSelect={!searchable}
+      onCreate={searchable ? (name) => { if (!values.includes(name)) onChange([...values, name]); } : undefined}
+      items={choices.map((o): MenuEntry => ({ label: o, checked: values.includes(o), onSelect: () => toggle(o) }))}
       trigger={(tp) => <button type="button" className={cx("c-input c-select l-pick", values.length === 0 && "is-placeholder", invalid && "is-error")} aria-label={`${label}: ${values.length ? values.join(", ") : "none picked"}`} {...tp}>
         <span className="c-select__v">{shown}</span><Icon name="down" size={12} /></button>} />
   );

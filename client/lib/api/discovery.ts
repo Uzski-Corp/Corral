@@ -1,5 +1,5 @@
 /**
- * Discovery runs and credits. Creating a run queues it; nothing is crawled.
+ * Discovery runs and credits. Creating a run sends it to Pi and spends the estimate.
  *   GET  /api/v1/discovery/runs     -> { runs, credits: { month, used, left } }
  *   GET  /api/v1/discovery/credits
  *   POST /api/v1/discovery/runs

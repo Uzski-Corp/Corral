@@ -3,7 +3,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { mkdir, readFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { acquireOwner, atomicJSON } from './storage.ts';
-import { execute, type Run } from './runtime.ts';
+import { discover, execute, type DiscoveryJob, type Run } from './runtime.ts';
 const token = process.env.PI_SERVICE_TOKEN;
 if (!token || token.length < 32) throw new Error('PI_SERVICE_TOKEN must be at least 32 characters');
 const data = resolve(process.env.PI_DATA_DIR || './data');
@@ -20,6 +20,18 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 async function read(path: string): Promise<any | null> { try { return JSON.parse(await readFile(path, 'utf8')); } catch (e) { if ((e as NodeJS.ErrnoException).code === 'ENOENT') return null; throw e; } }
 function respond(res: ServerResponse, status: number, body: unknown) { res.writeHead(status, { 'content-type': 'application/json' }); res.end(JSON.stringify(body)); }
 function authorized(header: string | undefined) { const a = Buffer.from(header || ''); const b = Buffer.from(`Bearer ${token}`); return a.length === b.length && timingSafeEqual(a, b); }
+function startDiscovery(directory: string, job: DiscoveryJob) {
+  if (active.has(directory) || active.size >= 4) return;
+  const controls: { abort?: () => Promise<void> } = {}; active.set(directory, controls);
+  void (async () => {
+    let state: object;
+    try { state = { status: 'succeeded', result: await discover(directory, job, controls) }; }
+    catch (err) { state = { status: 'failed', error: err instanceof Error ? err.message : 'Discovery stopped.' }; }
+    await locked(directory, async () => {
+      if ((await read(join(directory, 'state.json')))?.status !== 'canceled') await atomicJSON(join(directory, 'state.json'), state);
+    });
+  })().catch(() => { console.error('Pi could not persist discovery state'); }).finally(() => active.delete(directory));
+}
 function start(directory: string, run: Run) {
   if (active.has(directory) || active.size >= 2) return;
   const controls: { abort?: () => Promise<void> } = {}; active.set(directory, controls);
@@ -35,7 +47,22 @@ function start(directory: string, run: Run) {
 const server = createServer(async (req, res) => {
   if (req.url === '/healthz') { respond(res, 200, { status: 'ok' }); return; }
   if (!authorized(req.headers.authorization)) { respond(res, 401, { error: 'unauthorized' }); return; }
-  const parts = new URL(req.url || '/', 'http://local').pathname.split('/');
+  const url = new URL(req.url || '/', 'http://local');
+  const parts = url.pathname.split('/');
+  if (parts.length === 4 && parts[1] === 'discovery' && uuid.test(parts[2]) && uuid.test(parts[3]) && req.method === 'PUT') {
+    let raw = ''; for await (const chunk of req) { raw += chunk.toString(); if (raw.length > 8192) { respond(res, 413, { error: 'too_large' }); return; } }
+    const body = JSON.parse(raw) as DiscoveryJob;
+    if (body.org_id !== parts[2] || body.run_id !== parts[3] || typeof body.prompt !== 'string' || !body.prompt.trim() || !Number.isFinite(Date.parse(body.deadline))) { respond(res, 400, { error: 'invalid_run' }); return; }
+    const directory = join(data, 'discovery', parts[2], parts[3]);
+    await locked(directory, async () => {
+      await mkdir(directory, { recursive: true, mode: 0o700 });
+      const state = await read(join(directory, 'state.json'));
+      if (!state) await atomicJSON(join(directory, 'state.json'), { status: 'running' });
+      if (!state || state.status === 'running') startDiscovery(directory, body);
+      respond(res, 202, state || { status: 'running' });
+    });
+    return;
+  }
   if (parts.length !== 4 || parts[1] !== 'runs' || !uuid.test(parts[2]) || !uuid.test(parts[3])) { respond(res, 404, { error: 'not_found' }); return; }
   const directory = join(data, parts[2], parts[3]);
   try {

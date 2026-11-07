@@ -265,10 +265,12 @@ async def test_discovery_credits_and_a_queued_run(api: AsyncClient) -> None:
     )
     assert res.status_code == 201
     run = res.json()
-    assert (run["status"], run["limit"], run["name"]) == ("queued", 50, "Bakeries")
+    assert (run["status"], run["limit"], run["name"]) == ("running", 50, "Bakeries")
+    assert run["credits"] == {"used": 44, "estimate": 44}
     uuid.UUID(run["id"])
-    runs = (await api.get("/api/v1/discovery/runs")).json()["runs"]
-    assert runs[0]["name"] == "Bakeries"
+    page = (await api.get("/api/v1/discovery/runs")).json()
+    assert page["runs"][0]["name"] == "Bakeries"
+    assert page["credits"] == {"month": 2000, "used": 584, "left": 1416}
     assert (await api.post("/api/v1/discovery/runs", json={"name": ""})).status_code == 422
 
 

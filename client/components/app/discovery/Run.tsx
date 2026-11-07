@@ -7,7 +7,7 @@ import { Tabs } from "../Tabs";
 import { SegmentTable } from "../SegmentTable";
 import { Progress } from "../kb/parts";
 import { formatCountdown } from "@/lib/auth/code";
-import { SKIP_TEXT, STAGES, currentStage, etaText, overallPercent, plural, runHeadline, zeroResultHints, type Run, type RunStatus, type StageProgress } from "@/lib/discovery/run";
+import { SKIP_TEXT, STAGES, currentStage, etaText, overallPercent, plural, runHeadline, stageMeta, zeroResultHints, type Run, type RunStatus, type StageProgress } from "@/lib/discovery/run";
 import type { Result } from "./data";
 import { StatusTag } from "../StatusTag";
 import { STATUS_TAG, type StatusKind } from "@/lib/status/tags";
@@ -43,7 +43,7 @@ export function RunsList({ runs, open, onOpen, onNew }: { runs: Run[]; open: str
             <button type="button" className={cx("d-runrow", open === r.id && "is-on")} aria-current={open === r.id ? "true" : undefined} onClick={() => onOpen(r.id)}>
               <span className="d-runrow__name">{r.name}</span>
               <span className="d-runrow__line">{runHeadline(r)}</span>
-              <span className="d-runrow__meta"><RunTag run={r} />{r.finished ?? r.started ?? "not started"} · {r.by.split(" ")[0]}</span>
+              <span className="d-runrow__meta"><RunTag run={r} />{r.finished ?? r.started ?? "not started"} · {(r.by || "You").split(" ")[0]}</span>
             </button>
           </li>
         ))}
@@ -126,6 +126,15 @@ function StatusBanner({ run, countdown, onAction }: { run: Run; countdown?: numb
       {run.failure.fix}
     </Banner>
   );
+  if (run.status === "running") {
+    const st = currentStage(run);
+    const title = st ? stageMeta(st).running : "Finishing up";
+    return (
+      <Banner tone="info" icon="globe" title={title}>
+        This run is in progress. You can leave this page; it keeps going.
+      </Banner>
+    );
+  }
   if (run.status === "partial" && run.skipped) {
     const n = run.skipped.reduce((a, [, k]) => a + k, 0);
     const retry = run.skipped.find(([k]) => k === "timeout")?.[1] ?? 0;
@@ -190,7 +199,7 @@ export function RunPanel({ run, results, active, onOpen, onAction, countdown, ac
       <header className="d-run__head">
         <div className="d-run__titles">
           <h2>{run.name}</h2>
-          <p className="d-run__meta"><RunTag run={run} /><span>{run.product}</span><span>·</span><span>{run.by}</span><span>·</span><span>{run.status === "queued" ? "not started" : `started ${run.started}`}</span></p>
+          <p className="d-run__meta"><RunTag run={run} /><span>{run.product}</span><span>·</span><span>{run.by}</span><span>·</span><span>{run.status === "queued" ? "not started" : run.started ? `started ${run.started}` : "in progress"}</span></p>
         </div>
         {actions && <div className="d-acts">{actions}</div>}
       </header>

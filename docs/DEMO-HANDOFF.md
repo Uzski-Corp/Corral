@@ -155,8 +155,13 @@ before production use.
 Project: Corral. Application UUID: `uwpxnpwz0i9twspfgszajrg5`.
 Git source: `Uzski-Corp/Corral`, branch `codex/corral-demo-live`.
 Compose file: `docker-compose.coolify.yml`. Manual deployments are enabled;
-auto-deploy is disabled. Database, Redis, worker and Pi have no published host ports.
-Postgres and Pi checkpoint volumes persist independently of container rebuilds.
+auto-deploy is disabled. Database, Redis, and the worker have no published host ports.
+Postgres data persists independently of container rebuilds.
+
+Pi is the Rumpty durable service, not a Compose service. Coolify `PI_SERVICE_URL`
+is `https://nice-bobcat-63873b.rumptycloud.app` (`/healthz` returns `{"status":"ok"}`).
+The API and worker call that origin with `PI_SERVICE_TOKEN`. Pi itself must use the
+same token and `CORRAL_INTERNAL_URL=https://api.corral.uzskicorp.agency`.
 
 App: `https://app.corral.uzskicorp.agency`.
 API: `https://api.corral.uzskicorp.agency`.

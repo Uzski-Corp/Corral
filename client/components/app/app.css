@@ -58,6 +58,9 @@
 .c-chip--add { background: transparent; color: var(--color-text-quaternary); }
 .c-chip.is-open { box-shadow: 0 0 0 1px var(--color-border-strong); background: var(--color-canvas); }
 .c-menu { position: absolute; background: var(--color-canvas); border-radius: 10px; box-shadow: var(--shadow-pop); padding: 6px; min-width: 220px; z-index: 3; display: flex; flex-direction: column; gap: 1px; }
+.c-menu--scroll { max-height: 280px; overflow-y: auto; }
+.c-menu__find { position: sticky; top: 0; z-index: 1; height: 32px; margin: 0 0 4px; padding: 0 8px; border: 0; border-radius: 6px; background: var(--color-surface-sunken); font: inherit; font-size: 13px; color: var(--color-text); outline: none; }
+.c-menu__find:focus { box-shadow: inset 0 0 0 1px var(--color-border-strong); }
 .c-menu__item { height: var(--spacing-nav); display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: 6px; color: #404040; white-space: nowrap; }
 .c-menu__item.is-hover { background: var(--color-surface-sunken); color: var(--color-text); }
 .c-menu__item .c-kbd { margin-left: auto; }

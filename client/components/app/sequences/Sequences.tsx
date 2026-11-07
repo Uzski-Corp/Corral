@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button, cx } from "../primitives";
 import { Icon } from "../icons";
 import { Dialog } from "../Overlays";
-import { ErrorState, Skeleton } from "../States";
+import { EmptyState, ErrorState, Skeleton } from "../States";
 import { SequencesEmpty } from "../Empties";
 import { Tabs } from "../Tabs";
 import { useToast } from "../Toaster";
@@ -131,6 +131,15 @@ export function SequencesView({ state, tab, onTabChange, pool, onPoolChange, new
       { id: "sequences", label: "Sequences", count: phase === "ready" ? list.length : undefined },
       { id: "pool", label: "Mailbox pool", count: pool.length }]} /></div>
   );
+
+  // The sequence transport has no live launch/control integration yet. Never
+  // render sample audiences, mail merge recipients, or local send simulations.
+  if (catalog) return <div className="c-view q-view">{poolTab}<div className="c-view c-view--center">
+    {catalog.phase === "error" ? <ErrorState title="Couldn’t load sequences" actions={<Button onClick={catalog.onRetry}>Try again</Button>}>Try loading your saved sequences again.</ErrorState>
+      : catalog.phase === "loading" ? <div role="status">Loading sequences…</div>
+      : <div><EmptyState id="sequences" title={tab === "pool" ? "Mailbox connections are not available yet" : "Sequence sending is not available yet"}>Use the demo mailbox in Unibox for approved recipients.</EmptyState>
+        {!!catalog.list.length && <ul aria-label="Saved sequences">{catalog.list.map(s => <li key={s.id}>{s.name} · {s.status}</li>)}</ul>}</div>}
+  </div></div>;
 
   if (tab === "pool") {
     const set = (id: string, patch: Partial<Mailbox>) => onPoolChange(pool.map((m) => (m.id === id ? { ...m, ...patch } : m)));

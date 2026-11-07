@@ -49,12 +49,13 @@ export type MenuEntry =
   | "separator";
 const isItem = (e: MenuEntry): e is Extract<MenuEntry, { label: string }> => typeof e === "object" && "label" in e;
 
-export function MenuList({ items, active, setActive, onPick, className, style, label }: {
+export function MenuList({ items, active, setActive, onPick, className, style, label, before }: {
   items: MenuEntry[]; active: number; setActive: (i: number) => void; onPick: (i: number) => void;
-  className?: string; style?: CSSProperties; label?: string;
+  className?: string; style?: CSSProperties; label?: string; before?: ReactNode;
 }) {
   return (
     <div role="menu" aria-label={label} className={cx("c-menu c-pop-in", className)} style={style}>
+      {before}
       {items.map((e, i) => {
         if (e === "separator") return <div key={i} className="c-menu__sep" role="separator" />;
         if (!isItem(e)) return <div key={i} className="c-menu__heading">{e.heading}</div>;
@@ -74,32 +75,47 @@ export function MenuList({ items, active, setActive, onPick, className, style, l
 }
 
 /** Keyboard-first dropdown. ↑↓ move, ↵ picks, Esc closes. Positioned under its trigger. */
-export function DropdownMenu({ trigger, items, align = "start", width = 220, defaultOpen = false, label, side = "bottom" }: {
+export function DropdownMenu({ trigger, items, align = "start", width = 220, defaultOpen = false, label, side = "bottom", searchable = false, closeOnSelect = true, onCreate }: {
   trigger: (p: { onClick: () => void; "aria-expanded": boolean; "aria-haspopup": "menu" }) => ReactNode;
   items: MenuEntry[]; align?: "start" | "end"; width?: number; defaultOpen?: boolean; label?: string; side?: "bottom" | "top";
+  /** A filter field above the items. The menu stays open after a pick so several can be chosen. */
+  searchable?: boolean;
+  closeOnSelect?: boolean;
+  /** When the typed text matches nothing exactly, offer it as its own row. */
+  onCreate?: (name: string) => void;
 }) {
   const [open, setOpen] = useState(defaultOpen);
-  const firstItem = items.findIndex(isItem);
+  const [query, setQuery] = useState("");
+  const typed = query.trim();
+  const q = typed.toLowerCase();
+  const filtered = !searchable || !q ? items : items.filter((e) => !isItem(e) || e.label.toLowerCase().includes(q));
+  const exact = items.some((e) => isItem(e) && e.label.toLowerCase() === q);
+  const shown = onCreate && typed && !exact ? [...filtered, { label: typed, meta: "Add", onSelect: () => { onCreate(typed); setQuery(""); } } satisfies MenuEntry] : filtered;
+  const firstItem = shown.findIndex(isItem);
   const [active, setActive] = useState(defaultOpen ? firstItem : -1);
   const ref = useRef<HTMLDivElement>(null);
-  const close = useCallback(() => { setOpen(false); setActive(-1); }, []);
+  const close = useCallback(() => { setOpen(false); setActive(-1); setQuery(""); }, []);
   useDismiss(ref, open, close);
   const step = (d: 1 | -1) => {
-    const n = items.length; let i = active;
-    for (let k = 0; k < n; k++) { i = (i + d + n) % n; const e = items[i]; if (isItem(e) && !e.disabled) break; }
+    const n = shown.length; if (!n) return; let i = active;
+    for (let k = 0; k < n; k++) { i = (i + d + n) % n; const e = shown[i]; if (isItem(e) && !e.disabled) break; }
     setActive(i);
   };
-  const pick = (i: number) => { const e = items[i]; if (isItem(e) && !e.disabled) { e.onSelect?.(); close(); } };
+  const pick = (i: number) => { const e = shown[i]; if (isItem(e) && !e.disabled) { e.onSelect?.(); if (closeOnSelect) close(); } };
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.key === "ArrowDown") { e.preventDefault(); if (!open) { setOpen(true); setActive(firstItem); } else step(1); }
     else if (e.key === "ArrowUp") { e.preventDefault(); if (open) step(-1); }
     else if (e.key === "Enter" && open && active >= 0) { e.preventDefault(); pick(active); }
   };
+  const find = searchable ? (
+    <input className="c-menu__find" placeholder="Search" value={query} aria-label={`Search ${label ?? "options"}`} autoFocus
+      onChange={(e) => { setQuery(e.target.value); setActive(0); }} onClick={(e) => e.stopPropagation()} />
+  ) : null;
   return (
     <div ref={ref} className="c-popwrap" onKeyDown={onKeyDown}>
       {trigger({ onClick: () => (open ? close() : (setOpen(true), setActive(firstItem))), "aria-expanded": open, "aria-haspopup": "menu" })}
-      {open && <MenuList label={label} items={items} active={active} setActive={setActive} onPick={pick}
-        className={cx("c-menu--float", align === "end" && "is-end", side === "top" && "is-top")} style={{ width }} />}
+      {open && <MenuList label={label} items={shown.length ? shown : [{ label: "No matches", disabled: true }]} active={active} setActive={setActive} onPick={pick} before={find}
+        className={cx("c-menu--float", searchable && "c-menu--scroll", align === "end" && "is-end", side === "top" && "is-top")} style={{ width }} />}
     </div>
   );
 }

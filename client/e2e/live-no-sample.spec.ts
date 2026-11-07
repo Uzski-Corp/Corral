@@ -9,7 +9,7 @@ import { API, expect, signInWithGoogle, test, WEB } from "./fixtures";
 const SAMPLE = /ColdTrace|coldtrace|Tomás|Ibarra|Amara Njoroge|3,902/;
 const ROUTES = [
   "/app", "/app/companies", "/app/contacts", "/app/discovery", "/app/sequences", "/app/segments", "/app/knowledge", "/app/products",
-  "/app/settings", "/app/settings/team", "/app/settings/billing", "/app/settings/mcp", "/app/settings/keys", "/app/settings/docs",
+  "/app/settings", "/app/settings/team", "/app/settings/billing", "/app/settings/sms", "/app/settings/mcp", "/app/settings/keys", "/app/settings/docs",
   "/app/settings/profile", "/app/settings/workspace",
 ];
 const scenario = (page: Page, data: Record<string, unknown>) => page.request.post(`${API}/__mock/scenario`, { data });

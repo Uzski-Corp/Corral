@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { http, HttpResponse } from "msw";
+import { delay, http, HttpResponse } from "msw";
 import { describe, expect, it, vi } from "vitest";
 import { API, LOGOUT_URL, ME_BODY, server, testConfig } from "@/test/msw";
 import { router } from "@/test/router";
@@ -38,9 +38,23 @@ describe("sessionErrorDetail", () => {
 });
 
 describe("AppScreen", () => {
+  it("never mounts sample records while a live session is unresolved", async () => {
+    server.use(http.get(`${API}/api/v1/auth/me`, async () => {
+      await delay(80);
+      return HttpResponse.json(ME_BODY);
+    }));
+    live();
+    expect(screen.getByRole("status", { name: "Loading your workspace" })).toBeInTheDocument();
+    for (const text of ["ColdTrace", "Tomás Ibarra", "Brian Kamau", "Pwani Fresh"]) {
+      expect(screen.queryByText(text)).toBeNull();
+    }
+    await waitFor(() => expect(within(account()).getByText("Wanjiru Mwangi")).toBeInTheDocument());
+  });
+
   it("shows skeletons, then the signed-in person and workspace from /me", async () => {
     live();
-    expect(within(account()).queryByText("Tomás Ibarra")).toBeNull();
+    expect(screen.getByRole("status", { name: "Loading your workspace" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Account" })).toBeNull();
     await waitFor(() => expect(within(account()).getByText("Wanjiru Mwangi")).toBeInTheDocument());
     expect(within(account()).getByText("wanjiru@kilima.co.ke")).toBeInTheDocument();
     expect(account().querySelector("img")).toHaveAttribute("src", "https://img.test/w.jpg");
@@ -98,7 +112,8 @@ describe("AppScreen", () => {
     live();
     expect(await screen.findByRole("heading", { name: "Corral can’t reach its servers" })).toBeInTheDocument();
     expect(screen.getByText("GET /api/v1/auth/me · 503")).toBeInTheDocument();
-    expect(within(account()).getByText("Not connected")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Account" })).toBeNull();
+    expect(screen.queryByText("ColdTrace")).toBeNull();
     up = true;
     await user.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(within(account()).getByText("Wanjiru Mwangi")).toBeInTheDocument());
