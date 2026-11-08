@@ -30,8 +30,8 @@ const STRIP: Logo[] = [...AGENT_LOGOS.slice(0, 4), ...TOOL_LOGOS.slice(0, 4)];
 function StartActions({ className }: { className: string }) {
   return (
     <div className={className}>
-      <Link className="h-primary" href={SIGN_IN}>Get started ↗</Link>
-      <Link className="h-secondary" href={SIGN_IN}>Watch a demo</Link>
+      <Link className="c-btn c-btn--primary c-btn--lg" href={SIGN_IN}>Get started ↗</Link>
+      <Link className="c-btn c-btn--secondary c-btn--lg" href={SIGN_IN}>Watch a demo</Link>
     </div>
   );
 }
@@ -178,8 +178,8 @@ export function EditorialLanding() {
             <p className="ed-desc">Sign in to start using Corral.</p>
             <div className="ed-wl ed-offer">
               <div className="ed-actions">
-                <Link className="ed-primary" href={SIGN_IN}>Get started <span aria-hidden="true">↗</span></Link>
-                <Link className="ed-secondary" href={SIGN_IN}>Watch a demo</Link>
+                <Link className="c-btn c-btn--primary c-btn--lg" href={SIGN_IN}>Get started <span aria-hidden="true">↗</span></Link>
+                <Link className="c-btn c-btn--secondary c-btn--lg" href={SIGN_IN}>Watch a demo</Link>
               </div>
               <p className="ed-auth-note">Both options open sign-in.</p>
             </div>

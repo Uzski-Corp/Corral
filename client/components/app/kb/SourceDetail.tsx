@@ -105,7 +105,7 @@ export function SourceDetail({ src, knowledge, onBack, onAction, onJump, passage
           {(st.s === "failed" || st.s === "partial") && src.kind !== "url"
             ? <Button onClick={() => onAction?.(src.id, "replace")}><Icon name="upload" />{st.s === "failed" && recoveryOf(st.failure, st.at) === "retry" ? "Replace instead" : "Replace file"}</Button>
             : <Button disabled={st.s === "processing"} onClick={() => onAction?.(src.id, "reread")}><Icon name="refresh" />{src.kind === "url" ? "Re-read" : "Read again"}</Button>}
-          <Button variant="quiet" className="k-danger" onClick={() => onAction?.(src.id, "remove")}>Remove</Button>
+          <Button variant="secondary-destructive" onClick={() => onAction?.(src.id, "remove")}>Remove</Button>
         </div>
       </footer>
     </aside>

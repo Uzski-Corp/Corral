@@ -9,14 +9,9 @@
 @keyframes c-spin { to { transform: rotate(360deg); } }
 @keyframes c-fade { from { opacity: 0; } }
 .c-pop-in { animation: c-pop var(--duration-pop) var(--ease-snap); transform-origin: top center; }
-.c-btn { transition: transform var(--duration-press) var(--ease-snap), background-color var(--duration-press) ease; }
-.c-btn:active:not([disabled]) { transform: scale(.97); }
-@media (prefers-reduced-motion: reduce) { .c-pop-in, .c-toast, .c-scrim, .c-skel { animation: none !important; } .c-btn:active { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .c-pop-in, .c-toast, .c-scrim, .c-skel { animation: none !important; } }
 
 /* ---------- icon button */
-.c-iconbtn { width: var(--spacing-btn-sm); height: var(--spacing-btn-sm); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative;
-  border: 0; border-radius: var(--radius-input); background: transparent; color: var(--color-text-tertiary); cursor: pointer; }
-.c-iconbtn:hover { background: var(--color-surface-sunken); color: var(--color-text); }
 .c-iconbtn__dot { position: absolute; top: 6px; right: 6px; width: 6px; height: 6px; border-radius: 3px; background: var(--color-action); box-shadow: 0 0 0 1.5px var(--color-canvas); }
 :where(.c-app) :focus-visible { outline: 2px solid var(--color-action); outline-offset: 1px; } /* solid: 5.73:1, the 28% ring alone was 1.6:1 */
 

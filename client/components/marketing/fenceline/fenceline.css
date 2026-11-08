@@ -10,10 +10,6 @@
 .fl-folio b { font-style: normal; font-weight: 500; font-family: var(--font-sans); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--mk-ink); }
 .fl-cap { font: italic 400 var(--mk-text-caption)/1.45 var(--mk-font-display); color: var(--mk-copy-muted); }
 .fl-cap b { font-style: normal; font-weight: 500; color: var(--mk-ink); margin-right: 6px; }
-.fl-btn { height: 40px; display: inline-flex; align-items: center; gap: 8px; padding: 0 18px; border-radius: 7px; background: var(--mk-cta-bg); color: var(--mk-cta-fg); font: 500 14.5px/1 var(--font-sans); letter-spacing: -0.01em; text-decoration: none; border: 0; }
-.fl-btn:hover { background: var(--mk-ink-hover); }
-.fl-btn--line { background: transparent; color: var(--mk-ink); box-shadow: inset 0 0 0 1px var(--mk-rule); }
-.fl-btn--line:hover { background: var(--mk-surface); }
 .fl-link { font: 500 14.5px/1 var(--font-sans); color: var(--mk-ink); text-decoration: none; border-bottom: 1px solid var(--mk-rule); padding-bottom: 3px; }
 
 /* ---------- Hero */
@@ -25,7 +21,6 @@
 .fl-nav__links a { font: 500 14px/1 var(--font-sans); color: var(--mk-ink); text-decoration: none; letter-spacing: -0.01em; }
 .fl-nav:has(.fl-nav__me) .fl-nav__links { margin-left: auto; }
 .fl-nav__me { display: flex; align-items: center; gap: 12px; }
-.fl-btn--sm { height: 32px; padding: 0 14px; font-size: 14px; }
 .fl-hero__copy { margin-top: 128px; }
 .fl-hero h1 { font-size: var(--mk-text-folio); line-height: 0.96; letter-spacing: -0.03em; }
 .fl-hero h1 em { font-style: italic; }

@@ -31,11 +31,8 @@
 .lv-nav__links a { font: 500 14px/1 var(--font-sans); letter-spacing: -0.01em; color: inherit; text-decoration: none; opacity: .82; transition: opacity 150ms ease; }
 .lv-nav__links a:hover { opacity: 1; }
 .lv-nav__end { display: flex; align-items: center; gap: 20px; }
-.lv-nav__cta { display: inline-flex; align-items: center; height: 34px; padding: 0 14px; border-radius: 9px; background: var(--lv-ink); color: #fff; font: 500 14px/1 var(--font-sans); letter-spacing: -0.01em; text-decoration: none; transition: transform 140ms var(--lv-ease); }
-.lv-nav__cta:active { transform: scale(.97); }
 .lv-nav--light { color: var(--lv-ink); }
 .lv-nav--blue { color: #fff; }
-.lv-nav--blue .lv-nav__cta { background: #fff; color: var(--lv-blue-1); }
 
 /* ---------- waitlist */
 .wl { width: 100%; max-width: 470px; margin-top: 36px; }
@@ -45,9 +42,8 @@
 .wl[data-state="invalid"] .wl__form { box-shadow: inset 0 0 0 1px var(--color-negative-600), 0 0 0 4px rgb(190 18 60 / .14); }
 .wl__input { flex: 1; min-width: 0; height: 44px; padding: 0 12px; border: 0; background: transparent; font: 400 16px/1 var(--font-sans); letter-spacing: -0.01em; color: var(--lv-ink); outline: none; }
 .wl__input::placeholder { color: #8E8E8E; }
-.wl__btn { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 18px; border: 0; border-radius: 10px; background: var(--color-action); color: #fff; font: 500 15px/1 var(--font-sans); letter-spacing: -0.01em; cursor: pointer; box-shadow: inset 0 0 0 1px rgb(0 0 0 / .10), inset 0 1px 0 rgb(255 255 255 / .16); transition: transform 140ms var(--lv-ease), background-color 150ms ease, opacity 200ms ease; }
-.wl__btn:hover { background: var(--color-action-hover); }
-.wl__btn:active { transform: scale(.97); }
+.wl__btn { flex: none; }
+
 .wl__btn[aria-disabled] { cursor: progress; }
 .wl .wl__btn[data-dim], .wl .wl__btn[data-dim]:active { opacity: .4; cursor: not-allowed; transform: none; }
 .wl .wl__btn[data-dim]:hover .wl__arrow { transform: none; }
@@ -70,8 +66,7 @@
 .wl--blue .wl__form:focus-within, .wl--dark .wl__form:focus-within { box-shadow: inset 0 0 0 1px rgb(255 255 255 / .8), 0 0 0 4px rgb(255 255 255 / .18); }
 .wl--blue .wl__input, .wl--dark .wl__input { color: #fff; }
 .wl--blue .wl__input::placeholder, .wl--dark .wl__input::placeholder { color: rgb(255 255 255 / .62); }
-.wl--blue .wl__btn, .wl--dark .wl__btn { background: #fff; color: var(--lv-blue-1); }
-.wl--blue .wl__btn:hover, .wl--dark .wl__btn:hover { background: #EEF3FC; }
+
 .wl--blue .wl__msg, .wl--dark .wl__msg { color: rgb(255 255 255 / .74); }
 .wl--blue .wl__err, .wl--dark .wl__err { color: #FFD3D9; }
 .wl--blue .wl__nojs p, .wl--dark .wl__nojs p { color: #fff; }
@@ -243,7 +238,7 @@
 }
 @media (max-width: 720px) {
   .lv-nav { margin-top: 18px; }
-  .lv-nav__cta { height: 32px; padding: 0 12px; font-size: 13px; }
+
   .lv-hero--3 .lv-school { display: none; }
   .lv-school { width: 130px; top: auto; bottom: 6%; right: 6%; }
   .lv-h1, .lv-hero--1 .lv-h1, .lv-hero--3 .lv-h1 { font-size: clamp(38px, 10.6vw, 48px); line-height: 1.02; letter-spacing: -0.04em; }
@@ -251,7 +246,7 @@
   .wl { margin-top: 28px; }
   .wl__form { flex-direction: column; align-items: stretch; padding: 6px; }
   .wl__input { height: 46px; }
-  .wl__btn { height: 46px; }
+
   .lv-h1-plate { height: 520px; border-radius: 20px; padding: 28px 14px 0; }
   .lv-h2-plate { height: 560px; border-radius: 20px; }
   .lv-h2-run { left: 14px; right: 14px; width: auto; top: 28px; }
@@ -281,7 +276,6 @@
   .wl__spin { animation-duration: 1.6s; }
   .lv-faq__item summary svg, .wl__arrow { transition: none; }
 }
-
 
 /* V4: blue, white, and #141414. Illustration gradient matches the supplied Figma stops. */
 .lv[data-variant="4"] {
@@ -367,7 +361,7 @@
 .lv[data-variant="4"] .lv-clients ul { display: grid; gap: 8px; }
 .lv[data-variant="4"] .lv-clients li { padding-inline: 16px; border: 0; border-radius: 10px; background: var(--lv-art-panel); box-shadow: 0 0 0 1px rgb(0 0 0 / .04), 0 1px 2px rgb(0 0 0 / .04), 0 4px 12px rgb(0 0 0 / .05); }
 .lv[data-variant="4"] .lv-clients figcaption { padding-inline: 4px; }
-.lv[data-variant="4"] .wl__btn:active, .lv[data-variant="4"] .lv-nav__cta:active { transform: scale(.96); }
+
 @media (max-width: 1080px) and (min-width: 721px) { .lv[data-variant="4"] .lv-proof__plate { max-width: 650px; width: 100%; } }
 @media (max-width: 720px) {
   .lv[data-variant="4"] .lv-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px 16px; }
@@ -470,9 +464,7 @@
   .wl[data-state="invalid"] .wl__input { box-shadow: inset 0 0 0 1.5px var(--color-negative-600), 0 0 0 4px rgb(190 18 60 / .14); }
   .wl--blue .wl__input, .wl--dark .wl__input { color: var(--lv-ink); }
   .wl--blue .wl__input::placeholder, .wl--dark .wl__input::placeholder { color: #8E8E8E; }
-  .wl .wl__btn { flex: none; height: 52px; border-radius: 12px; font-size: 16px; }
-  .wl--blue .wl__btn, .wl--dark .wl__btn { background: #141414; color: #fff; }
-  .wl--blue .wl__btn:hover, .wl--dark .wl__btn:hover { background: #2A2A2A; }
+
 }
 
 /* 404: the hero's agent card on the footer's reef, filling the screen under the nav. */
@@ -487,9 +479,5 @@
 .lv-404__k { margin: 0 0 24px; font: 500 clamp(20px, 2.4vw, 28px)/1 var(--font-mono); letter-spacing: .12em; text-shadow: 0 1px 2px rgb(0 0 0 / .4), 0 0 16px rgb(0 0 0 / .25); }
 .lv-404__h { margin: 0; font: 600 clamp(56px, 10vw, 136px)/.98 var(--mk-font-display); letter-spacing: -0.045em; text-shadow: 0 2px 32px rgb(0 0 0 / .3); }
 .lv-404__p { max-width: 24em; margin: 24px 0 40px; font-size: clamp(18px, 2vw, 22px); line-height: 1.45; color: rgb(255 255 255 / .94); text-shadow: 0 1px 2px rgb(0 0 0 / .4), 0 0 16px rgb(0 0 0 / .3); }
-.lv-404__btn { display: inline-flex; align-items: center; gap: 8px; height: 56px; padding: 0 28px; border-radius: 14px; background: #fff; color: var(--lv-ink); font: 500 17px/1 var(--font-sans); letter-spacing: -0.01em; text-decoration: none; box-shadow: 0 12px 32px rgb(11 15 28 / .28); transition: transform 200ms var(--lv-ease), box-shadow 200ms ease; }
-.lv-404__btn:hover { transform: translateY(-1px); box-shadow: 0 16px 40px rgb(11 15 28 / .34); }
-.lv-404__btn:active { transform: scale(.97); }
-.lv-404__btn:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+
 .lv-404 .lv-foot { margin-top: 0; }
-@media (prefers-reduced-motion: reduce) { .lv-404__btn { transition: none; } .lv-404__btn:hover { transform: none; } }

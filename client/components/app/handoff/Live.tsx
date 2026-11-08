@@ -95,7 +95,7 @@ export function LiveIntegrationPage({ detail: initial, id, tab, setTab, people, 
           {d.account && <div className="l-acct__row"><dt>{LIVE_COPY.account}</dt><dd><span className="c-strong">{d.account.name}</span>{d.account.email && <span className="c-mono c-faint">{d.account.email}</span>}</dd></div>}
           {d.connectedAt && <div className="l-acct__row"><dt>{LIVE_COPY.since}</dt><dd><time dateTime={d.connectedAt}>{dayLabel(new Date(d.connectedAt), now)}</time><span className="c-faint">{sinceWords(new Date(d.connectedAt), now)}</span></dd></div>}
           {by && <div className="l-acct__row"><dt>{LIVE_COPY.by}</dt><dd>{by}</dd></div>}
-          <div className="l-acct__row l-acct__end"><dt className="u-sr">Disconnect</dt><dd><Button variant="quiet" className="i-danger" onClick={onDisconnect}>{LIVE_COPY.disconnect}</Button></dd></div>
+          <div className="l-acct__row l-acct__end"><dt className="u-sr">Disconnect</dt><dd><Button variant="secondary-destructive" onClick={onDisconnect}>{LIVE_COPY.disconnect}</Button></dd></div>
         </dl>
         <section className="i-sec"><h3>Recent activity</h3>
           <Activity id={id} logs={logs === "loading" ? logs : logs.slice(0, 3)} now={now} onTest={canTest ? test : undefined} />

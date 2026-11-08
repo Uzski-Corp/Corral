@@ -82,7 +82,7 @@ export function WaitlistForm({ source, tone = "light", align = "start", initial 
             readOnly={state === "submitting"}
           />
           <button
-            className="wl__btn"
+            className={`wl__btn c-btn c-btn--lg c-btn--${tone === "light" ? "primary" : "ink"}`}
             type="submit"
             aria-disabled={state === "submitting" || dimmed || undefined}
             data-dim={dimmed || undefined}

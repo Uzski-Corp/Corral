@@ -269,7 +269,7 @@ function IntegrationPage({ id, conn, tab, setTab, onBack, onFix, onDisconnect, m
       <header className="i-dhead"><Tile label={TILE[id]} />
         <div className="i-dhead__t"><h2>{i.name}</h2><span className="i-dhead__sub"><span className="c-faint">{i.role}</span><Pill tone={h.tone}>{h.word}</Pill></span></div>
         <div className="i-dhead__acts">{h.needsYou && p && <Button variant="primary" onClick={onFix}>{p.action}</Button>}
-          {conn !== "off" && <Button variant="quiet" className="i-danger" onClick={onDisconnect}>Disconnect</Button>}</div>
+          {conn !== "off" && <Button variant="secondary-destructive" onClick={onDisconnect}>Disconnect</Button>}</div>
       </header>
       {h.needsYou && p && <Banner tone={conn === "error" ? "error" : "caution"} title={p.title}>{p.body}</Banner>}
       <div className="i-tabs"><Tabs label={`${i.name} sections`} tabs={tabs} value={tab} onChange={(v) => setTab(v as Tab)} /></div>
@@ -481,7 +481,7 @@ function Disconnect({ open, id, onClose, onConfirm }: { open: boolean; id: Integ
   const n = integration(id).name;
   return (
     <Dialog open={open} onClose={onClose} tone="danger" width={480} title={id === "phoenix" ? `Disconnect ${n}?` : <BrandLockup brand={id}>{`Disconnect ${n}?`}</BrandLockup>} description="You can connect it again at any time. Nothing in it is deleted."
-      footer={<><Button variant="quiet" onClick={onClose}>Cancel</Button><Button variant="primary" className="i-btn-danger" onClick={onConfirm}>Disconnect {n}</Button></>}>
+      footer={<><Button variant="quiet" onClick={onClose}>Cancel</Button><Button variant="destructive" onClick={onConfirm}>Disconnect {n}</Button></>}>
       <ul className="i-lose">{LOSE[id].map((l) => <li key={l}>{l}</li>)}</ul>
     </Dialog>
   );

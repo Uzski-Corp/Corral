@@ -1,4 +1,4 @@
-import type { ReactNode, ButtonHTMLAttributes, CSSProperties } from "react";
+import type { ReactNode, ComponentPropsWithRef, CSSProperties } from "react";
 import { Icon, type IconName } from "./icons";
 import { LOGOS, type CompanyName } from "./data";
 import { fitLabel, type FitBarMeta } from "@/lib/fit/score";
@@ -6,14 +6,21 @@ import { fitLabel, type FitBarMeta } from "@/lib/fit/score";
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 export { cx };
 
-/* Buttons: one action colour, near-black second, quiet third */
-type BtnProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "default" | "primary" | "ink" | "quiet"; size?: "sm" | "lg"; kbd?: string;
+/* Kumo button styles with Corral's semantic colors. Legacy names remain aliases
+   so existing screens, anchors, and dropdown triggers share the same treatment. */
+export type ButtonProps = ComponentPropsWithRef<"button"> & {
+  variant?: "secondary" | "primary" | "ghost" | "destructive" | "secondary-destructive" | "outline" | "default" | "ink" | "quiet";
+  size?: "xs" | "sm" | "base" | "lg";
+  shape?: "base" | "square" | "circle";
+  loading?: boolean;
+  static?: boolean;
+  kbd?: string;
 };
-export function Button({ variant = "default", size = "sm", kbd, className, children, ...rest }: BtnProps) {
+export function Button({ variant = "secondary", size = "sm", shape = "base", loading = false, static: staticPress = false, disabled, type = "button", kbd, className, children, ...rest }: ButtonProps) {
   return (
-    <button type="button" className={cx("c-btn", variant !== "default" && `c-btn--${variant}`, size === "lg" && "c-btn--lg", className)} {...rest}>
-      {children}{kbd && <Kbd>{kbd}</Kbd>}
+    <button {...rest} type={type} disabled={disabled || loading} aria-busy={loading || rest["aria-busy"]}
+      className={cx("c-btn", variant !== "default" && `c-btn--${variant}`, `c-btn--${size}`, shape !== "base" && `c-btn--${shape}`, loading && "is-loading", staticPress && "c-btn--static", className)}>
+      {loading && <span className="c-btn__spinner" aria-hidden="true" />}{children}{kbd && <Kbd>{kbd}</Kbd>}
     </button>
   );
 }

@@ -308,7 +308,7 @@ function Revoke({ k, onClose, onRevoke }: { k: ApiKey; onClose: () => void; onRe
   return (
     <Dialog open onClose={onClose} width={500} tone="danger" title={s === "expired" ? `Delete ${k.name}?` : `Revoke ${k.name}?`}
       description={s === "expired" ? "It already doesn’t work. Deleting removes it from this list." : "It stops at once, everywhere. There’s no undo; you’d make a new key."}
-      footer={<><Button variant="quiet" onClick={onClose}>Cancel</Button><Button variant="primary" className="i-btn-danger" onClick={onRevoke}>{s === "expired" ? "Delete key" : "Revoke key"}</Button></>}>
+      footer={<><Button variant="quiet" onClick={onClose}>Cancel</Button><Button variant="destructive" onClick={onRevoke}>{s === "expired" ? "Delete key" : "Revoke key"}</Button></>}>
       <div className="m-form">
         {recent && <Banner tone="caution" title={`In use: last call ${lastUsedWords(k.lastUsed, now)} from ${k.lastFrom?.split(" · ")[0]}.`}>{k.calls7d.toLocaleString("en-GB")} calls this week. Its next call gets 401 and whatever it does stops. If you’re replacing it, rotate instead.</Banner>}
         <ul className="m-list">

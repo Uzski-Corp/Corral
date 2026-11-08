@@ -39,6 +39,14 @@ Use `localhost` on both sides rather than mixing it with `127.0.0.1`, so cookies
 
 `AppDataProvider` supplies API clients to live views; review mode uses fixtures. App routes are separate Next pages inside the session layout. Knowledge, companies/leads, discovery, sequences, products, and settings load on demand with a skeleton; Unibox stays eager as the default screen. Avoid importing the entire app barrel for small production components.
 
+App and marketing actions share the Kumo-style button treatment in
+`components/app/buttons.css`, using Corral's semantic colors. `Button` supports
+primary, secondary, ghost, outline, destructive, and secondary-destructive styles,
+four sizes, square/circle shapes, and a disabling loading state. The existing
+default/quiet/ink names remain supported. Navigation CTAs use the same `.c-btn`
+classes on anchors. See `/styleguide` for examples and the
+[Kumo reference](https://kumo-ui.com/components/button.md) for the source design.
+
 ## Auth and configuration
 
 Proxy checks cookie presence and redirects protected routes. The API validates the session on requests. `SessionProvider` confirms the user through `/me`, refreshes while visible, and handles sign-out/recovery. Onboarding writes workspace/product state through the API and reads it back on later visits.
