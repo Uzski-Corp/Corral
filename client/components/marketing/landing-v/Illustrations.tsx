@@ -50,7 +50,7 @@ export function ScoreIllustration() {
     <div className="lv-score__top"><span><span className="lv-score__fav"><Globe size={16} /></span><b>Kilima Dairies</b><small>kilima.co.ke</small></span><span className="lv-score__sample">Sample</span></div>
     <div className="lv-score__summary"><div className="lv-score__ring"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="43" /><circle cx="50" cy="50" r="43" pathLength="100" strokeDasharray="94 100" /></svg><strong>94<small>/ 100</small></strong></div><div><span className="lv-score__fit"><Check size={14} /> Strong fit</span><h3>Worth reaching out.</h3><p>Cold rooms. Clear need.<br />The right person to contact.</p></div></div>
     <ul className="lv-score__checks">{checks.map((c, i) => <li key={c.label} className={i === 0 ? "is-on" : undefined}><span>{c.label}</span><span className="lv-score__track" aria-hidden="true"><i style={{ width: `${c.points / c.max * 100}%` }} /></span><b>{c.points}<small>/{c.max}</small></b></li>)}</ul>
-    <div className="lv-score__source"><span className="lv-score__source-art" aria-hidden="true">📄</span><span><b>38 pages read</b><small>Every point links to its source</small></span><span className="lv-score__source-check"><Check size={16} /></span></div>
+    <div className="lv-score__source"><span className="lv-score__source-art" aria-hidden="true"><Mark size={20} /></span><span><b>38 pages read</b><small>Every point links to its source</small></span><span className="lv-score__source-check"><Check size={16} /></span></div>
     <figcaption>Sample workspace · Outreach starts at 80</figcaption>
   </figure>;
 }

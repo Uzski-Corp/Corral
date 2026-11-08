@@ -38,7 +38,7 @@ function StartActions({ className }: { className: string }) {
 
 export function EditorialLanding() {
   return (
-    <main className="theme-open-range lv editorial hero-options">
+    <main className="theme-open-range lv editorial hero-options" data-variant="4">
       <Nav cta="Get started" ctaHref={SIGN_IN} />
       <section className="h-shell">
         <section className="h-b">
@@ -91,7 +91,7 @@ export function EditorialLanding() {
 
       <section className="ed-section ed-wrap">
         <div className="ed-proof">
-          <div className="ed-proof-art"><ScoreIllustration /></div>
+          <div className="ed-proof-art" id="company-fit"><ScoreIllustration /></div>
           <div className="ed-proof-copy">
             <span className="ed-k">Every score shows its work</span>
             <h2 className="ed-h2">You can see why each company made the list.</h2>
