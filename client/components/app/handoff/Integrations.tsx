@@ -26,24 +26,14 @@ import { BillingConnected, BillingView, SmsPlayground, TeamView, type TeamApi, t
 import { useAppData } from "@/components/session/AppData";
 import { displayName, type Member } from "@/lib/api";
 import type { WorkspaceInvite } from "@/lib/api/workspace";
+import { SECTIONS, settingsTabOf } from "./navigation";
+export { settingsTabOf, settingsTabLabel } from "./navigation";
 
 type Tab = SettingsSeed["tab"];
 type DialogKind = NonNullable<SettingsSeed["dialog"]>;
 const TILE: Record<IntegrationId, string> = { cal: "Ca", phoenix: "Px", autosend: "As" };
 
-const SECTIONS: { id: string; label: string; note?: string; href?: string; group?: "dev" }[] = [
-  { id: "profile", label: "Profile", note: "Your name and photo" },
-  { id: "workspace", label: "Workspace", note: "Name, time zone, sending hours" }, { id: "team", label: "Team", note: "People and roles" },
-  { id: "mailboxes", label: "Mailboxes", href: "/app/sequences?state=mailboxes" }, { id: "integrations", label: "Integrations" },
-  { id: "billing", label: "Billing", note: "Plan and credits" },
-  { id: "sms", label: "SMS", note: "Send a text" },
-  /* M9 (ENG-59): Developers. */
-  { id: "mcp", label: "MCP", group: "dev" }, { id: "keys", label: "API keys", group: "dev" }, { id: "docs", label: "Docs", group: "dev" },
-];
 const isDev = (id: string): id is DevSection => id === "mcp" || id === "keys" || id === "docs";
-/** `/app/settings/<id>` (works in production, unlike `state`): a Settings page with its own place, or undefined. */
-export const settingsTabOf = (tab?: string): string | undefined => SECTIONS.find((x) => x.id === tab && !x.href)?.id;
-export const settingsTabLabel = (tab: string): string => SECTIONS.find((x) => x.id === tab)!.label;
 
 /** The settings page. Integrations (M8) and Developers (M9) are designed; the others keep their place. */
 /** M13: which review states open Team or Billing. */

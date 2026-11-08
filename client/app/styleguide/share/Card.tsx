@@ -1,5 +1,6 @@
 "use client";
-import { FitBar, Mark } from "@/components/app";
+import { FitBar } from "@/components/app/primitives";
+import { Mark } from "@/components/app/icons";
 import { FitPiece, HandoffPiece, KeyAccessPiece, ProvenancePiece, Screen } from "@/components/marketing/site";
 import { PLANS, priceWords } from "@/lib/marketing/plans";
 import { CHANGELOG } from "@/lib/marketing/site";

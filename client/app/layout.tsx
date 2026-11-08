@@ -1,26 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Inter_Tight, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { SITE_URL } from "@/lib/marketing/site";
 import { SHARE_IMAGE, THEME, twitterFor } from "@/lib/marketing/seo";
 
-/* Fonts (M10c, PR #72 findings). Every face is one variable file on the latin subset: a variable font carries all
-   the weights we use (400–700) in one request, so there are no weights to trim, and static weights would add files.
-   Newsreader is Fenceline's alone and loads only on /fenceline (app/fenceline/page.tsx), so / and every other route
-   preload three files instead of five.
-
-   The swap: `display: "swap"` shows text at once in a local fallback, and `adjustFontFallback` gives that fallback
-   Inter's metrics (size-adjust, ascent/descent/line-gap overrides on a local Arial), so lines keep their length and
-   height when the webfont lands. (Don't add `fallback` to those three: with Turbopack an explicit list replaces the
-   metric-adjusted face.) Geist Mono falls back to a system mono instead: a mono-to-mono swap keeps every column
-   where it is, which an Arial stand-in (the default for it) doesn't. */
+/* Committed variable fonts keep dev and production builds independent of Google.
+   next/font still emits hashed assets, preloads, and metric-adjusted fallbacks.
+   Newsreader stays scoped to /fenceline, so other routes preload only three files. */
 
 // App UI face (Open Range language, used everywhere product UI appears)
-const inter = Inter({ variable: "--font-inter", subsets: ["latin"], display: "swap", adjustFontFallback: true });
+const inter = localFont({ src: "./fonts/inter-latin-variable.woff2", weight: "100 900", style: "normal", variable: "--font-inter", display: "swap", adjustFontFallback: "Arial" });
 // Open Range marketing display face (/, the shared pages, sign-in, the styleguide)
-const interTight = Inter_Tight({ variable: "--font-inter-tight", subsets: ["latin"], display: "swap", adjustFontFallback: true });
+const interTight = localFont({ src: "./fonts/inter-tight-latin-variable.woff2", weight: "100 900", style: "normal", variable: "--font-inter-tight", display: "swap", adjustFontFallback: "Arial" });
 // Domains, IDs, key hints
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"], display: "swap", adjustFontFallback: false, fallback: ["ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", "monospace"] });
+const geistMono = localFont({ src: "./fonts/geist-mono-latin-variable.woff2", weight: "100 900", style: "normal", variable: "--font-geist-mono", display: "swap", adjustFontFallback: false, fallback: ["ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", "monospace"] });
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

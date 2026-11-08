@@ -18,7 +18,7 @@ import { metadata as signIn } from "@/app/sign-in/page";
 import { generateMetadata as legal } from "@/app/legal/[doc]/page";
 import { generateMetadata as variant } from "@/app/v/[variant]/page";
 
-vi.mock("next/font/google", () => ({ Inter: () => ({ variable: "" }), Inter_Tight: () => ({ variable: "" }), Geist_Mono: () => ({ variable: "" }), Newsreader: () => ({ variable: "" }) }));
+vi.mock("next/font/local", () => ({ default: () => ({ variable: "" }) }));
 
 const og = (m: Metadata) => m.openGraph as Record<string, unknown> | undefined;
 const canonicalOf = (m: Metadata) => (m.alternates?.canonical as string | undefined);

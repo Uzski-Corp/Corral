@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import "tailwindcss" source("../");
 @import "../components/app/app.css";
 @import "../components/app/system.css";
 @import "../components/app/screens/screens.css";

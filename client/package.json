@@ -6,12 +6,12 @@
     "node": ">=22 <23"
   },
   "scripts": {
-    "dev": "next dev --webpack --port 3000",
+    "dev": "CORRAL_APP=1 next dev --webpack --port 3000",
     "dev:review": "NEXT_PUBLIC_DESIGN_REVIEW=1 next dev --webpack --port 3000",
     "build": "next build --webpack && node scripts/verify-build-assets.mjs",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "next typegen && tsc --noEmit",
+    "typecheck": "next typegen --webpack && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
