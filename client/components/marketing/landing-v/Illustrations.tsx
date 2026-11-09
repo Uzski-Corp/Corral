@@ -45,12 +45,14 @@ const checks = [
   { label: "Needs live alerts", points: 7, max: 10 },
 ];
 
-export function ScoreIllustration() {
-  return <figure className="lv-score" aria-label="Sample company fit: Kilima Dairies scores 94 out of 100, based on six checks and 38 pages read.">
-    <div className="lv-score__top"><span><span className="lv-score__fav"><Globe size={16} /></span><b>Kilima Dairies</b><small>kilima.co.ke</small></span><span className="lv-score__sample">Sample</span></div>
-    <div className="lv-score__summary"><div className="lv-score__ring"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="43" /><circle cx="50" cy="50" r="43" pathLength="100" strokeDasharray="94 100" /></svg><strong>94<small>/ 100</small></strong></div><div><span className="lv-score__fit"><Check size={14} /> Strong fit</span><h3>Worth reaching out.</h3><p>Cold rooms. Clear need.<br />The right person to contact.</p></div></div>
-    <ul className="lv-score__checks">{checks.map((c, i) => <li key={c.label} className={i === 0 ? "is-on" : undefined}><span>{c.label}</span><span className="lv-score__track" aria-hidden="true"><i style={{ width: `${c.points / c.max * 100}%` }} /></span><b>{c.points}<small>/{c.max}</small></b></li>)}</ul>
-    <div className="lv-score__source"><span className="lv-score__source-art" aria-hidden="true"><Mark size={20} /></span><span><b>38 pages read</b><small>Every point links to its source</small></span><span className="lv-score__source-check"><Check size={16} /></span></div>
-    <figcaption>Sample workspace · Outreach starts at 80</figcaption>
+export function ScoreIllustration({ scenario }: { scenario?: "logistics" } = {}) {
+  const logistics = scenario === "logistics";
+  const labels = ["Kenya expansion", "Distribution fit", "Brand profile", "Decision-maker", "Target market", "Fulfilment fit"];
+  return <figure className="lv-score" aria-label={logistics ? "Illustrative company fit: Meridian Home Co. scores 94 out of 100 across six checks." : "Sample company fit: Kilima Dairies scores 94 out of 100 across six checks."}>
+    <div className="lv-score__top"><span><span className="lv-score__fav"><Globe size={16} /></span><b>{logistics ? "Meridian Home Co." : "Kilima Dairies"}</b><small>{logistics ? "meridianhome.example" : "kilima.co.ke"}</small></span>{!logistics && <span className="lv-score__sample">Sample</span>}</div>
+    <div className="lv-score__summary"><div className="lv-score__ring"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="43" /><circle cx="50" cy="50" r="43" pathLength="100" strokeDasharray="94 100" /></svg><strong>94<small>/ 100</small></strong></div><div><span className="lv-score__fit"><Check size={14} /> Strong fit</span><h3>Worth reaching out.</h3><p>{logistics ? "Kenya market entry announced." : "Cold rooms. Clear need."}<br />{logistics ? "Local fulfilment fits the offer." : "The right person to contact."}</p></div></div>
+    <ul className="lv-score__checks">{checks.map((c, i) => <li key={c.label} className={i === 0 ? "is-on" : undefined}><span>{logistics ? labels[i] : c.label}</span><span className="lv-score__track" aria-hidden="true"><i style={{ width: `${c.points / c.max * 100}%` }} /></span><b>{c.points}<small>/{c.max}</small></b></li>)}</ul>
+    <div className="lv-score__source"><span className="lv-score__source-art" aria-hidden="true"><Mark size={20} /></span><span><b>{logistics ? "Kenya market entry note" : "38 pages read"}</b><small>{logistics ? "meridianhome.example/news/kenya" : "Every point links to its source"}</small></span><span className="lv-score__source-check"><Check size={16} /></span></div>
+    {!logistics && <figcaption>Sample workspace · Outreach starts at 80</figcaption>}
   </figure>;
 }

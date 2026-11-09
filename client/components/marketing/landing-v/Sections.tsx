@@ -12,9 +12,9 @@ import { ScoreIllustration, WorkflowIllustration } from "./Illustrations";
 import { WaitlistForm } from "./WaitlistForm";
 
 /** `links` defaults to the landing's in-page anchors; the inner pages pass the site routes and their own `current`. */
-export function Nav({ tone = "light", links = NAV_LINKS, current, cta = WAITLIST.cta, ctaHref = "#join" }: { tone?: "light" | "blue"; links?: { label: string; href: string }[]; current?: string; cta?: string; ctaHref?: string }) {
+export function Nav({ className = "", tone = "light", links = NAV_LINKS, current, cta = WAITLIST.cta, ctaHref = "#join" }: { className?: string; tone?: "light" | "blue"; links?: { label: string; href: string }[]; current?: string; cta?: string; ctaHref?: string }) {
   return (
-    <nav className={`lv-nav lv-wrap lv-nav--${tone}`} aria-label="Main">
+    <nav className={`lv-nav lv-wrap lv-nav--${tone} ${className}`} aria-label="Main">
       <Link className="lv-logo" href={ROUTES.home}><Mark size={22} /><span>Corral</span></Link>
       <div className="lv-nav__links">{links.map((l) => <Link key={l.href} href={l.href} aria-current={current === l.href ? "page" : undefined}>{l.label}</Link>)}</div>
       <div className="lv-nav__end">
@@ -78,7 +78,7 @@ export function Proof({ illustrated = false }: { illustrated?: boolean }) {
 
 /** Where each client takes Corral, from Settings → MCP (lib/mcp/tools.ts). V4 shows this here, since its hero
     already shows the agent conversation. */
-export function ClientList() {
+export function ClientList({ comingSoon = false }: { comingSoon?: boolean } = {}) {
   const logo: Record<string, string | undefined> = { cursor: "/corral/logos/cursor.svg", "claude-code": "/corral/logos/claude.svg", claude: "/corral/logos/claude.svg", vscode: "/corral/logos/vscode.svg" };
   return (
     <figure className="lv-clients c-app" aria-label="MCP clients and where Corral goes in each">
@@ -91,7 +91,7 @@ export function ClientList() {
           </li>
         ))}
       </ul>
-      <figcaption>Sign in as you. Keys for jobs that run alone can draft, and can’t send.</figcaption>
+      <figcaption>{comingSoon ? "Coming soon. API keys can draft. Only you can send." : "Sign in as you. Keys for jobs that run alone can draft, and can’t send."}</figcaption>
     </figure>
   );
 }

@@ -1,5 +1,7 @@
 # Corral
 
+![Corral product preview](https://media.uzskicorp.agency/corral/captura-2026-11-09-1794213361.png)
+
 Corral is a workspace for organizing product knowledge, companies, contacts, and sales conversations. A Next.js client talks to a tenant-scoped FastAPI API, with background processing for documents, CSV imports, demo email, billing, and AI reply suggestions.
 
 The repository contains API-backed flows, design-review fixtures, and unfinished integrations. This README describes the current implementation rather than the broader claims on the marketing pages.
