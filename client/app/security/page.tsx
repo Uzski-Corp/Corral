@@ -6,7 +6,7 @@ import { SecurityPage } from "@/components/marketing/site/Security";
 
 export const metadata: Metadata = {
   title: "Security",
-  description: "What Corral can touch and what it can’t: drafts you send, your own mailboxes, scoped keys that never send, and every call logged.",
+  description: "How Corral handles sign-in, workspace isolation, product knowledge and drafts.",
   alternates: { canonical: ROUTES.security },
   openGraph: openGraphFor(ROUTES.security),
 };

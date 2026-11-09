@@ -78,7 +78,7 @@ export function Proof({ illustrated = false }: { illustrated?: boolean }) {
 
 /** Where each client takes Corral, from Settings → MCP (lib/mcp/tools.ts). V4 shows this here, since its hero
     already shows the agent conversation. */
-export function ClientList() {
+export function ClientList({ comingSoon = false }: { comingSoon?: boolean } = {}) {
   const logo: Record<string, string | undefined> = { cursor: "/corral/logos/cursor.svg", "claude-code": "/corral/logos/claude.svg", claude: "/corral/logos/claude.svg", vscode: "/corral/logos/vscode.svg" };
   return (
     <figure className="lv-clients c-app" aria-label="MCP clients and where Corral goes in each">
@@ -91,7 +91,7 @@ export function ClientList() {
           </li>
         ))}
       </ul>
-      <figcaption>Sign in as you. Keys for jobs that run alone can draft, and can’t send.</figcaption>
+      <figcaption>{comingSoon ? "Coming soon. API keys can draft. Only you can send." : "Sign in as you. Keys for jobs that run alone can draft, and can’t send."}</figcaption>
     </figure>
   );
 }

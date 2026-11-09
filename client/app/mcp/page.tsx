@@ -6,7 +6,7 @@ import { McpPage } from "@/components/marketing/site/Mcp";
 
 export const metadata: Metadata = {
   title: "MCP server",
-  description: "Connect Cursor, Claude and any MCP client to Corral. Fifteen tools, OAuth sign-in, scoped API keys, and the same guardrails as the Send button.",
+  description: "Planned MCP access for Cursor, Claude and other clients. Search companies, read knowledge and prepare drafts with scoped workspace tools.",
   alternates: { canonical: ROUTES.mcp },
   openGraph: openGraphFor(ROUTES.mcp),
 };

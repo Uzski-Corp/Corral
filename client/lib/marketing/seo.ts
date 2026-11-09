@@ -54,7 +54,7 @@ const ORG_ID = `${SITE_URL}/#organization`;
 const SITE_ID = `${SITE_URL}/#website`;
 
 export const HOME_DESCRIPTION =
-  "Agentic lead generation. You tell Corral what you sell. It reads each company’s site, scores the fit, and drafts the email to the person who decides.";
+  "Corral is a workspace for product knowledge, companies, contacts and the conversations around them.";
 
 export function organization(): Thing {
   return {

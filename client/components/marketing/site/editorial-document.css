@@ -1,0 +1,29 @@
+/* Values from the Doop reading pages: 900px desktop and 390px mobile frames. */
+.ed-doc{min-height:100vh;background:#FFF;color:#141414;font:400 16px/1.55 var(--font-sans)}
+.ed-doc *{box-sizing:border-box}
+.ed-doc-wrap{max-width:720px;margin:0 auto;padding:48px 64px 80px}
+.ed-doc-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:#141414;font-weight:500;margin-bottom:40px;width:fit-content}
+.ed-doc-brand svg{display:block}
+.ed-doc .ed-doc-k{font-size:12px;color:#606064;margin:0 0 12px}
+.ed-doc h1{font:400 48px/1.1 var(--font-editorial-display);letter-spacing:-.02em;margin:0 0 16px}
+.ed-doc .ed-doc-lede{font-size:16px;line-height:1.65;color:#3F3F43;margin:0 0 36px;max-width:560px}
+.ed-doc h2{font:400 32px/1.15 var(--font-editorial-display);letter-spacing:-.02em;margin:40px 0 12px}
+.ed-doc p,.ed-doc li{font-size:15px;line-height:1.65;color:#3F3F43;margin:0 0 12px}
+.ed-doc ul{list-style:disc;padding-left:1.2em;margin:0 0 16px}
+.ed-doc .ed-doc-todo{display:inline-block;font:500 11px/1 var(--font-sans);color:#8A5A00;background:#FFF6E5;border:1px solid #F0D9A8;border-radius:4px;padding:3px 7px;vertical-align:middle;margin-left:6px}
+.ed-doc .ed-doc-note{font-size:13px;color:#606064;margin-top:28px;padding-top:20px;border-top:1px solid #EFEFF0}
+.ed-doc-note a{color:inherit;text-decoration:none}
+.ed-doc a:focus-visible,.ed-doc summary:focus-visible{outline:2px solid #224FD1;outline-offset:4px}
+.ed-doc-back{display:inline-flex;margin-top:28px;color:#224FD1;text-decoration:none;font-size:14px;font-weight:500}
+.ed-doc table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0 20px;overflow-wrap:anywhere}
+.ed-doc td,.ed-doc th{border-top:1px solid #EFEFF0;padding:10px 8px;text-align:left;vertical-align:top}
+.ed-doc th{color:#606064;font-weight:500}
+.ed-doc .ed-doc-pill{display:inline-block;font:500 11px var(--font-sans);color:#224FD1;background:#EAF0FD;border-radius:4px;padding:4px 8px;margin-bottom:16px}
+.ed-doc .ed-doc-warning{color:#8A5A00;background:#FFF6E5}
+.ed-doc-clients{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 28px}
+.ed-doc-client{display:flex;align-items:center;gap:9px;font-size:13px;min-width:0}
+.ed-doc-client img{width:22px;height:22px;object-fit:contain;flex-shrink:0}
+.ed-doc details{border-top:1px solid #EFEFF0;margin-top:24px}
+.ed-doc summary{padding:18px 0;cursor:pointer;font-weight:500}
+.ed-doc details h2:first-of-type{margin-top:16px}
+@media(max-width:720px){.ed-doc-wrap{padding:36px 20px 64px;max-width:390px}.ed-doc h1{font-size:40px}.ed-doc h2{font-size:24px}.ed-doc-clients{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.ed-doc td,.ed-doc th{padding:10px 5px}}
