@@ -40,9 +40,7 @@
 .sv-plan__inc { flex: 1; list-style: none; margin: 24px 0 0; padding: 0; display: grid; align-content: start; gap: 12px; font-size: 14px; line-height: 1.4; color: var(--lv-copy); }
 .sv-plan__inc li { display: flex; align-items: baseline; gap: 12px; }
 .sv-plan__inc li::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 1px; background: var(--lv-ink); transform: translateY(-2px); }
-.sv-plan__cta { margin-top: 32px; display: flex; align-items: center; justify-content: center; height: 44px; border-radius: 8px; background: var(--lv-ink); color: #fff; font: 500 14px/1 var(--font-sans); text-decoration: none; transition: transform 150ms var(--lv-ease); }
-.sv-plan__cta:active { transform: scale(.98); }
-.sv-plan.is-primary .sv-plan__cta { background: var(--sv-plate-ink); }
+.sv-plan__cta { margin-top: 32px; width: 100%; }
 .sv-plans__note { margin-top: 24px !important; text-align: center; font-size: 13px; color: var(--lv-muted); }
 .sn--agent .sn-compare thead th { top: 0; }
 

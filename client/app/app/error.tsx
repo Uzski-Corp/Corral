@@ -2,7 +2,9 @@
 /* A screen inside the app failed to render (M10). Same voice as every error in Corral: what failed, that
    nothing was lost, the retry, and the technical detail last, in mono. */
 import { useEffect } from "react";
-import { Button, ErrorState, Icon } from "@/components/app";
+import { Button } from "@/components/app/primitives";
+import { ErrorState } from "@/components/app/States";
+import { Icon } from "@/components/app/icons";
 
 export default function AppError({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
   useEffect(() => { console.error(error); }, [error]);

@@ -1,248 +1,151 @@
 # Corral
-<img width="2560" height="1600" alt="image" src="https://github.com/user-attachments/assets/d919ceb5-641d-45f8-890a-4c4dee79dc59" />
 
+Corral is a workspace for organizing product knowledge, companies, contacts, and sales conversations. A Next.js client talks to a tenant-scoped FastAPI API, with background processing for documents, CSV imports, demo email, billing, and AI reply suggestions.
 
-> **AI-native B2B lead intelligence and full-funnel outbound acceleration platform.**
-> Replaces brittle single-purpose scrapers and domain-burning blast tools with grounded product knowledge, deterministic deep crawl, waterfall enrichment, and mailbox-protected sequences.
+The repository contains API-backed flows, design-review fixtures, and unfinished integrations. This README describes the current implementation rather than the broader claims on the marketing pages.
 
-[![Next.js](https://img.shields.io/badge/Frontend-Next.js%2015%2F16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
-[![FastAPI](https://img.shields.io/badge/Backend-FastAPI%20(Python%203.12+)-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
-[![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL%2016%20%2B%20pgvector-336791?style=flat-square&logo=postgresql)](https://github.com/pgvector/pgvector)
-[![Tailwind CSS](https://img.shields.io/badge/Styling-Tailwind%20CSS%20v4-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
-[![License](https://img.shields.io/badge/License-Proprietary%20%2F%20Private-orange?style=flat-square)](#)
+## What works in the source
 
----
+| Area | Current implementation |
+| --- | --- |
+| Authentication and setup | WorkOS email-code and hosted OAuth sign-in, sealed session cookies, persisted onboarding, workspace/profile settings, first-product setup, and public-site reading. New accounts start empty. |
+| Products and knowledge | Product CRUD; PDF, DOCX, Markdown, and public-URL ingestion; background parsing, chunking, embeddings, source recovery, and passage search. Original uploads are stored in Postgres. Local hashing embeddings are the default; an OpenAI-compatible provider is optional. |
+| Companies and contacts | Company/person records, per-product fit records, filtering, cursor pagination, saved segments, bulk actions, duplicate merging, unsubscribe, and background CSV imports with mapping and dry runs. |
+| Unibox | Stored conversations, messages, drafts, triage, and handled/snoozed states. Real AutoSend transport is restricted to one configured demo workspace and an explicit recipient allowlist, with durable delivery intent and distinct uncertain-delivery states. |
+| AI reply suggestions | Postgres tracks runs; the worker submits and reconciles them with Pi. Pi reads a bound thread and selected product's knowledge passages. Suggestions require an explicit action before replacing a draft and never send email themselves. Currently restricted to the demo workspace. |
+| Discovery | Stores runs, deducts estimated workspace credits, and submits requests to Pi when configured. The completion pipeline is unfinished, as described below. |
+| Sequences and settings | Persists sequence drafts/status, mailbox records, integration status/configuration, Phoenix field mappings, API-key lifecycle, and MCP connection records. |
+| Billing | Seven-day workspace trial, Paddle checkout/portal integration, signed webhook intake, background subscription projection, and entitlements. Access enforcement defaults to off. |
+| SMS | Signed-in ThriveVAS playground when configured. Billing reminder SMS is a separate unfinished integration. |
+| Public site | Marketing, pricing, security, changelog, legal, and payment pages. A separate Cloudflare Worker serves selected prerendered pages and a D1 waitlist with optional AutoSend confirmation email. |
 
-## At a Glance
+## Current limits
 
-Most B2B outbound tooling fails at one of three stages:
-1. **Shallow Discovery**: Static databases with stale or generic contact info.
-2. **Domain Reputation Destruction**: Blasting cold emails through traditional marketing ESPs that get blacklisted or suspended.
-3. **Rigid "Lead Buckets"**: Tying contacts irreversibly to a single campaign rather than scoring them continuously against a live company knowledge base.
+- Discovery's Pi task generates candidate text with an empty tool registry. Web search/crawling, verified contact enrichment, completion reconciliation, and automatic CRM import are not wired. Submission does not establish discovered or verified companies.
+- Sequence creation, launch, and pause persist state but do not run an outbound scheduler. Customer mailbox OAuth, SMTP rotation, and general mailbox delivery are not implemented. Real mail transport is the allowlisted AutoSend demo flow.
+- Cal.com, Phoenix, and general AutoSend integration controls store status/configuration; they do not authorize providers or execute booking/ERP handoffs. Developer screens manage records and secrets; the API does not expose a functioning MCP server.
+- Pending team invitations are stored; invitation delivery/acceptance is not wired. Workspace/profile image uploads require configured Cloudflare R2.
+- Billing has no yearly checkout, refunds, or plan-change flow. Company/draft/mailbox allowances are displayed, not count-enforced. Billing reminder SMS has no sending provider.
+- Provider credentials, webhooks, and manual end-to-end testing are required for enabled integrations. Review fixtures and marketing examples do not establish live provider behavior.
 
-**Corral** fixes this with an **AI-native, deterministic pipeline**:
+## Architecture
 
-```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                               CORRAL FUNNEL OVERVIEW                                   │
-└────────────────────────────────────────────────────────────────────────────────────────┘
+```text
+Browser
+  └─ Next.js client — routes, session context, typed fetch clients
+       └─ FastAPI /api/v1 — WorkOS sessions and tenant authorization
+            ├─ Postgres + pgvector — workspace data, files, outbox, billing/AI state
+            ├─ Redis + arq — ingestion/import jobs and scheduled reconciliation
+            ├─ WorkOS / Paddle / AutoSend / ThriveVAS / R2
+            └─ Pi service — authenticated HTTP, separate Node runtime
+                 ├─ OpenAI model provider
+                 ├─ scoped read-only tools back to FastAPI for replies
+                 └─ SQLite checkpoints and persisted reply-run budgets
 
-  [ 1. KNOWLEDGE BASE ]      Chunked offerings, battlecards & ICP matrices in pgvector
-           │
-           ▼
-  [ 2. STEALTH CRAWL  ]      Serper Google Dorks + Crawl4AI/Playwright anti-bot scraper
-           │
-           ▼
-  [ 3. WATERFALL ENRICH ]    Regex scan ➔ Hunter / Dropcontact ➔ ZeroBounce SMTP verification
-           │
-           ▼
-  [ 4. AI ICP SCORING ]      Structured evaluation against Product KB via LiteLLM + Instructor
-           │
-           ▼
-  [ 5. DUAL-ENGINE SEND ]    Engine 1: Rotated cold mailboxes (30/day, human jitter)
-                             Engine 2: AutoSend MCP for warm nurture, drips & alerts
-           │
-           ▼
-  [ 6. UNIBOX & ERP   ]      Instant sentiment triage, Cal.com booking & Phoenix ERP sync
-```
-
----
-
-## Key Architectural Highlights
-
-### 1. Product Knowledge Base Over "Lead Buckets"
-Instead of rigid lead buckets where product criteria, filters, and contacts are locked together, Corral decouples them:
-- **Product Knowledge Base (The Brain)**: Store value props, ICP criteria, case studies, and objection matrices vectorized with `pgvector`.
-- **Master Lead CRM**: A unified, deduplicated company/contact directory. A single prospect can be evaluated concurrently across multiple products (`FitScore = 92%` for Product A, `FitScore = 41%` for Product B).
-- **Smart Segments**: Dynamic, saved filter views (e.g., *"Fit > 80% for Enterprise, Retail sector, Verified email, Not contacted"*).
-
-### 2. Dual-Engine Email Deliverability Architecture
-Corral cleanly separates cold front-of-funnel outreach from warm lifecycle nurturing:
-
-| Capability | Engine 1: Cold Outbound Pool | Engine 2: AutoSend Lifecycle & Nurture |
-| :--- | :--- | :--- |
-| **Target Audience** | Unsolicited cold prospects | Replied leads, meeting signups, active clients |
-| **Infrastructure** | Rotated Google Workspace / M365 Inboxes | Dedicated ESP infrastructure with AutoSend |
-| **Protocol / Interface** | Direct SMTP / OAuth2 API rotation | AutoSend REST API & Native MCP Server |
-| **Throughput & Cadence** | Strict 30–35 emails/day per inbox, 2–7m jitter | High-throughput transactional & drip triggers |
-| **Format & Headers** | Clean plain-text / human 1-to-1 headers | Responsive rich HTML, CTA blocks, tracking |
-| **Reputation Safe** | Protects root domain from spam flags | Isolated from cold outreach spam liabilities |
-
-### 3. "Deterministic Muscle + Agentic Brain"
-No wasted LLM tokens clicking through pages sequentially. Corral uses deterministic execution for raw speed, and LLMs strictly for high-leverage reasoning:
-- **Deterministic Muscle**: 
-  - **Serper.dev**: Resolves 1,000+ domains in <3s via automated dorking.
-  - **Crawl4AI + Playwright**: Headless JavaScript rendering with stealth anti-bot evasion and token-efficient Markdown extraction.
-  - **Polars**: Ingests, dedupes, and normalizes 50,000+ lead rows in <1.5s.
-  - **Waterfall Enrichment**: Cascades from free page scraping to Hunter/Dropcontact APIs, ending in ZeroBounce SMTP verification.
-- **Agentic Brain**:
-  - **Hermes Agent (Nous Research)**: Persistent-memory Autonomous SDR daemon coordinating subagents (Prospector, Fit Evaluator, Unibox Battlecard, Campaign Orchestrator).
-  - **OpenClaw**: Web automation agent for complex SPAs, authenticated portals, and multi-step forms.
-
-### 4. Unified Smart Inbox (Unibox) & Autonomous Copilot
-- Real-time reply ingestion via IMAP/webhooks with sub-2s sentiment classification (`Interested`, `Objection`, `OOO`, `Not Interested`).
-- Auto-drafts contextual responses grounded in product battlecards and embeds the rep's Cal.com scheduling link.
-- Automatically halts active sequences upon response detection.
-
-### 5. Bi-Directional ERP & Cal.com Handoff
-- Real-time calendar booking via Cal.com webhooks.
-- Authenticated HMAC-SHA256 webhook bridge to upstream ERPs (such as an Elixir Phoenix ERP) to automatically generate live CRM deals and opportunities upon conversion.
-
----
-
-## Tech Stack
-
-```
-corral/
-├── client/                     # Next.js 15+ Frontend (React 19, Tailwind v4)
-│   ├── app/                    # App Router pages & layout
-│   ├── components/             # Radix UI + shadcn/ui components
-│   └── lib/                    # State management (Zustand, TanStack Query)
-├── backend/                    # FastAPI Backend (Python 3.12+)
-│   ├── app/
-│   │   ├── api/                # REST endpoints (auth, leads, campaigns, unibox)
-│   │   ├── core/               # App config, database session, security
-│   │   ├── models/             # SQLAlchemy 2.0 Async + pgvector models
-│   │   ├── services/           # Crawl4AI, Waterfall enrichment, LiteLLM
-│   │   └── workers/            # ARQ Redis background jobs & email dispatch
-│   └── alembic/                # Async DB migrations
-└── docker-compose.yml          # Local infra (PostgreSQL 16 pgvector, Redis)
+Static marketing path
+  client/.next → hosting/landing/assemble.mjs → Cloudflare Worker assets
+                                               └─ D1 waitlist + confirmation email
 ```
 
-### Core Technologies
-- **Frontend**: [Next.js 15+](https://nextjs.org/) (App Router, React 19, TypeScript), [Tailwind CSS v4](https://tailwindcss.com/), [TanStack Table v8](https://tanstack.com/table/v8) + [TanStack Virtual](https://tanstack.com/virtual/v3) (60fps scrolling over 20,000+ rows), [Framer Motion](https://www.framer.com/motion/) (Emil Kowalski micro-interaction design system, Brex aesthetic).
-- **Backend**: [FastAPI](https://fastapi.tiangolo.com/) (Python 3.12+, Pydantic v2), [SQLAlchemy 2.0 Async](https://www.sqlalchemy.org/) + [Alembic](https://alembic.sqlalchemy.org/).
-- **Database & Queue**: [PostgreSQL 16](https://www.postgresql.org/) with [`pgvector`](https://github.com/pgvector/pgvector), [Redis](https://redis.io/) + [ARQ](https://github.com/samuelcolvin/arq).
-- **Scraping & Data**: [Crawl4AI](https://github.com/unclecode/crawl4ai), [Playwright](https://playwright.dev/), [Polars](https://pola.rs/).
-- **AI & SDR Agents**: [LiteLLM](https://github.com/BerriAI/litellm) + [Instructor](https://github.com/jxnl/instructor), [Hermes Agent](https://github.com/NousResearch/hermes-agent), [OpenClaw](https://github.com/openclaw/openclaw).
-- **Lifecycle Engine**: [AutoSend MCP Server & API](https://autosend.com).
+FastAPI owns authentication, membership, permissions, and durable business state. Requests and jobs set transaction-local tenant context and use Postgres row-level security under the unprivileged `corral_app` role. Browser writes require an allowed origin. Provider webhooks use signature checks; private Pi tools use run-scoped credentials.
 
----
+The arq worker processes knowledge ingestion, CSV imports, billing events, and short reconciliation cycles for demo mail and AI replies. Pi executes model conversations separately, using its own model key and a single-owner local data directory. Reply runs have deadlines, cancellation, model/tool budgets, and validation of cited passage IDs.
 
-## Getting Started
+## Repository and stack
 
-### Prerequisites
-- **Node.js** 20+ & **pnpm** 9+
-- **Python** 3.12+ & [**uv**](https://github.com/astral-sh/uv)
-- **Docker** & **Docker Compose**
+| Location | Responsibility |
+| --- | --- |
+| `client/` | Next.js 16.3.6, React 19.2.8, TypeScript, Tailwind CSS 4, custom components/CSS, Phosphor icons. |
+| `client/components/session/` | Session confirmation, live API context, persisted onboarding. |
+| `client/lib/api/` | Typed fetch clients, deadlines, response decoders, and API errors. |
+| `server/` | Python 3.12, FastAPI, async SQLAlchemy, Alembic, Postgres/pgvector, Redis/arq. |
+| `server/app/{kb,leads,mail,ai,billing}/` | Business services; routes are under `app/api/v1/routes/`. |
+| `services/pi-intelligence/` | Node 24+, Pi Durable/AI/Chord, OpenAI, SQLite checkpoints. Separate npm lockfile. |
+| `hosting/landing/` | Static site assembly, Cloudflare Worker, D1 waitlist. |
+| `docker-compose.yml` | Local Postgres, Redis, API, worker, frontend. |
+| `docker-compose.demo.yml` | Optional local Pi overlay. |
+| `docker-compose.coolify.yml` | Hosted app stack using an external Pi service. |
 
----
+The client uses React context/hooks and typed `fetch`, not Zustand or TanStack Query. TanStack Table/Virtual, shadcn/Radix, Framer Motion, Crawl4AI, Hunter, and the earlier Hermes/OpenClaw architecture are not current dependencies. See the actual package manifests and [`server/requirements.txt`](server/requirements.txt).
 
-### 1. Start the stack
+## Local setup
 
-From the repo root. If you already started this stack once, recreate the network first (`down` keeps the database volume):
+### Interface without an API
 
-```bash
-docker compose down
+Use Node **22.x** and pnpm **12.6.0**, pinned in `client/package.json`. Run client commands inside `client/`:
+
+```sh
+cd client
+nvm use
+pnpm install --frozen-lockfile
+cp .env.example .env.local  # only if this file does not already exist
+pnpm dev:review
+```
+
+Open [localhost:3000/app](http://localhost:3000/app). Review mode bypasses auth and uses sample data. Never enable `NEXT_PUBLIC_DESIGN_REVIEW` on a real deployment.
+
+### Full stack
+
+Copy `server/.env.example` to `server/.env` if needed and configure WorkOS for real sign-in. From the repository root:
+
+```sh
 docker compose up --build
 ```
 
-That builds and starts Postgres 16 (pgvector), Redis, the API, the background worker, and the Next.js app.
+| Service | Address |
+| --- | --- |
+| App | http://localhost:3000 |
+| API docs | http://localhost:8000/docs |
+| Liveness / readiness | http://localhost:8000/healthz · http://localhost:8000/readyz |
+| Postgres | `localhost:5433`, user/password/database `corral` |
+| Redis | `localhost:6379` |
 
-- App: http://localhost:3000
-- API docs: http://localhost:8000/docs
-- Liveness: http://localhost:8000/healthz
-- Readiness (Compose waits on this): http://localhost:8000/readyz
+The API container waits for Postgres and runs its migration wrapper before serving. Worker/frontend startup waits for API readiness. Local Compose uses a fixed DB/Redis subnet; if an existing stack has the older network definition, recreate its network with `docker compose down` before starting again. Preserve the database volume unless erasure is intended.
 
-Database defaults match `server/.env.example` (`corral` / `corral`, database `corral`). On your machine that Postgres is `localhost:5433`, so it does not fight a database already using port 5432. Copy `server/.env.example` to `server/.env` and add WorkOS keys when you want real sign-in; Compose loads it if it is present. Until those keys are set, auth answers 503.
+For frontend hot reload, stop Docker's frontend with `docker compose stop web`, leave the API/worker/databases running, then run `pnpm dev` in `client/`. It enables the app locally and binds 3000 explicitly. Use `localhost` on both sides so session cookies reach the app.
 
-Only the databases: `docker compose up postgres redis`.
+For host-based Python setup, follow [`server/README.md`](server/README.md). The entry points are `uvicorn app.main:create_app --factory --reload --port 8000` and `arq app.worker.main.WorkerSettings`. Use database port **5433** when connecting from the host to Compose; the server env example defaults to 5432.
 
-Steps 2 and 3 are the same stack without Docker.
+### Optional local Pi
 
----
+Copy `services/pi-intelligence/.env.example` to `.env`, configure the model key and a `PI_SERVICE_TOKEN` of at least 32 characters, and put the same token in `server/.env`:
 
-### 2. Backend Setup (FastAPI + uv)
-
-```bash
-cd backend
-
-# Install dependencies using uv
-uv sync
-
-# Install Playwright browser binaries for stealth scraping
-uv run playwright install chromium
-
-# Run database migrations
-uv run alembic upgrade head
-
-# Start background worker (ARQ)
-uv run arq app.workers.worker.WorkerSettings
-
-# Start the API server
-uv run uvicorn app.main:app --reload --port 8000
+```sh
+docker compose -f docker-compose.yml -f docker-compose.demo.yml up --build
 ```
 
-The API documentation will be accessible at `http://localhost:8000/docs`.
+The overlay connects API/worker to `http://pi:8090` and Pi back to `http://api:8000`, without a published Pi port. Pi requires single-owner local disk. Running it directly requires Node 24+ and Linux `flock`; install its separate dependencies with `npm ci --ignore-scripts`.
 
----
+## Configuration
 
-### 3. Frontend Setup (Next.js 15 + pnpm)
+Use [`server/.env.example`](server/.env.example), [`client/.env.example`](client/.env.example), and [`services/pi-intelligence/.env.example`](services/pi-intelligence/.env.example) as the variable references.
 
-```bash
-cd client
+- WorkOS needs API/client IDs, a Fernet cookie password, and the API callback URL. Local boot without WorkOS returns 503 from auth; staging/production configuration requires credentials.
+- Frontend/CORS origins, callback URL, and session cookie names must agree. Keep provider secrets on the API or Pi service.
+- `NEXT_PUBLIC_*` values are compiled into browser assets. Set API origin and public Paddle values before building; runtime-only changes cannot update an existing bundle.
+- AutoSend demo mail needs its workspace UUID, sender, reply-to address, recipient allowlist, and signed inbound/delivery webhooks. See [`docs/DEMO-HANDOFF.md`](docs/DEMO-HANDOFF.md) for the manual exercise; deployment observations there are dated.
+- `BILLING_ENFORCE_ACCESS` defaults to false. Its current gate covers new KB ingestion/re-reads and CSV imports that write rows, rather than every app feature.
 
-# Install dependencies
-pnpm install
+## Hosting and build paths
 
-# Start development server
-pnpm dev
-```
+| Path | Responsibility |
+| --- | --- |
+| Coolify | `docker-compose.coolify.yml` configures the frontend at `app.corral.uzskicorp.agency` and API at `api.corral.uzskicorp.agency`. Pi runs externally on Rumpty through `PI_SERVICE_URL`. |
+| Vercel | The client is linked to a Vercel project. `client/vercel.json` pins frozen install and guarded webpack build commands. Root Directory must be `client`, Node must be 22.x, and app access depends on `CORRAL_APP`. The local link does not verify remote domains/settings. |
+| Cloudflare | `hosting/landing/cloudflare.config.ts` configures `corral.uzskicorp.agency`. Assembly copies selected prerendered pages and static assets; the Worker adds waitlist handling. It does not run FastAPI or authenticated Next server routes. |
 
-The dashboard will be live at `http://localhost:3000`.
+Local Docker and Coolify share `client/Dockerfile`, standalone output, and static/public assets. Preserve its `/workspace/corral` build directory: this checkout's earlier `/app` path omitted root-layout styles. Next tracing and Tailwind source roots are explicit. Development, production compilation, type generation, and Playwright servers use webpack; production CSS preserves strict import order.
 
----
+Fonts are committed variable WOFF2 files loaded through `next/font/local`, so compilation does not fetch Google Fonts. `pnpm build` checks root CSS and emitted font files on home, app, and sign-in before packaging. This artifact check is separate from tests and browser QA. See [`client/README.md`](client/README.md) and [`hosting/landing/README.md`](hosting/landing/README.md).
 
-## Environment Configuration
+Coolify's configured serialized build command is `docker compose --progress plain --parallel 1 build`. Deployment and merging remain separate manual decisions.
 
-Create a `.env` file in `backend/` and `client/` based on the configuration below:
+## Checks and verification boundary
 
-```ini
-# --- Database & Cache ---
-DATABASE_URL=postgresql+asyncpg://corral_user:corral_password@localhost:5432/corral
-REDIS_URL=redis://localhost:6379/0
+Client commands: `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test`, `pnpm test:coverage`, and `pnpm test:e2e`. Tests use Vitest/Testing Library/MSW and Playwright. API commands and database requirements are in [`server/README.md`](server/README.md); Pi has `npm run check`.
 
-# --- Search & Deep Scraping ---
-SERPER_API_KEY=your_serper_dev_key
-PROXY_POOL_URL=http://user:pass@proxy.brightdata.com:22225
-
-# --- AI Models (LiteLLM) ---
-OPENAI_API_KEY=your_openai_key
-ANTHROPIC_API_KEY=your_anthropic_key
-DEFAULT_FAST_MODEL=gemini/gemini-2.5-flash
-DEFAULT_REASONING_MODEL=claude-3-5-sonnet-20241022
-
-# --- Lead Enrichment Fallbacks ---
-HUNTER_API_KEY=your_hunter_api_key
-ZEROBOUNCE_API_KEY=your_zerobounce_api_key
-
-# --- AutoSend ESP & Nurture Engine (MCP) ---
-AUTOSEND_API_KEY=your_autosend_api_key
-AUTOSEND_PROJECT_ID=your_autosend_project_id
-AUTOSEND_DEFAULT_SENDER_ID=your_sender_id
-
-# --- Autonomous SDR (Hermes Agent / OpenClaw) ---
-HERMES_AGENT_ENDPOINT=http://localhost:8080
-HERMES_PERSISTENT_MEMORY_PATH=/data/hermes_memory
-
-# --- Calendar & Upstream ERP Integration ---
-CAL_API_KEY=your_cal_com_api_key
-PHOENIX_ERP_WEBHOOK_URL=https://erp.yourdomain.com/api/webhooks/corral
-PHOENIX_ERP_SECRET=your_hmac_sha256_secret
-```
-
----
-
-## Design System & Interface Standards
-
-Corral's client interface is engineered as a high-density, low-latency financial/SaaS instrument:
-- **Palette**: Brex-inspired aesthetic — `#ffffff` paper canvas framed by `#000710` (Abyss) and `#15191e` (Carbon), accented with a focused `#ff5900` (Ember) spark for primary actions.
-- **Typography**: Compressed geometric neutrality via **Inter** with negative tracking (`-0.01em` to `-0.03em`), paired with **Flecha** for high-impact display moments.
-- **Motion & Micro-interactions**: Emil Kowalski design principles — 140ms snappy spring curves, tactile `scale(0.97)` active buttons, zero gratuitous transitions.
-- **Virtualization**: TanStack Virtual ensures frictionless 60fps rendering even across tens of thousands of enriched leads.
-
----
+Build/type/lint checks do not establish live auth, payment, discovery, email, or SMS behavior. Exercise configured integrations manually and distinguish provider acceptance from delivery. Test execution and UI QA are handed to the developer.
 
 ## License
 
-Proprietary and Confidential. Unauthorized copying, distribution, or modification is strictly prohibited.
+Proprietary and confidential. Third-party font licenses are included in `client/app/fonts/licenses/`.

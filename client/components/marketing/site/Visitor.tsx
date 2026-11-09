@@ -68,7 +68,7 @@ export function SiteNavAccount({ visitor }: Pin) {
 export function FencelineNavAccount({ visitor }: Pin) {
   const v = useVisitor(visitor);
   if (!v) return null;
-  return <div className="fl-nav__me"><VisitorAvatar visitor={v} /><Link className="fl-btn fl-btn--sm" href={APP_HREF}>Open app</Link></div>;
+  return <div className="fl-nav__me"><VisitorAvatar visitor={v} /><Link className="fl-btn c-btn c-btn--ink c-btn--base" href={APP_HREF}>Open app</Link></div>;
 }
 
 /** A plain "Sign in" link elsewhere on a marketing page (footer, menus, 404, Fenceline links) that reads "Open app"

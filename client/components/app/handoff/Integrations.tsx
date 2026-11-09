@@ -26,24 +26,14 @@ import { BillingConnected, BillingView, SmsPlayground, TeamView, type TeamApi, t
 import { useAppData } from "@/components/session/AppData";
 import { displayName, type Member } from "@/lib/api";
 import type { WorkspaceInvite } from "@/lib/api/workspace";
+import { SECTIONS, settingsTabOf } from "./navigation";
+export { settingsTabOf, settingsTabLabel } from "./navigation";
 
 type Tab = SettingsSeed["tab"];
 type DialogKind = NonNullable<SettingsSeed["dialog"]>;
 const TILE: Record<IntegrationId, string> = { cal: "Ca", phoenix: "Px", autosend: "As" };
 
-const SECTIONS: { id: string; label: string; note?: string; href?: string; group?: "dev" }[] = [
-  { id: "profile", label: "Profile", note: "Your name and photo" },
-  { id: "workspace", label: "Workspace", note: "Name, time zone, sending hours" }, { id: "team", label: "Team", note: "People and roles" },
-  { id: "mailboxes", label: "Mailboxes", href: "/app/sequences?state=mailboxes" }, { id: "integrations", label: "Integrations" },
-  { id: "billing", label: "Billing", note: "Plan and credits" },
-  { id: "sms", label: "SMS", note: "Send a text" },
-  /* M9 (ENG-59): Developers. */
-  { id: "mcp", label: "MCP", group: "dev" }, { id: "keys", label: "API keys", group: "dev" }, { id: "docs", label: "Docs", group: "dev" },
-];
 const isDev = (id: string): id is DevSection => id === "mcp" || id === "keys" || id === "docs";
-/** `/app/settings/<id>` (works in production, unlike `state`): a Settings page with its own place, or undefined. */
-export const settingsTabOf = (tab?: string): string | undefined => SECTIONS.find((x) => x.id === tab && !x.href)?.id;
-export const settingsTabLabel = (tab: string): string => SECTIONS.find((x) => x.id === tab)!.label;
 
 /** The settings page. Integrations (M8) and Developers (M9) are designed; the others keep their place. */
 /** M13: which review states open Team or Billing. */
@@ -279,7 +269,7 @@ function IntegrationPage({ id, conn, tab, setTab, onBack, onFix, onDisconnect, m
       <header className="i-dhead"><Tile label={TILE[id]} />
         <div className="i-dhead__t"><h2>{i.name}</h2><span className="i-dhead__sub"><span className="c-faint">{i.role}</span><Pill tone={h.tone}>{h.word}</Pill></span></div>
         <div className="i-dhead__acts">{h.needsYou && p && <Button variant="primary" onClick={onFix}>{p.action}</Button>}
-          {conn !== "off" && <Button variant="quiet" className="i-danger" onClick={onDisconnect}>Disconnect</Button>}</div>
+          {conn !== "off" && <Button variant="secondary-destructive" onClick={onDisconnect}>Disconnect</Button>}</div>
       </header>
       {h.needsYou && p && <Banner tone={conn === "error" ? "error" : "caution"} title={p.title}>{p.body}</Banner>}
       <div className="i-tabs"><Tabs label={`${i.name} sections`} tabs={tabs} value={tab} onChange={(v) => setTab(v as Tab)} /></div>
@@ -491,7 +481,7 @@ function Disconnect({ open, id, onClose, onConfirm }: { open: boolean; id: Integ
   const n = integration(id).name;
   return (
     <Dialog open={open} onClose={onClose} tone="danger" width={480} title={id === "phoenix" ? `Disconnect ${n}?` : <BrandLockup brand={id}>{`Disconnect ${n}?`}</BrandLockup>} description="You can connect it again at any time. Nothing in it is deleted."
-      footer={<><Button variant="quiet" onClick={onClose}>Cancel</Button><Button variant="primary" className="i-btn-danger" onClick={onConfirm}>Disconnect {n}</Button></>}>
+      footer={<><Button variant="quiet" onClick={onClose}>Cancel</Button><Button variant="destructive" onClick={onConfirm}>Disconnect {n}</Button></>}>
       <ul className="i-lose">{LOSE[id].map((l) => <li key={l}>{l}</li>)}</ul>
     </Dialog>
   );

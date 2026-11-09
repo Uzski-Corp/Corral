@@ -18,7 +18,7 @@ export function Nav({ tone = "light", links = NAV_LINKS, current, cta = WAITLIST
       <Link className="lv-logo" href={ROUTES.home}><Mark size={22} /><span>Corral</span></Link>
       <div className="lv-nav__links">{links.map((l) => <Link key={l.href} href={l.href} aria-current={current === l.href ? "page" : undefined}>{l.label}</Link>)}</div>
       <div className="lv-nav__end">
-        <a className="lv-nav__cta" href={ctaHref}>{cta}</a>
+        <a className={`lv-nav__cta c-btn c-btn--base c-btn--${tone === "blue" ? "secondary" : "ink"}`} href={ctaHref}>{cta}</a>
       </div>
     </nav>
   );

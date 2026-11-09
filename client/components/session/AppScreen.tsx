@@ -1,6 +1,8 @@
 "use client";
 import { useCallback, useMemo } from "react";
-import { AppDemo, type AppDemoProps, type SessionUnavailableProps, type ShellAccountProp } from "@/components/app";
+import { AppDemo, type AppDemoProps } from "@/components/app/AppDemo";
+import type { SessionUnavailableProps } from "@/components/app/SessionUnavailable";
+import type { ShellAccountProp } from "@/components/app/Shell";
 import type { ApiError } from "@/lib/api/errors";
 import type { AppReviewState } from "@/lib/auth/appState";
 import { AppSkeleton } from "@/components/app/States";

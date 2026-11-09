@@ -2,6 +2,7 @@
 /* The M1 app, wired with sample data: shell + Unibox home, Companies, Segments, Contacts, ⌘K,
    an enroll dialog and toasts. Engineering: copy the composition, replace data.ts with real queries. */
 import { DemoMailbox } from "./unibox/DemoMailbox";
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LEADS, THREADS, type Lead, type Thread } from "./data";
@@ -18,18 +19,19 @@ import { ContactsEmpty, SegmentsEmpty } from "./Empties";
 import type { ContactsReviewState } from "@/lib/contacts/state";
 import { ToastProvider, useToast } from "./Toaster";
 import { SessionUnavailable, type SessionUnavailableProps } from "./SessionUnavailable";
-import { KnowledgeBase, PRODUCT } from "./kb";
+import { PRODUCT } from "./kb/data";
 import { productRows } from "@/lib/kb/products";
 import { useKbProducts } from "./kb/live";
 import { useLeadProduct, useLiveSegments } from "./leads/live";
 import { useAppData } from "@/components/session/AppData";
 import type { KbReviewState } from "@/lib/kb/state";
-import { LeadsView } from "./leads";
 import type { LeadsReviewState } from "@/lib/leads/state";
-import { CREDITS, DiscoveryView, type DiscoveryCatalog } from "./discovery";
+import { CREDITS } from "./discovery/data";
+import type { DiscoveryCatalog } from "./discovery/Discovery";
 import type { DiscoveryReviewState } from "@/lib/discovery/state";
 import { runFromApi } from "@/lib/discovery/run";
-import { SequencesView, seedFor, type SequenceCatalog, type SeqTab } from "./sequences";
+import { seedFor } from "./sequences/data";
+import type { SequenceCatalog, SeqTab } from "./sequences/Sequences";
 import type { KeysApi } from "./mcp/Keys";
 import type { TeamApi } from "./settings";
 import type { Member } from "@/lib/api";
@@ -37,17 +39,27 @@ import type { WorkspaceInvite } from "@/lib/api/workspace";
 import { firstCallFrom, type ApiKey as ApiKeyRow, type Connection as ConnRow, type FirstCallCheck } from "./mcp/data";
 import type { SequenceReviewState } from "@/lib/sequences/state";
 import { poolSummary } from "@/lib/sequences/sequence";
-import { UniboxView, UNIBOX_TABS, needsYou, UNIBOX_THREADS, uniboxSeedFor, type UniboxTab } from "./unibox";
+import { UniboxView, UNIBOX_TABS, needsYou } from "./unibox/UniboxView";
+import { UNIBOX_THREADS, seedFor as uniboxSeedFor, type UniboxTab } from "./unibox/data";
 import type { UniboxReviewState } from "@/lib/unibox/state";
 import { appPath, locationFromPath } from "@/lib/appPath";
 import { isAppPath } from "@/lib/auth/paths";
-import { SettingsView, settingsTabLabel, settingsTabOf } from "./handoff";
-import { ProductsView } from "./products/Products";
+import { settingsTabLabel, settingsTabOf } from "./handoff/navigation";
 import type { SettingsReviewState } from "@/lib/integrations/state";
 import { detailFromApi, type LastEvent } from "@/lib/integrations/live";
 import type { MapRow } from "@/lib/integrations/integrations";
 import type { LoadDetail } from "./handoff/Integrations";
 import { SECTION_TITLE, sectionOf, type McpReviewState } from "@/lib/mcp/state";
+
+// Keep inactive feature screens out of the initial app chunk. Data and tab
+// helpers stay synchronous; the shell and its state remain mounted on navigation.
+const loadingView = () => <div className="c-view c-view__scroll"><SkeletonTable label="Loading screen" /></div>;
+const KnowledgeBase = dynamic(() => import("./kb/KnowledgeBase").then((m) => m.KnowledgeBase), { loading: loadingView });
+const LeadsView = dynamic(() => import("./leads/Leads").then((m) => m.LeadsView), { loading: loadingView });
+const DiscoveryView = dynamic(() => import("./discovery/Discovery").then((m) => m.DiscoveryView), { loading: loadingView });
+const SequencesView = dynamic(() => import("./sequences/Sequences").then((m) => m.SequencesView), { loading: loadingView });
+const ProductsView = dynamic(() => import("./products/Products").then((m) => m.ProductsView), { loading: loadingView });
+const SettingsView = dynamic(() => import("./handoff/Integrations").then((m) => m.SettingsView), { loading: loadingView });
 
 /** Fixed "today" for the demo so static renders are deterministic. Replace with new Date(). */
 export const DEMO_TODAY = new Date(2026, 8, 29);

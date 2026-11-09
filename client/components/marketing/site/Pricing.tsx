@@ -22,7 +22,7 @@ export function PricingPage() {
               <p className="sv-plan__line">{p.line}</p>
               <p className="sv-plan__price"><span className="sv-plan__n">{priceWords(p)}</span>{p.price !== null && <span>a month</span>}</p>
               <ul className="sv-plan__inc">{p.includes.map((i) => <li key={i}>{i}</li>)}</ul>
-              <a className="sv-plan__cta" href="#join">{WAITLIST.cta}</a>
+              <a className={`sv-plan__cta c-btn c-btn--lg c-btn--${p.primary ? "primary" : "secondary"}`} href="#join">{WAITLIST.cta}</a>
             </li>
           ))}
         </ol>

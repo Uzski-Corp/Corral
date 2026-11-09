@@ -9,9 +9,6 @@ import { useRouter } from "next/navigation";
 import { Button, cx } from "../primitives";
 import { HeroAgent } from "@/components/marketing/landing-v/Visuals";
 import "@/components/marketing/landing-v/landing-v.css";
-/* The reef image is position:absolute. These rules keep it inside the panel. The root
-   globals import is not enough: a web image that omits that stylesheet paints the image over the form. */
-import "./screens.css";
 import { GoogleG, Icon, Mark } from "../icons";
 import { FormField, TextInput } from "../Form";
 import { Banner, Spinner } from "../States";

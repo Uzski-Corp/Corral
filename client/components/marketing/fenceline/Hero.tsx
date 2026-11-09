@@ -22,7 +22,7 @@ export function FencelineHero() {
           <div className="fl-folio"><b>Corral</b><span>Outbound for teams who sell one thing well</span></div>
           <h1>Gather the few<br />who <em>fit</em>.</h1>
           <p>Corral reads every company’s website against what you sell, finds the person who decides, and writes to them the way you would.</p>
-          <div className="fl-hero__ctas"><VisitorLink className="fl-btn" href={CTA.start} signedInHref={CTA_SIGNED_IN.start}>Start with one product</VisitorLink><a className="fl-link" href="#plates">Read a sample segment →</a></div>
+          <div className="fl-hero__ctas"><VisitorLink className="fl-btn c-btn c-btn--ink c-btn--lg" href={CTA.start} signedInHref={CTA_SIGNED_IN.start}>Start with one product</VisitorLink><a className="fl-link" href="#plates">Read a sample segment →</a></div>
         </div>
         <div className="fl-faces">
           <div className="fl-faces__stack">{STACK.map((a) => <span key={a}><Image className="fl-bg" src={`/corral/en/av-${a}.jpg`} alt="" fill sizes="34px" /></span>)}</div>

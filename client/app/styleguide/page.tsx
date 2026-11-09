@@ -16,7 +16,7 @@ import { EditorDemo, KbShellDemo, SourceDetailDemo, SourceFailuresDemo, SourceLi
 import { AccountStatesDemo, CodeStatesDemo, CmdkDemo, ContrastDemo, FormDemo, OverlayDemo, SessionErrorDemo, ShellDemo, StatesDemo, TabsToastDemo } from "./M1Sections";
 import {
   Avatar, Button, ContextRail, Field, FilterBar, FitBar, Input, LEADS, Logo, MeetingCard, PersonCard, Receipt, Receipts,
-  ReadingPane, ReplyCard, SegmentTable, SegmentWindow, Segmented, Tag, THREADS, ThreadList, Toast, Toggle, Mark,
+  ReadingPane, ReplyCard, SegmentTable, SegmentWindow, Segmented, Tag, THREADS, ThreadList, Toast, Toggle, Mark, Icon,
 } from "@/components/app";
 
 export const metadata: Metadata = { title: "App language (Open Range)", robots: { index: false } };
@@ -86,9 +86,12 @@ export default function Styleguide() {
           <div className="sg-threads__right"><div className="c-win c-win--flat sg-pane"><ReadingPane t={THREADS[5]} /></div><div className="sg-taglist">{(["Interested", "Meeting booked", "Objection", "OOO", "Referral", "Not interested", "Contacted", "Verified", "Catch-all", "Bounced"] as const).map((s) => <Tag key={s} status={s} />)}</div></div></div>
       </Part>
 
-      <Part n="05" title="Buttons where they live" tokens={["--color-action", "--color-action-2", "--radius-button 8", "28 / 32 heights"]}
-        notes={<p>One blue button per surface. Near-black is for the second commitment (onboarding, marketing). Keyboard hints ride inside the button.</p>}>
+      <Part n="05" title="Buttons where they live" tokens={["Kumo surfaces", "20 / 26 / 36 / 40 heights", "4 / 6 / 8 radii", "Corral semantic colors"]}
+        notes={<p><a href="https://kumo-ui.com/components/button.md">Kumo button styles</a> with Corral’s blue and compact app sizing. Primary and destructive actions use a gradient rim; secondary, ghost, and outline keep quieter actions distinct. Existing default/quiet names remain aliases.</p>}>
         <div className="sg-buttons">
+          <div className="sg-card sg-bar"><Label>variants</Label><div className="c-actions" style={{ flexWrap: "wrap" }}><Button variant="primary">Primary</Button><Button variant="secondary">Secondary</Button><Button variant="ghost">Ghost</Button><Button variant="outline">Outline</Button><Button variant="destructive">Destructive</Button><Button variant="secondary-destructive">Remove</Button></div></div>
+          <div className="sg-card sg-bar"><Label>sizes and shapes</Label><div className="c-actions" style={{ flexWrap: "wrap" }}><Button size="xs">Extra small</Button><Button size="sm">Small</Button><Button size="base">Base</Button><Button size="lg">Large</Button><Button shape="square" aria-label="Add item"><Icon name="plus" /></Button><Button shape="circle" aria-label="Refresh"><Icon name="refresh" /></Button></div></div>
+          <div className="sg-card sg-bar"><Label>states</Label><div className="c-actions"><Button variant="primary" loading>Saving…</Button><Button disabled>Disabled</Button><a className="c-btn c-btn--outline" href="#top">Link button</a></div></div>
           <div className="sg-card sg-bar"><Label>toolbar</Label><div className="c-actions"><Button>Export</Button><Button variant="primary">Enroll 3 in sequence</Button></div></div>
           <div className="sg-card sg-bar"><Label>nothing selected</Label><div className="c-actions"><Button>Export</Button><Button variant="primary" disabled>Select to enroll</Button></div></div>
           <div className="sg-card sg-bar"><Label>composer</Label><div className="c-actions"><Button variant="primary" kbd="⌘↵">Send reply</Button><Button>Edit</Button><Button variant="quiet">Snooze</Button></div></div>

@@ -9,7 +9,7 @@ export function NotFoundBody() {
       <p className="lv-404__k">404</p>
       <h1 className="lv-404__h">This page swam off.</h1>
       <p className="lv-404__p">It may have moved, or the link had a typo.</p>
-      <Link className="lv-404__btn" href={ROUTES.home}>Back to home<ArrowRight size={18} weight="bold" aria-hidden="true" /></Link>
+      <Link className="lv-404__btn c-btn c-btn--secondary c-btn--lg" href={ROUTES.home}>Back to home<ArrowRight size={18} weight="bold" aria-hidden="true" /></Link>
     </div>
   );
 }

@@ -309,7 +309,7 @@ function KbView({ state, addOpen, onAddOpenChange, contained, m, isLive: live, s
       {!addOpen && (state === "tray" || q.busy || q.items.some((i) => i.state === "error")) && <UploadTray q={q} onOpen={() => onAddOpenChange(true)} inline={contained} />}
       <Dialog open={!!rem} onClose={() => setRemoving(undefined)} tone="danger" title={`Remove ${rem?.name ?? ""}?`}
         description={rem?.passages ? `Corral stops searching its ${rem.passages} passages.` : "Corral stops using it."}
-        footer={<><Button variant="quiet" onClick={() => setRemoving(undefined)}>Cancel</Button><Button variant="primary" className="k-btn-danger" onClick={() => rem && remove(rem.id)}>Remove source</Button></>}>
+        footer={<><Button variant="quiet" onClick={() => setRemoving(undefined)}>Cancel</Button><Button variant="destructive" onClick={() => rem && remove(rem.id)}>Remove source</Button></>}>
         {remUsed > 0 ? <p className="k-p">{remUsed} {remUsed === 1 ? "line of knowledge cites" : "lines of knowledge cite"} it. They stay, marked <b>source removed</b>, so you can keep them as your own claim or delete them.</p>
           : <p className="k-p">Nothing in the knowledge cites it. You can add it again at any time.</p>}
       </Dialog>

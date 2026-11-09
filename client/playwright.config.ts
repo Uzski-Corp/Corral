@@ -49,7 +49,7 @@ export default defineConfig({
     },
     {
       // exec: next start replaces the shell, so it gets Playwright's SIGTERM on teardown.
-      command: `./node_modules/.bin/next build && exec ./node_modules/.bin/next start -p ${WEB_PORT}`,
+      command: `pnpm build && exec ./node_modules/.bin/next start -p ${WEB_PORT}`,
       url: `${WEB}/sign-in`,
       env: { NEXT_PUBLIC_API_URL: API, NEXT_TELEMETRY_DISABLED: "1", CORRAL_APP: "1" },
       timeout: 300_000,
@@ -57,7 +57,7 @@ export default defineConfig({
       gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
     },
     {
-      command: `exec ./node_modules/.bin/next dev -p ${REVIEW_PORT}`,
+      command: `exec ./node_modules/.bin/next dev --webpack -p ${REVIEW_PORT}`,
       url: `${REVIEW}/app/knowledge`,
       env: { NEXT_PUBLIC_DESIGN_REVIEW: "1", NEXT_TELEMETRY_DISABLED: "1" },
       timeout: 180_000,

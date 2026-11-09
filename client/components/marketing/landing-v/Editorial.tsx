@@ -30,15 +30,15 @@ const STRIP: Logo[] = [...AGENT_LOGOS.slice(0, 4), ...TOOL_LOGOS.slice(0, 4)];
 function StartActions({ className }: { className: string }) {
   return (
     <div className={className}>
-      <Link className="h-primary" href={SIGN_IN}>Get started ↗</Link>
-      <Link className="h-secondary" href={SIGN_IN}>Watch a demo</Link>
+      <Link className="c-btn c-btn--primary c-btn--lg" href={SIGN_IN}>Get started ↗</Link>
+      <Link className="c-btn c-btn--secondary c-btn--lg" href={SIGN_IN}>Watch a demo</Link>
     </div>
   );
 }
 
 export function EditorialLanding() {
   return (
-    <main className="theme-open-range lv editorial hero-options">
+    <main className="theme-open-range lv editorial hero-options" data-variant="4">
       <Nav cta="Get started" ctaHref={SIGN_IN} />
       <section className="h-shell">
         <section className="h-b">
@@ -91,7 +91,7 @@ export function EditorialLanding() {
 
       <section className="ed-section ed-wrap">
         <div className="ed-proof">
-          <div className="ed-proof-art"><ScoreIllustration /></div>
+          <div className="ed-proof-art" id="company-fit"><ScoreIllustration /></div>
           <div className="ed-proof-copy">
             <span className="ed-k">Every score shows its work</span>
             <h2 className="ed-h2">You can see why each company made the list.</h2>
@@ -178,8 +178,8 @@ export function EditorialLanding() {
             <p className="ed-desc">Sign in to start using Corral.</p>
             <div className="ed-wl ed-offer">
               <div className="ed-actions">
-                <Link className="ed-primary" href={SIGN_IN}>Get started <span aria-hidden="true">↗</span></Link>
-                <Link className="ed-secondary" href={SIGN_IN}>Watch a demo</Link>
+                <Link className="c-btn c-btn--primary c-btn--lg" href={SIGN_IN}>Get started <span aria-hidden="true">↗</span></Link>
+                <Link className="c-btn c-btn--secondary c-btn--lg" href={SIGN_IN}>Watch a demo</Link>
               </div>
               <p className="ed-auth-note">Both options open sign-in.</p>
             </div>

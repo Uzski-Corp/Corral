@@ -29,7 +29,7 @@ export function Pricing() {
             <h3>{p.name}<em>{p.tag}</em></h3><p>{p.line}</p>
             <div className="fl-plan__price"><span>{priceWords(p)}</span>{p.price !== null && <span>a month</span>}</div>
             <dl>{ROWS.map((a) => <div key={a}><dt>{a}</dt><dd>{cell(a, p.id)}</dd></div>)}</dl>
-            <VisitorLink className={`fl-btn${p.primary ? "" : " fl-btn--line"}`} href={p.price === null ? CTA.walkthrough : CTA.start} signedInHref={p.price === null ? CTA.walkthrough : CTA_SIGNED_IN.start}>{p.cta}</VisitorLink>
+            <VisitorLink className={`fl-btn c-btn c-btn--lg c-btn--${p.primary ? "ink" : "outline"}`} href={p.price === null ? CTA.walkthrough : CTA.start} signedInHref={p.price === null ? CTA.walkthrough : CTA_SIGNED_IN.start}>{p.cta}</VisitorLink>
           </div>
         ))}
       </div>
@@ -43,7 +43,7 @@ export function Closing() {
     <>
       <section className="fl-close" aria-label="Get started">
         <Image className="fl-bg" src="/corral/en/acacia-plate.jpg" alt="" fill sizes="100vw" />
-        <div className="fl-close__inner"><Mark size={30} /><h2>Fewer, better, answered.</h2><VisitorLink className="fl-btn" href={CTA.start} signedInHref={CTA_SIGNED_IN.start}>Start with one product</VisitorLink></div>
+        <div className="fl-close__inner"><Mark size={30} /><h2>Fewer, better, answered.</h2><VisitorLink className="fl-btn c-btn c-btn--ink c-btn--lg" href={CTA.start} signedInHref={CTA_SIGNED_IN.start}>Start with one product</VisitorLink></div>
         <span className="fl-cap"><b>Pl. VI</b>The same acacia, evening.</span>
       </section>
       <footer className="fl-foot">

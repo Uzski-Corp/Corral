@@ -226,7 +226,7 @@ function Connected({ first, now, account, onClose }: { first: FirstCall; now: Da
 function RevokeConn({ c, onClose, onConfirm }: { c: Connection; onClose: () => void; onConfirm: () => void }) {
   return (
     <Dialog open onClose={onClose} width={500} tone="danger" title={`Disconnect ${c.name}${onDevice(c)}?`} description="It stops at once. You can connect it again; it signs in and asks for access again."
-      footer={<><Button variant="quiet" onClick={onClose}>Cancel</Button><Button variant="primary" className="i-btn-danger" onClick={onConfirm}>Disconnect</Button></>}>
+      footer={<><Button variant="quiet" onClick={onClose}>Cancel</Button><Button variant="destructive" onClick={onConfirm}>Disconnect</Button></>}>
       <ul className="m-list">
         <li className="is-no"><Icon name="x" size={12} />Its next call gets <span className="c-mono">401 invalid_token</span>; {c.name} shows Corral as disconnected</li>
         <li className="is-no"><Icon name="x" size={12} />Last call {c.last} (<span className="c-mono">{c.lastTool}</span>); {c.calls7d} this week</li>

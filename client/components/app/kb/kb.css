@@ -12,9 +12,6 @@
 .k-nil { color: var(--color-text-quaternary); font-size: 12.5px; }
 .k-count { font: 400 11.5px/1 var(--font-mono); color: var(--color-text-quaternary); margin-left: 6px; }
 .k-linkbtn { border: 0; background: none; padding: 0; font: inherit; cursor: pointer; }
-.k-danger { color: var(--color-negative-600) !important; }
-.k-danger:hover { background: var(--color-negative-50) !important; }
-.k-btn-danger { background: var(--color-negative-600) !important; }
 .k-prodbtn { color: var(--color-text-secondary); }
 
 /* Live dot: the one moving thing. Pulses, stops for reduced motion. */
