@@ -10,6 +10,7 @@ import { HeroAgent } from "./Visuals";
 import "@/components/marketing/site/styles";
 import "./landing-v.css";
 import "./editorial.css";
+import "./editorial-mount.css";
 import { editorialFont } from "./editorial-font";
 import { EditorialMotion } from "./EditorialMotion";
 
@@ -60,13 +61,13 @@ export function EditorialLanding() {
   return (
     <main className={`theme-open-range lv editorial hero-options ${editorialFont.variable}`} data-variant="4" id="editorial-landing">
       <EditorialMotion />
-      <Nav cta="Get started" ctaHref={SIGN_IN} />
+      <Nav className="ed-mount" cta="Get started" ctaHref={SIGN_IN} />
       <section className="h-shell">
         <section className="h-b">
-          <h1 className="h-title">Keep sales conversations with your product and companies.</h1>
-          <p className="h-support">{EDITORIAL_DESCRIPTION}</p>
-          <StartActions className="h-actions" />
-          <div className="h-b-media">
+          <h1 className="h-title ed-mount ed-mount--1">Keep sales conversations with your product and companies.</h1>
+          <p className="h-support ed-mount ed-mount--2">{EDITORIAL_DESCRIPTION}</p>
+          <StartActions className="h-actions ed-mount ed-mount--3" />
+          <div className="h-b-media ed-mount ed-mount--4">
             <div className="h-pic">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/corral/editorial/hero.webp" alt="Colleagues discussing work around a table" />

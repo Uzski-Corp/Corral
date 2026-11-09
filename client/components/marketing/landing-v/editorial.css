@@ -1,6 +1,6 @@
 /* Editorial landing. Recommended Corral editorial, desktop 1440 and mobile 390. */
 
-.editorial{background:#FFFFFF;--lv-page:#FFFFFF;--lv-alt:#F9F9FA;--lv-section:144px;--ed-font-display:var(--font-editorial-display);font-family:var(--font-sans);color:#141414;font-size:16px;line-height:1.5}
+.editorial{display:flow-root;padding-bottom:0;background:#FFFFFF;--lv-page:#FFFFFF;--lv-alt:#F9F9FA;--lv-section:144px;--ed-font-display:var(--font-editorial-display);font-family:var(--font-sans);color:#141414;font-size:16px;line-height:1.5}
 .editorial .ed-wrap,.editorial .lv-nav{max-width:1440px;padding-left:72px;padding-right:72px;margin-left:auto;margin-right:auto}
 .editorial .lv-nav{height:40px;margin-top:28px}.editorial .lv-logo{font-size:21px}.editorial .lv-nav__links a{font-size:13px}
 .ed-k{display:flex;align-items:center;gap:10px;font-size:12px;line-height:1.4;color:#606064;margin-bottom:22px}.ed-k::before{content:"";height:5px;width:5px;background:#224FD1;border-radius:50%}
@@ -89,7 +89,7 @@
 }
 
 /* Full-width reef close, matched to the current Doop desktop and mobile frames. */
-.ed-reef-close{margin:0;padding:0;max-width:none;width:100%}
+.ed-reef-close{display:flow-root;margin:0;padding:0;max-width:none;width:100%}
 .ed-reef-close__stage{position:relative;min-height:560px;display:flex;flex-direction:column;justify-content:space-between;padding:88px 64px 36px;background:url(/corral/hero-sunlit-reef.png) center 42%/cover no-repeat;color:#FFF}
 .ed-reef-close__veil{position:absolute;inset:0;background:rgba(8,24,40,.34);pointer-events:none}
 .ed-reef-close__cta{position:relative;z-index:1;text-align:center;max-width:620px;margin:0 auto;padding:40px 16px 64px}
@@ -114,18 +114,6 @@
 .ed-reef-foot .ed-footlinks{gap:10px 14px;margin-top:0}
 }
 
-/* First paint: a short stagger, using the existing marketing entry curve. */
-.editorial :is(.lv-nav,.h-title,.h-support,.h-actions,.h-b-media){
- opacity:1;transform:translateY(0);filter:blur(0);
- transition:opacity 640ms var(--lv-ease),transform 640ms var(--lv-ease),filter 640ms var(--lv-ease);
-}
-.editorial .h-title{transition-delay:50ms}
-.editorial .h-support{transition-delay:100ms}
-.editorial .h-actions{transition-delay:150ms}
-.editorial .h-b-media{transition-delay:200ms}
-@starting-style{
- .editorial :is(.lv-nav,.h-title,.h-support,.h-actions,.h-b-media){opacity:0;transform:translateY(10px);filter:blur(4px)}
-}
 /* Off-screen content reveals once. No blanket hidden state in the server HTML. */
 .editorial [data-editorial-reveal]{transition:opacity 640ms var(--lv-ease),transform 640ms var(--lv-ease)}
 .editorial [data-motion-pending]{opacity:0;transform:translateY(10px)}
@@ -133,7 +121,5 @@
 /* Let the outer product panel enter first instead of delaying every sample row. */
 .editorial .lv-hc__rows li{animation:none}
 @media(prefers-reduced-motion:reduce){
- .editorial :is(.lv-nav,.h-title,.h-support,.h-actions,.h-b-media){transform:none;filter:none;transition:opacity 200ms ease;transition-delay:0ms}
  .editorial [data-editorial-reveal]{opacity:1;transform:none;transition:none}
- @starting-style{.editorial :is(.lv-nav,.h-title,.h-support,.h-actions,.h-b-media){opacity:0;transform:none;filter:none}}
 }

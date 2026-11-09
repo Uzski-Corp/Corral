@@ -12,9 +12,9 @@ import { ScoreIllustration, WorkflowIllustration } from "./Illustrations";
 import { WaitlistForm } from "./WaitlistForm";
 
 /** `links` defaults to the landing's in-page anchors; the inner pages pass the site routes and their own `current`. */
-export function Nav({ tone = "light", links = NAV_LINKS, current, cta = WAITLIST.cta, ctaHref = "#join" }: { tone?: "light" | "blue"; links?: { label: string; href: string }[]; current?: string; cta?: string; ctaHref?: string }) {
+export function Nav({ className = "", tone = "light", links = NAV_LINKS, current, cta = WAITLIST.cta, ctaHref = "#join" }: { className?: string; tone?: "light" | "blue"; links?: { label: string; href: string }[]; current?: string; cta?: string; ctaHref?: string }) {
   return (
-    <nav className={`lv-nav lv-wrap lv-nav--${tone}`} aria-label="Main">
+    <nav className={`lv-nav lv-wrap lv-nav--${tone} ${className}`} aria-label="Main">
       <Link className="lv-logo" href={ROUTES.home}><Mark size={22} /><span>Corral</span></Link>
       <div className="lv-nav__links">{links.map((l) => <Link key={l.href} href={l.href} aria-current={current === l.href ? "page" : undefined}>{l.label}</Link>)}</div>
       <div className="lv-nav__end">

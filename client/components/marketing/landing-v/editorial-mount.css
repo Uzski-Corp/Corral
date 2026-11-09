@@ -1,0 +1,14 @@
+/* Shared first-paint motion for the public landing and its reading pages. */
+.ed-mount{opacity:1;transform:translateY(0);filter:blur(0);transition:opacity 640ms var(--ease-snap),transform 640ms var(--ease-snap),filter 640ms var(--ease-snap)}
+.ed-mount--1{transition-delay:50ms}
+.ed-mount--2{transition-delay:100ms}
+.ed-mount--3{transition-delay:150ms}
+.ed-mount--4{transition-delay:200ms}
+@starting-style{.ed-mount{opacity:0;transform:translateY(10px);filter:blur(4px)}}
+/* Long reading content fades as a group without blurring the whole document. */
+.ed-mount--body{filter:none}
+@starting-style{.ed-mount--body{filter:none}}
+@media(prefers-reduced-motion:reduce){
+ .ed-mount{transform:none;filter:none;transition:opacity 200ms ease;transition-delay:0ms}
+ @starting-style{.ed-mount{opacity:0;transform:none;filter:none}}
+}
