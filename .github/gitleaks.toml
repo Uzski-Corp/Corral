@@ -1,0 +1,13 @@
+# Gitleaks config for server-ci. Extends the upstream default ruleset.
+title = "corral gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Documented placeholders and generated artifacts"
+paths = [
+  '''(^|/)\.env\.example$''',
+  '''(^|/)pnpm-lock\.yaml$''',
+  '''(^|/)node_modules/''',
+]

@@ -1,0 +1,146 @@
+name: server-ci
+
+on:
+  pull_request:
+    paths:
+      - "server/**"
+      - ".github/workflows/server-ci.yml"
+      - ".github/gitleaks.toml"
+  push:
+    branches: [main]
+    paths:
+      - "server/**"
+      - ".github/workflows/server-ci.yml"
+      - ".github/gitleaks.toml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: server-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: server
+
+jobs:
+  lint:
+    name: Lint, format, types
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: server/.python-version
+          cache: pip
+          cache-dependency-path: server/requirements*.txt
+      - name: Install
+        run: pip install -r requirements.txt -r requirements-dev.txt -r requirements-ci.txt
+      - name: Ruff lint
+        run: ruff check --output-format=github .
+      - name: Ruff format
+        run: ruff format --check .
+      - name: Mypy
+        # Uses [tool.mypy] (strict, files=...) from pyproject.toml when present.
+        run: |
+          if grep -q '^\[tool\.mypy\]' pyproject.toml; then mypy; else mypy app; fi
+
+  test:
+    name: Tests + coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: corral_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      # Superuser: the suite creates scratch databases and the RLS migration creates a role.
+      TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/corral_test
+      TEST_REDIS_URL: redis://localhost:6379/15
+      APP_ENV: test
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # diff-cover needs the base branch history
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: server/.python-version
+          cache: pip
+          cache-dependency-path: server/requirements*.txt
+      - name: Install
+        run: pip install -r requirements.txt -r requirements-dev.txt -r requirements-ci.txt
+      - name: Pytest (coverage gate 85%)
+        run: >-
+          pytest -q -rs --cov=app --cov-branch
+          --cov-report=term-missing:skip-covered --cov-report=xml:coverage.xml
+          --cov-fail-under=85
+      - name: Diff coverage on changed lines (gate 90%)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: diff-cover coverage.xml --compare-branch="origin/${BASE_REF}" --fail-under=90
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage-xml
+          path: server/coverage.xml
+          if-no-files-found: ignore
+          retention-days: 7
+
+  security:
+    name: Dependency audit, SAST, secrets
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # gitleaks scans the pushed commit range
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: server/.python-version
+          cache: pip
+          cache-dependency-path: server/requirements*.txt
+      - name: Install audit tools
+        run: pip install -r requirements-ci.txt
+      - name: pip-audit (known vulnerabilities in pinned deps)
+        run: pip-audit --strict --desc -r requirements.txt -r requirements-dev.txt
+      - name: Bandit (medium+ severity and confidence)
+        run: bandit -r app -q --severity-level medium --confidence-level medium
+      - name: Gitleaks
+        working-directory: .
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          curl -fsSLo gitleaks.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tgz" | sha256sum -c -
+          tar -xzf gitleaks.tgz gitleaks && rm gitleaks.tgz
+          if [ -n "${BASE_SHA}" ] && [ "${BASE_SHA}" != "0000000000000000000000000000000000000000" ]; then
+            range="${BASE_SHA}..HEAD"
+          else
+            range="HEAD"
+          fi
+          ./gitleaks git --config .github/gitleaks.toml --redact --no-banner \
+            --log-opts="${range}" --exit-code 1
